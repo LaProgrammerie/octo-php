@@ -1,0 +1,30 @@
+{
+    "name": "async-platform/runtime-pack",
+    "description": "OpenSwoole runtime pack for the Async PHP Platform — prod-safe HTTP server with healthchecks, graceful shutdown, reload policy, and structured concurrency.",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.3",
+        "ext-openswoole": "*",
+        "psr/log": "^3.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0",
+        "giorgiosironi/eris": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "AsyncPlatform\\RuntimePack\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "AsyncPlatform\\RuntimePack\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

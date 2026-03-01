@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "name": "Security audit on dependency change",
+  "description": "Lance un audit sécurité quand les dépendances changent (composer).",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "composer.json",
+      "composer.lock"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "bash -lc 'set -euo pipefail; if command -v composer >/dev/null 2>&1; then composer -n --no-ansi --no-interaction audit || true; fi'"
+  }
+}

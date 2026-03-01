@@ -1,0 +1,39 @@
+# =============================================================================
+# Async PHP Platform — Skeleton Development Stack
+# =============================================================================
+# Usage:
+#   docker compose up        — Start dev server on port 8080
+#   docker compose up -d     — Start in background
+#   docker compose down      — Stop and remove containers
+#   docker compose build     — Rebuild the image
+#
+# The app service uses the "dev" stage (Composer + Xdebug available).
+# Source code is bind-mounted for live reload during development.
+# =============================================================================
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      - .:/app
+      - vendor-data:/app/vendor
+    environment:
+      - APP_HOST=${APP_HOST:-0.0.0.0}
+      - APP_PORT=8080
+      - APP_WORKERS=${APP_WORKERS:-2}
+      - MAX_REQUESTS=${MAX_REQUESTS:-10000}
+      - MAX_UPTIME=${MAX_UPTIME:-3600}
+      - MAX_MEMORY_RSS=${MAX_MEMORY_RSS:-134217728}
+      - SHUTDOWN_TIMEOUT=${SHUTDOWN_TIMEOUT:-30}
+      - REQUEST_HANDLER_TIMEOUT=${REQUEST_HANDLER_TIMEOUT:-60}
+      - MAX_CONCURRENT_SCOPES=${MAX_CONCURRENT_SCOPES:-0}
+      - EVENT_LOOP_LAG_THRESHOLD_MS=${EVENT_LOOP_LAG_THRESHOLD_MS:-500}
+    restart: unless-stopped
+
+volumes:
+  vendor-data:

@@ -1,0 +1,33 @@
+# =============================================================================
+# Async PHP Platform — Development Stack
+# =============================================================================
+# Usage:
+#   docker compose up        — Start dev server on port 8080
+#   docker compose up -d     — Start in background
+#   docker compose down      — Stop and remove containers
+#   docker compose build     — Rebuild the image
+#
+# The app service uses the "dev" stage (Composer + Xdebug available).
+# Source code is bind-mounted for live reload during development.
+# =============================================================================
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      - .:/app
+      - vendor-data:/app/vendor
+    environment:
+      - APP_HOST=${APP_HOST:-0.0.0.0}
+      - APP_PORT=8080
+      - APP_WORKERS=${APP_WORKERS:-2}
+      - APP_ENV=${APP_ENV:-dev}
+    restart: unless-stopped
+
+volumes:
+  vendor-data:

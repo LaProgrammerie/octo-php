@@ -1,0 +1,18 @@
+{
+  "enabled": false,
+  "name": "Unit tests on Save (fast)",
+  "description": "Optionnel: lance une suite rapide après modification de code.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "src/**/*.php",
+      "packages/**/*.php",
+      "platform/**/*.php"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "bash -lc 'set -euo pipefail; if [ -f Makefile ] && make -n test-fast >/dev/null 2>&1; then make test-fast; elif [ -f composer.json ]; then (composer -n --no-ansi --no-interaction test:unit || true); fi'"
+  }
+}

@@ -1,0 +1,91 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Minimal CLI entry point for the Async PHP Platform runtime pack.
+ *
+ * Supported commands:
+ *   async:serve  — Start the server in development mode (default host 0.0.0.0:8080, 2 workers)
+ *   async:run    — Start the server in production mode (reload/shutdown policies active)
+ *
+ * This is NOT a full CLI framework. It parses the command and delegates to ServerBootstrap::run().
+ * Advanced CLI tooling (async:doctor, async:bench) will be added in future specs.
+ *
+ * Usage:
+ *   php bin/console async:serve
+ *   php bin/console async:run
+ */
+
+// Autoload — try skeleton-level vendor first, then package-level
+$autoloadPaths = [
+    __DIR__ . '/../../../vendor/autoload.php',  // When used from skeleton (skeleton/vendor/)
+    __DIR__ . '/../vendor/autoload.php',         // When used standalone (packages/runtime-pack/vendor/)
+];
+
+$autoloaded = false;
+foreach ($autoloadPaths as $autoloadPath) {
+    if (file_exists($autoloadPath)) {
+        require $autoloadPath;
+        $autoloaded = true;
+        break;
+    }
+}
+
+if (!$autoloaded) {
+    fwrite(STDERR, json_encode([
+        'timestamp' => gmdate('Y-m-d\TH:i:s\Z'),
+        'level' => 'critical',
+        'message' => 'Autoloader not found. Run "composer install" first.',
+        'component' => 'cli',
+    ]) . "\n");
+    exit(1);
+}
+
+// Parse command
+$command = $argv[1] ?? null;
+
+$supportedCommands = ['async:serve', 'async:run'];
+
+if ($command === null || !in_array($command, $supportedCommands, true)) {
+    $scriptName = $argv[0] ?? 'bin/console';
+    fwrite(STDERR, "Async PHP Platform — Runtime Pack\n\n");
+    fwrite(STDERR, "Usage:\n");
+    fwrite(STDERR, "  php {$scriptName} async:serve   Start in development mode\n");
+    fwrite(STDERR, "  php {$scriptName} async:run     Start in production mode\n");
+    fwrite(STDERR, "\n");
+
+    if ($command !== null) {
+        fwrite(STDERR, "Unknown command: {$command}\n");
+    }
+
+    exit(1);
+}
+
+$production = ($command === 'async:run');
+
+// Delegate to ServerBootstrap — implementation will be provided in Task 9.
+// For now, this validates the CLI parsing works correctly.
+// ServerBootstrap::run() expects a callable $appHandler and a bool $production flag.
+
+// Check if ServerBootstrap class exists (it will be created in Task 9)
+if (class_exists(\AsyncPlatform\RuntimePack\ServerBootstrap::class)) {
+    \AsyncPlatform\RuntimePack\ServerBootstrap::run(
+        appHandler: static function (\OpenSwoole\Http\Request $request, $response): void {
+            // Default handler — skeleton will override this
+            $response->header('Content-Type', 'application/json');
+            $response->end(json_encode(['error' => 'No application handler configured']));
+        },
+        production: $production,
+    );
+} else {
+    // ServerBootstrap not yet implemented — output a helpful message
+    $mode = $production ? 'production' : 'development';
+    fwrite(STDERR, json_encode([
+        'timestamp' => gmdate('Y-m-d\TH:i:s\Z'),
+        'level' => 'info',
+        'message' => "Command '{$command}' parsed successfully (mode: {$mode}). ServerBootstrap not yet available.",
+        'component' => 'cli',
+    ]) . "\n");
+}

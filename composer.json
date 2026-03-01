@@ -1,0 +1,30 @@
+{
+    "name": "async-platform/monorepo",
+    "description": "Async PHP Platform monorepo — OpenSwoole runtime pack, skeleton, and tooling.",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.3"
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "packages/runtime-pack"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "AsyncPlatform\\RuntimePack\\": "packages/runtime-pack/src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "AsyncPlatform\\RuntimePack\\Tests\\": "packages/runtime-pack/tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

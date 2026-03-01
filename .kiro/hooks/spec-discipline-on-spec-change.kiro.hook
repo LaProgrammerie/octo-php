@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "name": "Spec discipline on spec change",
+  "description": "Quand les specs changent, demande à l’agent de vérifier cohérence, DoD, et impacts runtime/QoS.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      ".kiro/specs/**",
+      "README.md",
+      "docs/**"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Vérifie la cohérence des changements de spec/doc avec les invariants plateforme: timeouts obligatoires, structured concurrency, limits, observabilité, stratégie legacy bloquante. Liste: (1) risques prod, (2) impacts sur APIs publiques, (3) tests manquants, (4) ADR à créer/mettre à jour. Propose un plan de patch minimal."
+  }
+}

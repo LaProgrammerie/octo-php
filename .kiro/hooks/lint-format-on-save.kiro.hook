@@ -1,0 +1,21 @@
+{
+  "enabled": true,
+  "name": "Lint/Format on Save (PHP)",
+  "description": "Exécute le format/lint minimal dès qu’un fichier PHP ou config critique est modifié.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.php",
+      "composer.json",
+      "composer.lock",
+      "phpstan.neon*",
+      ".php-cs-fixer.php",
+      "rector.php"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "bash -lc 'set -euo pipefail; if [ -f Makefile ] && make -n fmt >/dev/null 2>&1; then make fmt; elif [ -f composer.json ]; then (composer -n --no-ansi --no-interaction cs:fix || true); (composer -n --no-ansi --no-interaction cs || true); fi'"
+  }
+}

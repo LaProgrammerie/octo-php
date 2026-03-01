@@ -1,0 +1,111 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Async PHP Platform — CLI entry point.
+ *
+ * Commands:
+ *   async:serve  — Start the server in development mode (2 workers, no reload policies)
+ *   async:run    — Start the server in production mode (auto workers, reload policies active)
+ *
+ * These are minimal bootstrap commands — not a full CLI framework.
+ * Advanced commands (async:doctor, async:bench) will be added in future specs.
+ */
+
+// Autoload
+$autoloadPaths = [
+    __DIR__ . '/../vendor/autoload.php',
+    __DIR__ . '/../../../vendor/autoload.php', // monorepo layout
+];
+
+$autoloaded = false;
+foreach ($autoloadPaths as $autoloadPath) {
+    if (file_exists($autoloadPath)) {
+        require $autoloadPath;
+        $autoloaded = true;
+        break;
+    }
+}
+
+if (!$autoloaded) {
+    fwrite(STDERR, "Error: Could not find vendor/autoload.php\n");
+    fwrite(STDERR, "Run 'composer install' first.\n");
+    exit(1);
+}
+
+// Parse command
+$command = $argv[1] ?? null;
+
+if ($command === null || in_array($command, ['--help', '-h'], true)) {
+    fwrite(STDOUT, <<<'USAGE'
+Async PHP Platform
+
+Usage:
+  php bin/console <command>
+
+Commands:
+  async:serve    Start the server in development mode
+  async:run      Start the server in production mode
+
+Options:
+  --help, -h     Show this help message
+
+USAGE);
+    exit(0);
+}
+
+// Load routes
+$routesFile = __DIR__ . '/../config/routes.php';
+if (!file_exists($routesFile)) {
+    fwrite(STDERR, "Error: config/routes.php not found.\n");
+    exit(1);
+}
+
+$routeFactory = require $routesFile;
+if (!is_callable($routeFactory)) {
+    fwrite(STDERR, "Error: config/routes.php must return a callable.\n");
+    exit(1);
+}
+
+$appHandler = $routeFactory();
+if (!is_callable($appHandler)) {
+    fwrite(STDERR, "Error: The callable returned by config/routes.php must return a callable handler.\n");
+    exit(1);
+}
+
+// Load job registrar (optional — for BlockingPool)
+$jobRegistrar = null;
+$jobsFile = __DIR__ . '/../config/jobs.php';
+if (file_exists($jobsFile)) {
+    $jobRegistrar = require $jobsFile;
+    if (!is_callable($jobRegistrar)) {
+        fwrite(STDERR, "Error: config/jobs.php must return a callable.\n");
+        exit(1);
+    }
+}
+
+// Dispatch command
+switch ($command) {
+    case 'async:serve':
+        \AsyncPlatform\RuntimePack\ServerBootstrap::run(
+            appHandler: $appHandler,
+            production: false,
+            jobRegistrar: $jobRegistrar,
+        );
+        break;
+
+    case 'async:run':
+        \AsyncPlatform\RuntimePack\ServerBootstrap::run(
+            appHandler: $appHandler,
+            production: true,
+            jobRegistrar: $jobRegistrar,
+        );
+        break;
+
+    default:
+        fwrite(STDERR, "Unknown command: {$command}\n");
+        fwrite(STDERR, "Run 'php bin/console --help' for available commands.\n");
+        exit(1);
+}

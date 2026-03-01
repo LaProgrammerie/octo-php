@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Manual: Architecture review (async platform)",
+  "description": "Revue d’architecture à la demande sur la base du diff courant.",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Fais une revue d’architecture du diff/projet en te concentrant sur: (1) séparation des couches, (2) invariants async (Context/TaskGroup/timeout/limit), (3) risques long-running (state leaks), (4) QoS multi-route/tenant, (5) observabilité (OTEL + métriques loop/pool). Rends un verdict actionnable: corrections prioritaires + patch plan."
+  }
+}
