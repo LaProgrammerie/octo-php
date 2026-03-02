@@ -44,10 +44,15 @@
         "test:property": "phpunit --testsuite property",
         "test:integration": "phpunit --testsuite integration",
         "lint": "php-cs-fixer fix --dry-run --diff",
-        "lint:fix": "php-cs-fixer fix"
+        "lint:fix": "php-cs-fixer fix",
+        "bench": "php bench/run.php",
+        "bench:quick": "php bench/run.php --mode=both --jobs=500 --concurrency=50 --cpu=5000 --io-ms=2 --json-kb=4",
+        "bench:stress": "php bench/run.php --jobs=10000 --concurrency=500 --cpu=30000 --io-ms=10 --json-kb=16",
+        "bench:matrix": "php bench/run.php --mode=matrix --jobs=200"
     },
     "config": {
-        "sort-packages": true
+        "sort-packages": true,
+        "process-timeout": 0
     },
     "minimum-stability": "stable",
     "prefer-stable": true

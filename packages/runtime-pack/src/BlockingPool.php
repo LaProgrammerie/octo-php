@@ -53,11 +53,11 @@ final class BlockingPool implements BlockingPoolInterface
 
     public function __construct(
         private readonly JobRegistry $registry,
+        private readonly MetricsCollector $metrics,
+        private readonly JsonLogger $logger,
         private readonly int $maxWorkers = 4,
         private readonly int $maxQueueSize = 64,
         private readonly float $defaultTimeoutSeconds = 30.0,
-        private readonly MetricsCollector $metrics,
-        private readonly JsonLogger $logger,
     ) {
     }
 

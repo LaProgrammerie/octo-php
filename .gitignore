@@ -5,3 +5,7 @@
 /.phpunit.result.cache
 /packages/**/.phpunit.cache
 /packages/**/.phpunit.result.cache
+
+# Bench results (generated)
+/bench/results/latest.*
+/bench/results/matrix.csv
