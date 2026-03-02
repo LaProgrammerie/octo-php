@@ -41,7 +41,7 @@ final class RunnerAsync
      *     rss_kb: int|null
      * }
      */
-    public function run(int $jobs, int $concurrency, int $cpuIterations, int $ioMs, int $jsonKb): array
+    public function run(int $jobs, int $concurrency, int $cpuIterations, int $ioMs, int $jsonKb, int $yieldEvery = 0): array
     {
         if ($concurrency <= 0) {
             throw new \InvalidArgumentException('Concurrency must be > 0');
@@ -51,12 +51,13 @@ final class RunnerAsync
         $metrics = [];
         $rssKb = null;
 
-        Coroutine::run(function () use ($jobs, $concurrency, $cpuIterations, $ioMs, $jsonKb, &$totalNs, &$metrics, &$rssKb, ): void {
+        Coroutine::run(function () use ($jobs, $concurrency, $cpuIterations, $ioMs, $jsonKb, $yieldEvery, &$totalNs, &$metrics, &$rssKb, ): void {
             $job = new Job(
                 cpuIterations: $cpuIterations,
                 ioMs: $ioMs,
                 jsonKb: $jsonKb,
                 async: true,
+                yieldEvery: $yieldEvery,
             );
 
             // Job queue: bounded channel. Each item = [jobIndex, tEnqueue].

@@ -17,16 +17,18 @@ namespace AsyncPlatform\Bench;
 final class Job
 {
     /**
-     * @param int  $cpuIterations Number of SHA-256 rounds
-     * @param int  $ioMs          Simulated IO latency in milliseconds
-     * @param int  $jsonKb        Approximate JSON payload size in KB
-     * @param bool $async         Use coroutine sleep instead of usleep
+     * @param int  $cpuIterations  Number of SHA-256 rounds
+     * @param int  $ioMs           Simulated IO latency in milliseconds
+     * @param int  $jsonKb         Approximate JSON payload size in KB
+     * @param bool $async          Use coroutine sleep instead of usleep
+     * @param int  $yieldEvery     Cooperative yield every N CPU iterations (0 = disabled)
      */
     public function __construct(
         private readonly int $cpuIterations = 20_000,
         private readonly int $ioMs = 5,
         private readonly int $jsonKb = 8,
         private readonly bool $async = false,
+        private readonly int $yieldEvery = 0,
     ) {
     }
 
@@ -39,17 +41,27 @@ final class Job
     {
         // ── Stage 1: CPU-bound (hashing + JSON) ────────────────────
         $cpuStart = hrtime(true);
+        $yieldPauseNs = 0;
 
         $hash = hash('sha256', "seed-{$jobIndex}");
+        $yieldEvery = $this->yieldEvery;
         for ($i = 0; $i < $this->cpuIterations; $i++) {
             $hash = hash('sha256', $hash . $i);
+
+            // Cooperative yield: give scheduler a chance to resume IO-waiting coroutines.
+            // Yield time is excluded from cpu_ns to keep the metric accurate.
+            if ($yieldEvery > 0 && $i > 0 && $i % $yieldEvery === 0) {
+                $yieldStart = hrtime(true);
+                \OpenSwoole\Coroutine::usleep(0);
+                $yieldPauseNs += hrtime(true) - $yieldStart;
+            }
         }
 
         $payload = $this->buildPayload();
         $encoded = json_encode($payload, JSON_THROW_ON_ERROR);
         $decoded = json_decode($encoded, true, 512, JSON_THROW_ON_ERROR);
 
-        $cpuNs = hrtime(true) - $cpuStart;
+        $cpuNs = (hrtime(true) - $cpuStart) - $yieldPauseNs;
 
         // ── Stage 2: IO-bound (simulated latency) ──────────────────
         $ioStart = hrtime(true);

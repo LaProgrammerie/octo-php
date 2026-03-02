@@ -34,6 +34,7 @@ final class MetricsCollector
     private int $taskScopeChildrenMax = 0;
     private float $eventLoopLagMs = 0.0;
     private int $scopeRejectedTotal = 0;
+    private int $cooperativeYieldTotal = 0;
 
     // --- Histogram bucketisé ---
     /** @var list<int|float> */
@@ -156,6 +157,12 @@ final class MetricsCollector
         $this->taskScopeChildrenMax++;
     }
 
+    /** Increments the cooperative_yield_total counter. */
+    public function incrementCooperativeYield(): void
+    {
+        $this->cooperativeYieldTotal++;
+    }
+
     // ---- Histogram ----
 
     /**
@@ -215,6 +222,7 @@ final class MetricsCollector
      *     taskscope_children_max: int,
      *     event_loop_lag_ms: float,
      *     scope_rejected_total: int,
+     *     cooperative_yield_total: int,
      * }
      */
     public function snapshot(): array
@@ -247,6 +255,7 @@ final class MetricsCollector
             'taskscope_children_max' => $this->taskScopeChildrenMax,
             'event_loop_lag_ms' => $this->eventLoopLagMs,
             'scope_rejected_total' => $this->scopeRejectedTotal,
+            'cooperative_yield_total' => $this->cooperativeYieldTotal,
         ];
     }
 }

@@ -30,6 +30,7 @@ $options = getopt('', [
     'cpu:',
     'io-ms:',
     'json-kb:',
+    'yield-every:',
     'help',
 ]);
 
@@ -44,6 +45,7 @@ Options:
   --cpu=N                        SHA-256 iterations per job (default: 20000)
   --io-ms=N                      Simulated IO sleep in ms (default: 5)
   --json-kb=N                    JSON payload size in KB (default: 8)
+  --yield-every=N                Cooperative yield every N CPU iterations, async only (default: 0 = disabled)
   --help                         Show this help
 
 Modes:
@@ -82,6 +84,10 @@ $ioMs = array_key_exists('io-ms', $options)
 $jsonKb = array_key_exists('json-kb', $options)
     ? (int) $options['json-kb']
     : (getenv('JSON_KB') !== false ? (int) getenv('JSON_KB') : 8);
+
+$yieldEvery = array_key_exists('yield-every', $options)
+    ? (int) $options['yield-every']
+    : (getenv('YIELD_EVERY') !== false ? (int) getenv('YIELD_EVERY') : 0);
 
 // ── Validate ────────────────────────────────────────────────────────────────
 
@@ -125,7 +131,7 @@ if ($mode === 'matrix') {
 
 // ── Single/both mode ────────────────────────────────────────────────────────
 
-echo "Config: mode={$mode} jobs={$jobs} concurrency={$concurrency} cpu={$cpuN} io-ms={$ioMs} json-kb={$jsonKb}\n\n";
+echo "Config: mode={$mode} jobs={$jobs} concurrency={$concurrency} cpu={$cpuN} io-ms={$ioMs} json-kb={$jsonKb} yield-every={$yieldEvery}\n\n";
 
 $allStats = [];
 
@@ -143,7 +149,7 @@ if ($mode === 'sync' || $mode === 'both') {
 if ($mode === 'async' || $mode === 'both') {
     echo "▶ Running ASYNC (concurrency={$concurrency})...\n";
     $asyncRunner = new RunnerAsync();
-    $asyncResult = $asyncRunner->run($jobs, $concurrency, $cpuN, $ioMs, $jsonKb);
+    $asyncResult = $asyncRunner->run($jobs, $concurrency, $cpuN, $ioMs, $jsonKb, $yieldEvery);
     $asyncResult['mode'] = 'async';
     $asyncResult['concurrency'] = $concurrency;
     $asyncStats = Report::stats($asyncResult);

@@ -35,6 +35,7 @@ final class MetricsCollectorTest extends TestCase
         $this->assertSame(0, $snap['taskscope_children_max']);
         $this->assertSame(0.0, $snap['event_loop_lag_ms']);
         $this->assertSame(0, $snap['scope_rejected_total']);
+        $this->assertSame(0, $snap['cooperative_yield_total']);
 
         // Histogram initial state
         $hist = $snap['request_duration_ms'];
@@ -162,6 +163,13 @@ final class MetricsCollectorTest extends TestCase
         $this->assertSame(3, $this->metrics->snapshot()['taskscope_children_max']);
     }
 
+    public function testIncrementCooperativeYield(): void
+    {
+        $this->metrics->incrementCooperativeYield();
+        $this->metrics->incrementCooperativeYield();
+        $this->assertSame(2, $this->metrics->snapshot()['cooperative_yield_total']);
+    }
+
     // ---- Histogram: recordDuration ----
 
     public function testRecordDurationInFirstBucket(): void
@@ -280,6 +288,7 @@ final class MetricsCollectorTest extends TestCase
             'taskscope_children_max',
             'event_loop_lag_ms',
             'scope_rejected_total',
+            'cooperative_yield_total',
         ];
 
         foreach ($expectedKeys as $key) {

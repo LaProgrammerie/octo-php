@@ -36,8 +36,9 @@ docker compose run --rm app composer bench:matrix
 | `--cpu` | `20000` | Itérations SHA-256 par job |
 | `--io-ms` | `5` | Sleep simulé en ms |
 | `--json-kb` | `8` | Taille payload JSON en KB |
+| `--yield-every` | `0` | Yield coopératif toutes les N itérations CPU (0 = désactivé, async uniquement) |
 
-Variables d'environnement : `BENCH_MODE`, `JOBS`, `CONCURRENCY`, `CPU_N`, `IO_MS`, `JSON_KB`.
+Variables d'environnement : `BENCH_MODE`, `JOBS`, `CONCURRENCY`, `CPU_N`, `IO_MS`, `JSON_KB`, `YIELD_EVERY`.
 
 ## Pipeline de chaque job
 
@@ -85,6 +86,22 @@ Note : le verdict `BACKPRESSURE` n'est pas émis en mode burst (arrivée instant
 Le bench actuel utilise un mode **burst** : les N jobs sont enfilés d'un coup dans la Channel. Le `queue_wait` reflète donc un cas "file pleine" plus qu'un flux HTTP steady-state. C'est attendu et utile pour mesurer le throughput max, mais ne simule pas un trafic réaliste.
 
 > V2 prévue : `--arrival=poisson --rps=XXX` pour un mode d'arrivée réaliste où `queue_wait` devient une vraie métrique de saturation sous charge.
+
+### Cooperative Yield (--yield-every)
+
+Quand `--yield-every=N` est activé (N > 0), le job insère un `Coroutine::usleep(0)` toutes les N itérations SHA-256. Cela donne au scheduler une chance de reprendre les coroutines en attente IO, réduisant le "convoy effect" sous charge CPU.
+
+Impact mesuré (cpu=20000, concurrency=50, io-ms=5) :
+
+| Metric | No yield | yield-every=5000 | yield-every=2000 |
+|--------|----------|-------------------|-------------------|
+| IO Wait p50 | 1552ms | 392ms | 163ms |
+| CPU p50 | 31ms | 31ms | 31ms |
+| Throughput | 31.4 j/s | 31.4 j/s | 31.4 j/s |
+
+Le yield améliore la fairness IO (9.5x) sans coût sur le throughput ni sur le CPU par job. Le temps de yield est exclu de `cpu_ns` pour garder la métrique précise.
+
+Voir [ADR-002](../docs/adr/002-cooperative-yield-cpu-fairness.md) pour le détail.
 
 ## Mode Matrix
 
