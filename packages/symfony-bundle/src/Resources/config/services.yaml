@@ -1,0 +1,42 @@
+services:
+    _defaults:
+        autowire: false
+        autoconfigure: false
+        public: false
+
+    # --- Core Bridge Services ---
+
+    AsyncPlatform\SymfonyBridge\MetricsBridge:
+        arguments:
+            $collector: '@AsyncPlatform\RuntimePack\MetricsCollector'
+        public: false
+
+    AsyncPlatform\SymfonyBridge\ResetManager:
+        arguments:
+            $kernel: '@kernel'
+            $logger: '@logger'
+            $metricsBridge: '@AsyncPlatform\SymfonyBridge\MetricsBridge'
+            $resetWarningMs: '%async_platform.reset_warning_ms%'
+        public: true
+
+    AsyncPlatform\SymfonyBridge\RequestIdProcessor:
+        tags:
+            - { name: monolog.processor }
+        public: false
+
+    AsyncPlatform\SymfonyBridge\HttpKernelAdapter:
+        arguments:
+            $kernel: '@kernel'
+            $logger: '@logger'
+            $metricsCollector: '@AsyncPlatform\RuntimePack\MetricsCollector'
+            $kernelRebootEvery: '%async_platform.kernel_reboot_every%'
+            $resetWarningMs: '%async_platform.reset_warning_ms%'
+            $debug: '%kernel.debug%'
+            $memoryWarningThreshold: '%async_platform.memory_warning_threshold%'
+        public: true
+
+    # --- Runtime Pack (expected to be provided by the application or runtime) ---
+
+    AsyncPlatform\RuntimePack\MetricsCollector:
+        class: AsyncPlatform\RuntimePack\MetricsCollector
+        public: false

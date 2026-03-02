@@ -1,0 +1,63 @@
+{
+    "name": "async-platform/symfony-bridge",
+    "description": "Core Symfony HttpKernel adapter for the Async PHP Platform — converts OpenSwoole requests/responses to HttpFoundation, manages long-running lifecycle (reset, anti-leak, streaming), and provides observability bridge.",
+    "type": "library",
+    "license": "MIT",
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../runtime-pack"
+        },
+        {
+            "type": "path",
+            "url": "../symfony-bundle"
+        },
+        {
+            "type": "path",
+            "url": "../symfony-messenger"
+        },
+        {
+            "type": "path",
+            "url": "../symfony-realtime"
+        },
+        {
+            "type": "path",
+            "url": "../symfony-otel"
+        }
+    ],
+    "require": {
+        "php": ">=8.3",
+        "async-platform/runtime-pack": "@dev",
+        "psr/log": "^3.0",
+        "symfony/http-foundation": "^6.4|^7.0",
+        "symfony/http-kernel": "^6.4|^7.0"
+    },
+    "require-dev": {
+        "async-platform/symfony-bundle": "@dev",
+        "async-platform/symfony-messenger": "@dev",
+        "async-platform/symfony-otel": "@dev",
+        "async-platform/symfony-realtime": "@dev",
+        "giorgiosironi/eris": "^1.0",
+        "phpunit/phpunit": "^11.0",
+        "symfony/framework-bundle": "^6.4|^7.0"
+    },
+    "suggest": {
+        "doctrine/orm": "Required for DoctrineResetHook (optional anti-leak hook for EntityManager reset)",
+        "monolog/monolog": "Required for RequestIdProcessor (propagates request_id into Monolog log records)"
+    },
+    "autoload": {
+        "psr-4": {
+            "AsyncPlatform\\SymfonyBridge\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "AsyncPlatform\\SymfonyBridge\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

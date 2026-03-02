@@ -1,0 +1,40 @@
+{
+    "name": "async-platform/symfony-realtime",
+    "description": "Realtime package for the Async PHP Platform — WebSocket handler, SSE event formatting/streaming, and HTTP/WS routing adapter.",
+    "type": "library",
+    "license": "MIT",
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../runtime-pack"
+        },
+        {
+            "type": "path",
+            "url": "../symfony-bridge"
+        }
+    ],
+    "require": {
+        "php": ">=8.3",
+        "async-platform/runtime-pack": "@dev",
+        "async-platform/symfony-bridge": "@dev"
+    },
+    "require-dev": {
+        "giorgiosironi/eris": "^1.0",
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "AsyncPlatform\\SymfonyRealtime\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "AsyncPlatform\\SymfonyRealtime\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

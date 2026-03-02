@@ -1,0 +1,430 @@
+# Implementation Plan: Symfony Bridge Suite
+
+## Overview
+
+Implémentation incrémentale de la Symfony Bridge Suite (6 packages Composer) permettant d'exécuter une application Symfony (HttpKernel) sur le runtime OpenSwoole via `async-platform/runtime-pack`. Les tâches sont organisées par package, dans l'ordre de dépendance : core → bundle → messenger → realtime → otel → full. Chaque tâche référence les requirements et/ou propriétés de correctness du design.
+
+## Tasks
+
+- [x] 1. Structure monorepo et composer.json des 6 packages
+  - [x] 1.1 Créer les répertoires `packages/symfony-bridge/{src,tests,docs}`, `packages/symfony-bundle/{src,tests}`, `packages/symfony-messenger/{src,tests,docs}`, `packages/symfony-realtime/{src,tests,docs}`, `packages/symfony-otel/{src,tests}`, `packages/symfony-bridge-full/`
+    - _Requirements: 17.1, 17.2_
+  - [x] 1.2 Créer `packages/symfony-bridge/composer.json` : namespace `AsyncPlatform\SymfonyBridge`, require `symfony/http-kernel` (^6.4|^7.0), `symfony/http-foundation` (^6.4|^7.0), `psr/log` (^3.0), `async-platform/runtime-pack` ; suggest `monolog/monolog`, `doctrine/orm` ; require-dev `phpunit/phpunit`, `giorgiosironi/eris`, `symfony/framework-bundle`
+    - _Requirements: 1.5, 1.6, 17.3_
+  - [x] 1.3 Créer les `composer.json` des 4 autres packages (bundle, messenger, realtime, otel) selon la matrice de dépendances du design §6
+    - _Requirements: 10.8, 11.12, 11.13, 12.9, 14.8, 17.3_
+  - [x] 1.4 Créer `packages/symfony-bridge-full/composer.json` : type `metapackage`, require tous les packages avec versions exactes, aucun autoload
+    - _Requirements: 15.1, 15.2, 15.3_
+  - [x] 1.5 Vérifier que `composer dump-autoload` fonctionne pour chaque package
+    - _Requirements: 17.3_
+
+- [x] 2. Core bridge — RequestConverter (conversion OpenSwoole → HttpFoundation)
+  - [x] 2.1 Créer `RequestConverter` avec méthode `convert(object $swooleRequest): Request`
+    - Mapper method, URI, query string, body (rawContent), cookies, files, headers
+    - Reconstruire le tableau `$_SERVER` équivalent via `buildServerVars()` (REQUEST_METHOD, REQUEST_URI, QUERY_STRING, CONTENT_TYPE, CONTENT_LENGTH, SERVER_PROTOCOL, SERVER_NAME, SERVER_PORT, REMOTE_ADDR, REMOTE_PORT, HTTP_*)
+    - Propager `X-Request-Id` dans les headers ET les attributs (`_request_id`)
+    - Ne JAMAIS lire ni modifier les superglobales PHP
+    - _Requirements: 2.1, 2.2, 2.3, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10, 2.11_
+  - [x] 2.2 Implémenter `buildFiles()` : mapper les fichiers uploadés OpenSwoole vers des objets `UploadedFile` HttpFoundation (nom, type MIME, taille, code erreur), supporter les fichiers multiples (`input name="files[]"`)
+    - _Requirements: 2.4_
+  - [x] 2.3 Écrire les tests unitaires RequestConverter
+    - Conversion complète : method, URI, query, headers simples et multi-valués, body form-data, body JSON, cookies, files, request_id
+    - Edge cases : headers vides, body vide, fichiers taille 0, cookies avec caractères spéciaux, URI UTF-8/percent-encoded, requête sans Content-Type
+    - Vérifier que les superglobales ne sont ni lues ni modifiées
+    - _Requirements: 16.1, 16.6, 16.8_
+  - [x] 2.4 Écrire le test property-based pour la conversion request round-trip
+    - **Property 1: Request conversion round-trip**
+    - Générer des OpenSwoole requests aléatoires (method, URI, headers, query, body, cookies, files) → convertir → vérifier équivalence des champs
+    - **Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.9, 6.1**
+    - _Note: utiliser des fakes DTO "OpenSwoole-like" (stdClass avec champs server/header/get/post/cookie/files + méthode rawContent()) pour les tests unitaires PBT. L'intégration réelle OpenSwoole est couverte par les tests d'intégration (15.x)._
+  - [x] 2.5 Écrire le test property-based pour l'invariant des superglobales
+    - **Property 2: Superglobals invariant**
+    - Snapshot superglobales avant → convertir requête → vérifier superglobales inchangées
+    - **Validates: Requirements 2.10, 2.11**
+    - _Note: utiliser des fakes DTO "OpenSwoole-like" (stdClass avec champs server/header/get/post/cookie/files + méthode rawContent()) pour les tests unitaires PBT. L'intégration réelle OpenSwoole est couverte par les tests d'intégration (15.x)._
+
+- [x] 3. Core bridge — ResponseConverter (conversion HttpFoundation → OpenSwoole + streaming)
+  - [x] 3.1 Créer `ResponseConverter` avec méthode `convert(Response, ResponseFacade, object $rawSwooleResponse): void`
+    - Cas standard : status + headers + cookies + `end($body)`
+    - Supprimer les headers `Server` et `X-Powered-By`
+    - Mapper les cookies via `$rawSwooleResponse->cookie()` (nom, valeur, expiration, path, domain, secure, httpOnly, sameSite)
+    - Préserver `Content-Length` s'il est présent
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.7_
+  - [x] 3.2 Implémenter `convertStreamed()` pour `StreamedResponse` et `StreamedJsonResponse`
+    - Positionner headers avant le premier `write()`
+    - Intercepter la sortie du callback via `ob_start()` redirigé vers `ResponseFacade::write()`
+    - Gérer les exceptions dans le callback : log error + terminer la réponse
+    - Terminer avec `end('')`
+    - _Requirements: 3.9, 3.10, 3.11, 3.12_
+  - [x] 3.3 Implémenter le support SSE (`Content-Type: text/event-stream`)
+    - Désactiver compression HTTP et buffering (`X-Accel-Buffering: no`, `Cache-Control: no-cache`)
+    - Flusher chaque chunk immédiatement via `write()`
+    - _Requirements: 3.13, 3.14_
+  - [x] 3.4 Implémenter `convertBinaryFile()` pour `BinaryFileResponse`
+    - Utiliser `$rawSwooleResponse->sendfile()` pour performance optimale
+    - _Requirements: 3.6_
+  - [x] 3.5 Écrire les tests unitaires ResponseConverter
+    - Conversion standard : status, headers simples et multi-valués, cookies avec tous les attributs, body, suppression Server/X-Powered-By, Content-Length préservé
+    - Streaming : vérifier que `write()` est appelé pour chaque chunk, headers avant premier write, exception dans callback → log + fin
+    - SSE : compression désactivée, flush immédiat
+    - BinaryFileResponse : sendfile() appelé
+    - _Requirements: 16.2, 16.9_
+  - [x] 3.6 Écrire le test property-based pour le round-trip des métadonnées de réponse
+    - **Property 3: Response metadata round-trip**
+    - Générer des HttpFoundation Responses (status, headers, cookies, body) → convertir → vérifier équivalence (sans Server/X-Powered-By)
+    - **Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5, 3.7, 3.8**
+    - _Note: utiliser des fakes DTO "OpenSwoole-like" (stdClass avec champs server/header/get/post/cookie/files + méthode rawContent()) pour les tests unitaires PBT. L'intégration réelle OpenSwoole est couverte par les tests d'intégration (15.x)._
+  - [x] 3.7 Écrire le test property-based pour l'invariant de streaming
+    - **Property 4: Streaming invariant**
+    - Générer des StreamedResponse avec callbacks produisant N chunks → vérifier que write() est appelé N fois avec headers avant le premier write
+    - **Validates: Requirements 3.9, 3.10, 3.12, 3.13, 3.14**
+    - _Note: utiliser des fakes DTO "OpenSwoole-like" (stdClass avec champs server/header/get/post/cookie/files + méthode rawContent()) pour les tests unitaires PBT. L'intégration réelle OpenSwoole est couverte par les tests d'intégration (15.x)._
+
+- [x] 4. Core bridge — ResetManager, ResetHookInterface, DoctrineResetHook
+  - [x] 4.1 Créer `ResetHookInterface` avec méthode `reset(): void`
+    - _Requirements: 4.6_
+  - [x] 4.2 Créer `ResetManager` avec stratégie de reset par priorité
+    - Priorité 1 : `$kernel->reset()` si le Kernel implémente `ResetInterface`
+    - Priorité 2 : `$container->get('services_resetter')->reset()` si disponible
+    - Priorité 3 : reset best-effort + log warning
+    - Exécuter les `ResetHookInterface` hooks après le reset principal
+    - Reset dans un bloc `finally` (même si le handler a levé une exception)
+    - Mesurer la durée du reset → métrique `symfony_reset_duration_ms` + log debug
+    - Log warning si durée > seuil configurable (`ASYNC_PLATFORM_SYMFONY_RESET_WARNING_MS`, défaut 50ms)
+    - Log error si reset échoue, sans interrompre le worker
+    - _Requirements: 4.4, 4.5, 4.6, 4.11, 4.12, 4.13, 4.14_
+  - [x] 4.3 Créer `DoctrineResetHook` (implémentation suggérée, optionnelle)
+    - `$em->clear()` pour détacher les entités
+    - Vérifier les transactions orphelines → rollback + log warning
+    - Le bridge ne dépend PAS de Doctrine
+    - _Requirements: 4.7, 4.8, 4.9_
+  - [x] 4.4 Écrire les tests unitaires ResetManager
+    - Stratégie ResetInterface → kernel->reset() appelé
+    - Stratégie services_resetter → container->get('services_resetter')->reset() appelé
+    - Stratégie best-effort → log warning
+    - Hooks exécutés après reset principal
+    - Exception dans un hook → log error + continuer avec les hooks suivants
+    - Exception dans reset → log error + worker continue
+    - Durée mesurée et loguée, warning si > seuil
+    - DoctrineResetHook : transaction orpheline → rollback + log
+    - _Requirements: 16.5_
+  - [x] 4.5 Écrire le test property-based pour la sélection de stratégie de reset
+    - **Property 6: Reset always executes with correct strategy**
+    - Générer des kernels avec différentes capacités (ResetInterface, services_resetter, rien) → vérifier la stratégie sélectionnée et l'exécution dans finally
+    - **Validates: Requirements 4.4, 4.5, 4.6**
+    - _Note: utiliser des fakes DTO "OpenSwoole-like" (stdClass avec champs server/header/get/post/cookie/files + méthode rawContent()) pour les tests unitaires PBT. L'intégration réelle OpenSwoole est couverte par les tests d'intégration (15.x)._
+  - [x] 4.6 Écrire le test property-based pour la durée de reset
+    - **Property 7: Reset duration measured and logged**
+    - Générer des resets avec durées variables → vérifier logs et métriques corrects
+    - **Validates: Requirements 4.11, 4.12, 4.14**
+    - _Note: utiliser des fakes DTO "OpenSwoole-like" (stdClass avec champs server/header/get/post/cookie/files + méthode rawContent()) pour les tests unitaires PBT. L'intégration réelle OpenSwoole est couverte par les tests d'intégration (15.x)._
+
+- [x] 5. Checkpoint — Core bridge composants de base
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 6. Core bridge — HttpKernelAdapter (assemblage, lifecycle, métriques)
+  - [x] 6.1 Créer `MetricsBridge` : pont entre le bridge et le `MetricsCollector` du runtime pack
+    - Compteurs : `symfony_requests_total`, `symfony_exceptions_total`
+    - Histogrammes : `symfony_request_duration_ms`, `symfony_reset_duration_ms`
+    - Snapshot des métriques
+    - _Requirements: 6.4_
+  - [x] 6.2 Créer `RequestIdProcessor` implémentant `Monolog\Processor\ProcessorInterface`
+    - Lire `_request_id` depuis les attributs de la requête courante
+    - Ajouter `extra.request_id` à tous les LogRecord Monolog
+    - _Requirements: 6.5, 6.6_
+  - [x] 6.3 Créer `HttpKernelAdapter` : callable handler compatible avec `ServerBootstrap::run($handler)`
+    - Séquence invariante : extraire request_id → convertir request → vérifier ResponseState.isSent() → HttpKernel::handle() → convertir response → kernel->terminate() → ResetManager::reset() → métriques + kernel reboot check
+    - Si ResponseState.isSent() (408/503) : skip écriture réponse + log warning + continuer terminate/reset
+    - Si logger est JsonLogger : positionner `component="symfony_bridge"`
+    - Accepter HttpKernelInterface + LoggerInterface obligatoires, MetricsCollector + kernelRebootEvery + resetWarningMs optionnels
+    - _Requirements: 1.1, 1.2, 1.3, 1.4, 4.1, 4.2, 4.3, 8.3, 8.4_
+  - [x] 6.3a Définir le "shape" réel des paramètres reçus depuis `ServerBootstrap::run()` : le handler reçoit `($swooleRequest, $swooleResponse)` où `$swooleResponse` expose `facade()`, `raw()`, et `state()` — ou le handler reçoit explicitement `($req, $facade, $raw, $state)`. Fixer ce contrat avant d'implémenter le double-send protection et les tests associés.
+  - [x] 6.4 Implémenter la gestion des erreurs prod/dev dans HttpKernelAdapter
+    - Prod : exception → 500 `{"error":"Internal Server Error"}` sans stacktrace
+    - Dev : laisser Symfony gérer l'affichage (page d'erreur avec stacktrace)
+    - Exception sans réponse → log error + 500
+    - Ne jamais laisser une exception remonter au runtime pack
+    - Incrémenter `symfony_exceptions_total`
+    - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
+  - [x] 6.4a Implémenter le rendu d'erreur en mode dev via le composant Symfony ErrorHandler : utiliser `FlattenException` + `HtmlErrorRenderer` (ou `ErrorController` selon la version Symfony) pour générer une page HTML avec stacktrace. Le bridge catch toujours l'exception (invariant "aucune exception ne remonte au runtime pack") et produit la réponse d'erreur lui-même.
+    - _Requirements: 7.2_
+  - [x] 6.5 Implémenter le kernel reboot (`ASYNC_PLATFORM_SYMFONY_KERNEL_REBOOT_EVERY`)
+    - `$kernel->shutdown()` + `$kernel->boot()` quand le compteur atteint le seuil
+    - Reconstruire les références internes (ResetManager, RequestIdProcessor, hooks) vers le nouveau container
+    - Log info avec request_id et nombre de requêtes
+    - _Requirements: 4.15, 4.16, 4.17, 4.18_
+  - [x] 6.5a Définir la stratégie de rebind après reboot kernel : le container Symfony est la source de vérité. Après `$kernel->boot()`, le HttpKernelAdapter récupère le ResetManager et les hooks depuis le nouveau container (via `$kernel->getContainer()->get(...)`) plutôt que de reconstruire manuellement. Cela garantit que les hooks auto-taggés par le bundle sont correctement rechargés.
+    - _Requirements: 4.18_
+  - [x] 6.6 Implémenter la surveillance mémoire post-reset
+    - Mesurer RSS après chaque reset → métrique `memory_rss_after_reset_bytes`
+    - Log warning si RSS > seuil configurable (`ASYNC_PLATFORM_SYMFONY_MEMORY_WARNING_THRESHOLD`, défaut 100 Mo)
+    - Compteur de requêtes par worker exposé dans logs et métriques
+    - _Requirements: 5.1, 5.2, 5.3, 5.5_
+  - [x] 6.7 Implémenter le log de fin de requête
+    - Champs : request_id, status_code, duration_ms, exception_class (si applicable), component="symfony_bridge"
+    - _Requirements: 6.2, 6.3_
+  - [x] 6.8 Écrire les tests unitaires HttpKernelAdapter
+    - Séquence lifecycle complète (handle → response → terminate → reset)
+    - Double-send protection : ResponseState.isSent() → skip écriture + log warning + terminate/reset exécutés
+    - Exception prod → 500 JSON générique, exception dev → page Symfony
+    - Exception sans réponse → log error + 500
+    - Compteur exceptions incrémenté
+    - Kernel reboot : compteur atteint → shutdown + boot + références reconstruites
+    - Mémoire RSS > seuil → log warning
+    - Log de fin de requête avec tous les champs
+    - _Requirements: 16.3, 16.5, 16.10_
+  - [x] 6.9 Écrire le test property-based pour l'ordering du lifecycle
+    - **Property 5: Lifecycle ordering invariant**
+    - Générer des scénarios (normal, exception, response-already-sent) → vérifier l'ordre des appels via mocks
+    - **Validates: Requirements 4.1, 4.2, 4.3, 9.4**
+    - _Note: utiliser des fakes DTO "OpenSwoole-like" (stdClass avec champs server/header/get/post/cookie/files + méthode rawContent()) pour les tests unitaires PBT. L'intégration réelle OpenSwoole est couverte par les tests d'intégration (15.x)._
+  - [x] 6.10 Écrire le test property-based pour le kernel reboot
+    - **Property 8: Kernel reboot reconstructs references**
+    - Générer des séquences de N requêtes avec reboot_every=M → vérifier que le reboot se produit aux bons moments et que les références sont reconstruites
+    - **Validates: Requirements 4.15, 4.16, 4.17, 4.18**
+    - _Note: utiliser des fakes DTO "OpenSwoole-like" (stdClass avec champs server/header/get/post/cookie/files + méthode rawContent()) pour les tests unitaires PBT. L'intégration réelle OpenSwoole est couverte par les tests d'intégration (15.x)._
+  - [x] 6.11 Écrire le test property-based pour la gestion des exceptions
+    - **Property 9: Exception handling produces valid HTTP response**
+    - Générer des exceptions aléatoires → vérifier réponse 500 + compteur incrémenté + exception jamais remontée
+    - **Validates: Requirements 7.1, 7.3, 7.4, 7.5**
+    - _Note: utiliser des fakes DTO "OpenSwoole-like" (stdClass avec champs server/header/get/post/cookie/files + méthode rawContent()) pour les tests unitaires PBT. L'intégration réelle OpenSwoole est couverte par les tests d'intégration (15.x)._
+  - [x] 6.12 Écrire le test property-based pour le RequestIdProcessor
+    - **Property 16: RequestIdProcessor adds request_id to log records**
+    - Générer des LogRecords et des request_ids → vérifier que extra.request_id est ajouté
+    - **Validates: Requirements 6.6**
+    - _Note: utiliser des fakes DTO "OpenSwoole-like" (stdClass avec champs server/header/get/post/cookie/files + méthode rawContent()) pour les tests unitaires PBT. L'intégration réelle OpenSwoole est couverte par les tests d'intégration (15.x)._
+  - [x] 6.13 Écrire le test property-based pour le contenu des logs du bridge
+    - **Property 17: Bridge log content invariant**
+    - Générer des requêtes → vérifier que les logs contiennent component, request_id, status_code, duration_ms
+    - **Validates: Requirements 6.2, 6.3**
+    - _Note: utiliser des fakes DTO "OpenSwoole-like" (stdClass avec champs server/header/get/post/cookie/files + méthode rawContent()) pour les tests unitaires PBT. L'intégration réelle OpenSwoole est couverte par les tests d'intégration (15.x)._
+  - [x] 6.14 Écrire le test property-based pour l'incrémentation des métriques
+    - **Property 18: Metrics increment after each request**
+    - Générer des séquences de N requêtes → vérifier que symfony_requests_total vaut N et que la RSS est mesurée après chaque reset
+    - **Validates: Requirements 5.1, 5.2**
+    - _Note: utiliser des fakes DTO "OpenSwoole-like" (stdClass avec champs server/header/get/post/cookie/files + méthode rawContent()) pour les tests unitaires PBT. L'intégration réelle OpenSwoole est couverte par les tests d'intégration (15.x)._
+
+- [x] 7. Checkpoint — Core bridge complet
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 8. Package symfony-bundle — AsyncPlatformBundle et auto-configuration
+  - [x] 8.1 Créer `AsyncPlatformBundle` avec `build()` enregistrant le `ResetHookCompilerPass`
+    - _Requirements: 10.1_
+  - [x] 8.2 Créer `Configuration` : arbre de configuration `async_platform` avec clés `memory_warning_threshold`, `reset_warning_ms`, `kernel_reboot_every`, sections `messenger`, `realtime`, `otel`
+    - _Requirements: 10.3_
+  - [x] 8.3 Créer `AsyncPlatformExtension` : charger la configuration, enregistrer les services du core bridge (HttpKernelAdapter, ResetManager, RequestIdProcessor, MetricsBridge)
+    - Auto-enregistrer le `RequestIdProcessor` comme processeur Monolog si Monolog est disponible
+    - Mapper la configuration YAML vers les variables d'environnement `ASYNC_PLATFORM_SYMFONY_*`
+    - _Requirements: 10.1, 10.4_
+  - [x] 8.4 Créer `ResetHookCompilerPass` : auto-tagger les services implémentant `ResetHookInterface` et les injecter dans le ResetManager
+    - _Requirements: 10.2_
+  - [x] 8.5 Implémenter l'auto-détection des packages optionnels via `class_exists()`
+    - `symfony-messenger` installé → enregistrer OpenSwooleTransport + factory
+    - `symfony-realtime` installé → enregistrer WebSocketHandler + SSE helpers
+    - `symfony-otel` installé → configurer span processor + metrics exporter
+    - _Requirements: 10.5_
+  - [x] 8.6 Créer le fichier `Resources/config/services.yaml` avec les définitions de services
+    - _Requirements: 10.1_
+  - [x] 8.7 Créer la recipe Flex : `config/packages/async_platform.yaml` (défauts), `bin/async-server.php` (bootstrap kernel + ServerBootstrap::run), variables `.env`
+    - _Requirements: 10.6_
+  - [x] 8.8 Écrire les tests unitaires du bundle
+    - Services auto-enregistrés (HttpKernelAdapter, ResetManager, RequestIdProcessor, MetricsBridge)
+    - Configuration `async_platform` chargée correctement
+    - Auto-tag ResetHookInterface → hooks injectés dans ResetManager
+    - Auto-détection : messenger installé → transport enregistré ; non installé → pas d'erreur
+    - Structure recipe Flex correcte
+    - Routes `_profiler` et `_wdt` servies correctement
+    - _Requirements: 16.12, 16.13_
+
+- [x] 9. Package symfony-messenger — Transport Messenger OpenSwoole
+  - [x] 9.1 Créer `OpenSwooleTransport` implémentant `TransportInterface`
+    - Channel OpenSwoole borné (capacité configurable, défaut 100)
+    - `send()` : push avec timeout, lever `TransportException` si channel plein
+    - `get()` : pop avec poll timeout 1s, retourner iterable
+    - `ack()` : no-op (in-process)
+    - `reject()` : log warning
+    - Channel isolé par worker (pas de partage entre workers)
+    - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 11.14_
+  - [x] 9.2 Créer `OpenSwooleTransportFactory` : supporter le DSN `openswoole://default`, créer le transport avec les options (channel_capacity, send_timeout)
+    - _Requirements: 11.7_
+  - [x] 9.3 Créer `ConsumerManager` : spawn N coroutines consommatrices via structured concurrency
+    - `start()` : spawn les consumers au boot du worker
+    - `stop()` : annuler proprement au shutdown (pas de coroutines zombies)
+    - Boucle de consommation : get → dispatch → ack, exception → reject + log error
+    - Respecter deadlines et cancellation via ScopeRunner
+    - _Requirements: 11.9, 11.10, 11.11_
+  - [x] 9.4 Implémenter les métriques Messenger via MetricsCollector
+    - `messenger_messages_sent_total`, `messenger_messages_consumed_total`, `messenger_channel_size`
+    - _Requirements: 11.6_
+  - [x] 9.5 Écrire les tests unitaires Messenger
+    - send/get/ack/reject fonctionnels
+    - Backpressure : channel plein → coroutine bloquée → timeout → TransportException
+    - DSN `openswoole://default` supporté par la factory
+    - Métriques exposées après send/get
+    - Consumer loop : dispatch + ack, exception → reject + log
+    - _Requirements: 16.14_
+  - [x] 9.6 Écrire le test property-based pour le round-trip Messenger
+    - **Property 10: Messenger send/get round-trip**
+    - Générer des Envelopes aléatoires → send → get → vérifier équivalence et ordre FIFO
+    - **Validates: Requirements 11.3**
+    - _Note: utiliser des fakes DTO "OpenSwoole-like" (stdClass avec champs server/header/get/post/cookie/files + méthode rawContent()) pour les tests unitaires PBT. L'intégration réelle OpenSwoole est couverte par les tests d'intégration (15.x)._
+  - [x] 9.7 Écrire le test property-based pour la backpressure Messenger
+    - **Property 11: Messenger backpressure**
+    - Générer un channel de capacité N → envoyer N+1 messages sans get → vérifier blocage/timeout
+    - **Validates: Requirements 11.4**
+    - _Note: utiliser des fakes DTO "OpenSwoole-like" (stdClass avec champs server/header/get/post/cookie/files + méthode rawContent()) pour les tests unitaires PBT. L'intégration réelle OpenSwoole est couverte par les tests d'intégration (15.x)._
+
+- [x] 10. Checkpoint — Bundle et Messenger
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 11. Package symfony-realtime — WebSocket et helpers SSE avancés
+  - [x] 11.1 Créer l'interface `WebSocketHandler` avec méthodes `onOpen()`, `onMessage()`, `onClose()`
+    - _Requirements: 12.1_
+  - [x] 11.2 Créer le DTO `WebSocketContext` (readonly) : connectionId, requestId, headers, send(string), close()
+    - _Requirements: 12.5_
+  - [x] 11.3 Créer `RealtimeServerAdapter` : callable compatible `ServerBootstrap::run()`
+    - Détecter les requêtes WebSocket upgrade via headers `Upgrade: websocket` + `Connection: Upgrade` (case-insensitive)
+    - Requêtes WS → déléguer au WebSocketHandler (frames brutes, pas de conversion HttpFoundation)
+    - Requêtes HTTP → déléguer au HttpKernelAdapter
+    - Max lifetime configurable par connexion WS (`ASYNC_PLATFORM_SYMFONY_WS_MAX_LIFETIME_SECONDS`, défaut 3600)
+    - _Requirements: 12.2, 12.3, 12.4, 12.6_
+  - [x] 11.4 Implémenter les métriques WebSocket via MetricsCollector
+    - `ws_connections_active` (gauge), `ws_messages_received_total`, `ws_messages_sent_total`
+    - _Requirements: 12.7_
+  - [x] 11.5 Créer `SseEvent` : formatage conforme W3C (champs event, data multi-lignes, id, retry) + double `\n` terminal
+    - Implémenter `format(): string` et `parse(string): self` (pour round-trip tests)
+    - _Requirements: 13.1, 13.2_
+  - [x] 11.6 Créer `SseStream` : envoi d'événements SSE via `ResponseFacade::write()`
+    - Keep-alive périodique (commentaire SSE `: keep-alive\n\n`, défaut 15s)
+    - Support du champ `Last-Event-ID` pour la reconnexion client
+    - _Requirements: 13.3_
+  - [x] 11.7 Écrire les tests unitaires Realtime
+    - WebSocket : détection upgrade, délégation au handler, routage HTTP vers HttpKernelAdapter, cycle de vie (open, message, close, max lifetime)
+    - WebSocketContext DTO : connectionId, requestId, headers, send, close
+    - SseStream : keep-alive envoyé après intervalle
+    - _Requirements: 16.15_
+  - [x] 11.8 Écrire le test property-based pour la détection WebSocket upgrade
+    - **Property 12: WebSocket upgrade detection**
+    - Générer des requêtes avec/sans headers Upgrade/Connection → vérifier routage correct (WS vs HTTP)
+    - **Validates: Requirements 12.3**
+    - _Note: utiliser des fakes DTO "OpenSwoole-like" (stdClass avec champs server/header/get/post/cookie/files + méthode rawContent()) pour les tests unitaires PBT. L'intégration réelle OpenSwoole est couverte par les tests d'intégration (15.x)._
+  - [x] 11.9 Écrire le test property-based pour le formatage SSE
+    - **Property 13: SSE event formatting**
+    - Générer des SseEvent avec data (multi-lignes), event, id, retry aléatoires → vérifier format W3C conforme
+    - **Validates: Requirements 13.1, 13.2**
+    - _Note: utiliser des fakes DTO "OpenSwoole-like" (stdClass avec champs server/header/get/post/cookie/files + méthode rawContent()) pour les tests unitaires PBT. L'intégration réelle OpenSwoole est couverte par les tests d'intégration (15.x)._
+  - [x] 11.10 Écrire le test property-based pour le round-trip SSE
+    - **Property 14: SSE format/parse round-trip**
+    - Générer des SseEvent → format() → parse() → vérifier équivalence des champs
+    - **Validates: Requirements 13.4**
+    - _Note: utiliser des fakes DTO "OpenSwoole-like" (stdClass avec champs server/header/get/post/cookie/files + méthode rawContent()) pour les tests unitaires PBT. L'intégration réelle OpenSwoole est couverte par les tests d'intégration (15.x)._
+
+- [x] 12. Package symfony-otel — Export OpenTelemetry (traces + métriques)
+  - [x] 12.1 Créer `OtelSpanFactory` : création de root spans (SERVER) et child spans (INTERNAL) avec attributs HTTP et Symfony
+    - Root span : `http.method`, `http.url`, `http.request_id`
+    - Child spans : `symfony.kernel.handle`, `symfony.response.convert`, `symfony.reset`
+    - Support du parent context (W3C traceparent/tracestate)
+    - _Requirements: 14.1, 14.3_
+  - [x] 12.2 Créer `OtelRequestListener` : intégration au cycle de vie du HttpKernelAdapter
+    - `beforeHandle()` : extraire trace context entrant + créer root span AVANT HttpKernel::handle()
+    - `afterHandle()` : enrichir root span (status_code, route, controller) + terminer APRÈS reset/terminate
+    - `onException()` : capturer l'exception dans le root span
+    - Si exception avant child spans → root span capture l'exception et se termine correctement
+    - _Requirements: 14.2, 14.4_
+  - [x] 12.3 Créer `OtelMetricsExporter` : exporter les métriques du MetricsBridge vers OTEL
+    - Métriques : `symfony_requests_total`, `symfony_request_duration_ms`, `symfony_exceptions_total`, `symfony_reset_duration_ms`
+    - _Requirements: 14.5_
+  - [x] 12.4 Créer `CoroutineSafeBatchProcessor` implémentant `SpanProcessorInterface`
+    - Batch avec flush quand batch plein ou timer tick
+    - Timer OpenSwoole pour export périodique (non-bloquant)
+    - Export via coroutine OpenSwoole
+    - Configuration via `OTEL_EXPORTER_OTLP_ENDPOINT` (standard OTEL, pas de variables custom)
+    - _Requirements: 14.6, 14.7, 14.9_
+  - [x] 12.5 Écrire les tests unitaires OTEL
+    - Span attributes corrects (http.method, http.url, http.request_id, symfony.route, symfony.controller)
+    - Propagation traceparent/tracestate
+    - Child spans créés dans le bon ordre
+    - CoroutineSafeBatchProcessor : flush quand batch plein, export périodique
+    - Exception avant child spans → root span terminé correctement
+    - Absence du package → pas d'erreur dans le bundle (auto-détection gracieuse)
+    - _Requirements: 16.17, 16.18_
+  - [x] 12.6 Écrire le test property-based pour le lifecycle des spans OTEL
+    - **Property 15: OTEL span lifecycle**
+    - Générer des requêtes avec/sans headers W3C → vérifier root span + 3 child spans + attributs + propagation trace context
+    - **Validates: Requirements 14.1, 14.2, 14.3, 14.4**
+    - _Note: utiliser des fakes DTO "OpenSwoole-like" (stdClass avec champs server/header/get/post/cookie/files + méthode rawContent()) pour les tests unitaires PBT. L'intégration réelle OpenSwoole est couverte par les tests d'intégration (15.x)._
+
+- [x] 13. Package symfony-bridge-full — Meta-package
+  - [x] 13.1 Créer `packages/symfony-bridge-full/composer.json` : type `metapackage`, require tous les 5 packages avec versions exactes, aucun code source
+    - _Requirements: 15.1, 15.2, 15.3_
+  - [x] 13.2 Écrire un test vérifiant que le composer.json contient toutes les dépendances et qu'il n'y a pas de répertoire `src/`
+    - _Requirements: 15.3_
+
+- [x] 14. Checkpoint — Tous les packages implémentés
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 15. Tests d'intégration cross-package
+  - [x] 15.1 Test intégration core bridge : démarrer un mini HttpKernel Symfony, envoyer GET / via le bridge, vérifier réponse HTTP 200 correcte
+    - _Requirements: 16.3_
+  - [x] 15.2 Test intégration long-running : envoyer 1000+ requêtes séquentielles, vérifier reset appelé après chaque requête, pas de croissance mémoire anormale (RSS req 1000 ≤ 2× RSS req 10), réponses correctes
+    - _Requirements: 16.4_
+  - [x] 15.3 Test intégration Profiler : vérifier injection toolbar dans réponses HTML, collecte données profiler, reset data collectors entre requêtes, routes `_profiler`/`_wdt` servies correctement
+    - _Requirements: 9.1, 9.2, 9.3, 9.4, 16.11_
+  - [x] 15.4 Test intégration double-send : simuler un 408 timeout (ResponseState.isSent()=true) → vérifier que le bridge skip l'écriture + terminate/reset exécutés
+    - _Requirements: 16.10_
+  - [x] 15.5 Test intégration streaming : StreamedResponse avec gros volume, SSE avec flush immédiat, exception dans callback → log + fin de réponse
+    - _Requirements: 16.9_
+  - [x] 15.6 Test intégration bundle : auto-détection packages optionnels, configuration YAML chargée, services enregistrés
+    - _Requirements: 16.12, 16.13_
+  - [x] 15.7 Test intégration Messenger : send/get/ack/reject end-to-end, backpressure avec channel plein, consumer lifecycle (start/stop)
+    - _Requirements: 16.14_
+  - [x] 15.8 Test intégration Realtime : routage HTTP/WS par RealtimeServerAdapter, cycle de vie WebSocket (open, message, close), max lifetime
+    - _Requirements: 16.15_
+  - [x] 15.9 Test intégration OTEL : spans créés avec attributs corrects, export via batch processor, absence du package → pas d'erreur
+    - _Requirements: 16.17, 16.18_
+
+- [x] 16. Checkpoint — Tests d'intégration
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 17. Documentation — README, ADR, configuration
+  - [x] 17.1 Créer `packages/symfony-bridge/README.md`
+    - Installation Composer, exemple bootstrap minimal (kernel + ServerBootstrap::run)
+    - Matrice de compatibilité (Symfony 6.4 LTS, 7.x, PHP 8.3+)
+    - Variables d'environnement (`ASYNC_PLATFORM_SYMFONY_MEMORY_WARNING_THRESHOLD`, `ASYNC_PLATFORM_SYMFONY_RESET_WARNING_MS`, `ASYNC_PLATFORM_SYMFONY_KERNEL_REBOOT_EVERY`)
+    - Recommandations anti-leak (ResetInterface, patterns à éviter, config Doctrine)
+    - Recommandations concurrence (Doctrine via BlockingPool, Guzzle coroutine-safe, sessions externes)
+    - Incompatibilité `Request::createFromGlobals()` et superglobales
+    - État global PHP (timezone, locale, mb_internal_encoding) au boot uniquement
+    - Enregistrement RequestIdProcessor dans Monolog
+    - Enregistrement ResetHookInterface custom
+    - Documentation streaming natif (StreamedResponse, StreamedJsonResponse, SSE basique)
+    - Documentation intégration Profiler/WebDebugToolbar en mode dev
+    - _Requirements: 2.12, 2.13, 5.4, 6.7, 8.1, 8.2, 17.4, 17.5_
+  - [x] 17.2 Créer `packages/symfony-bundle/README.md` : installation, configuration YAML, auto-détection, recipe Flex, limitations Profiler en long-running (stockage filesystem/SQLite obligatoire)
+    - _Requirements: 10.7, 10.9, 17.4_
+  - [x] 17.3 Créer `packages/symfony-messenger/README.md` : installation, DSN, configuration, limitations (in-process, non-durable, messages perdus au restart), retry/failure transport standard Symfony
+    - _Requirements: 11.8, 11.15, 11.16, 17.4_
+  - [x] 17.4 Créer `packages/symfony-realtime/README.md` : installation, configuration WebSocket server OpenSwoole, différence SSE basique (core) vs SSE avancé (ce package), max lifetime
+    - _Requirements: 12.8, 13.5, 17.4_
+  - [x] 17.5 Créer `packages/symfony-otel/README.md` : installation, configuration via `OTEL_EXPORTER_OTLP_ENDPOINT`, spans et métriques exportés
+    - _Requirements: 14.6, 14.9, 17.4_
+  - [x] 17.6 Créer `packages/symfony-bridge-full/README.md` : raccourci d'installation, packages individuels disponibles séparément
+    - _Requirements: 15.4, 17.4_
+  - [x] 17.7 Créer les ADR
+    - `packages/symfony-bridge/docs/adr-001-httpfoundation-vs-psr7.md`
+    - `packages/symfony-bridge/docs/adr-002-reset-strategy.md`
+    - `packages/symfony-messenger/docs/adr-003-messenger-transport.md`
+    - `packages/symfony-realtime/docs/adr-004-websocket-integration.md`
+    - `docs/adr-005-multi-package-architecture.md`
+    - _Requirements: Design §ADR_
+
+- [x] 18. Final checkpoint — Suite complète
+  - Ensure all tests pass, ask the user if questions arise.
+
+## Notes
+
+- Les tâches marquées `*` sont optionnelles et peuvent être skippées pour un MVP plus rapide.
+- Chaque tâche référence les requirements spécifiques pour la traçabilité.
+- Les 18 propriétés de correctness du design sont couvertes par les tâches PBT (2.4, 2.5, 3.6, 3.7, 4.5, 4.6, 6.9–6.14, 9.6, 9.7, 11.8–11.10, 12.6).
+- Les checkpoints (tâches 5, 7, 10, 14, 16, 18) assurent la validation incrémentale.
+- Le runtime pack (`packages/runtime-pack/`) est un prérequis existant — aucune modification n'est nécessaire.

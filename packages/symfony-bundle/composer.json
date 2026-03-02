@@ -1,0 +1,48 @@
+{
+    "name": "async-platform/symfony-bundle",
+    "description": "Symfony Bundle for the Async PHP Platform — auto-configuration, service wiring, ResetHook auto-tagging, Flex recipe, and optional package auto-detection.",
+    "type": "symfony-bundle",
+    "license": "MIT",
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../symfony-bridge"
+        },
+        {
+            "type": "path",
+            "url": "../runtime-pack"
+        }
+    ],
+    "require": {
+        "php": ">=8.3",
+        "async-platform/symfony-bridge": "@dev",
+        "symfony/config": "^6.4|^7.0",
+        "symfony/dependency-injection": "^6.4|^7.0",
+        "symfony/framework-bundle": "^6.4|^7.0",
+        "symfony/yaml": "^6.4|^7.0"
+    },
+    "require-dev": {
+        "giorgiosironi/eris": "^1.0",
+        "phpunit/phpunit": "^11.0"
+    },
+    "suggest": {
+        "async-platform/symfony-messenger": "Enables in-process Messenger transport via OpenSwoole channels",
+        "async-platform/symfony-otel": "Enables OpenTelemetry traces and metrics export",
+        "async-platform/symfony-realtime": "Enables WebSocket and advanced SSE helpers"
+    },
+    "autoload": {
+        "psr-4": {
+            "AsyncPlatform\\SymfonyBundle\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "AsyncPlatform\\SymfonyBundle\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
