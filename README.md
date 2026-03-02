@@ -190,37 +190,38 @@ Voir [skeleton/README.md](skeleton/README.md) pour les configurations Nginx et C
 ## Structure du repo
 
 ```text
-packages/
-  runtime-pack/          # Package Composer (async-platform/runtime-pack)
-    src/                 # ServerBootstrap, BlockingPool, ScopeRunner, etc.
-    tests/
-      Unit/              # Tests unitaires de tous les composants
-      Property/          # Tests property-based (Eris)
-      Integration/       # Tests d'intégration (serveur réel)
-skeleton/                # Template create-project
-  bin/console            # Point d'entrée CLI
-  config/                # routes.php, jobs.php, execution_policy.php
-  src/Handler/           # Handlers applicatifs
-docs/
-  configuration.md       # Référence complète des variables d'environnement
-  adr/                   # Architecture Decision Records
+packages/                        # Packages Composer publiables sur Packagist
+  runtime-pack/                  #   async-platform/runtime-pack — cœur OpenSwoole
+  symfony-bridge/                #   async-platform/symfony-bridge — adaptateur HttpKernel
+  symfony-bundle/                #   async-platform/symfony-bundle — auto-config Symfony
+  symfony-messenger/             #   async-platform/symfony-messenger — transport in-process
+  symfony-otel/                  #   async-platform/symfony-otel — traces & métriques OTEL
+  symfony-realtime/              #   async-platform/symfony-realtime — WebSocket & SSE
+  symfony-bridge-full/           #   async-platform/symfony-bridge-full — meta-package suite
+platform/                        # Runtime & intégrations internes (non publié)
+skeleton/                        # Template create-project (composer create-project)
+docs/                            # Documentation suite (ADR, configuration, design)
 ```
+
+Le root `composer.json` pilote tous les packages via `"repositories": [{"type":"path","url":"packages/*"}]`. Un seul `composer install` à la racine suffit pour développer.
 
 ## Tests
 
 ```bash
-# Tous les tests
+# Depuis la racine du monorepo (lance tous les packages)
+composer test
+
+# Par suite
+composer test:unit
+composer test:property
+composer test:integration
+
+# Un package spécifique
 cd packages/runtime-pack && vendor/bin/phpunit
-
-# Unitaires uniquement
-vendor/bin/phpunit --testsuite Unit
-
-# Property-based
-vendor/bin/phpunit --testsuite Property
-
-# Intégration (nécessite OpenSwoole)
-vendor/bin/phpunit --testsuite Integration
+cd packages/symfony-bridge && vendor/bin/phpunit
 ```
+
+Chaque package conserve son propre `phpunit.xml.dist` pour le dev isolé. Le `phpunit.xml.dist` root agrège toutes les suites.
 
 ### Couverture
 

@@ -3,16 +3,6 @@
     "description": "Symfony Bundle for the Async PHP Platform — auto-configuration, service wiring, ResetHook auto-tagging, Flex recipe, and optional package auto-detection.",
     "type": "symfony-bundle",
     "license": "MIT",
-    "repositories": [
-        {
-            "type": "path",
-            "url": "../symfony-bridge"
-        },
-        {
-            "type": "path",
-            "url": "../runtime-pack"
-        }
-    ],
     "require": {
         "php": ">=8.3",
         "async-platform/symfony-bridge": "@dev",
@@ -43,6 +33,6 @@
     "config": {
         "sort-packages": true
     },
-    "minimum-stability": "dev",
+    "minimum-stability": "stable",
     "prefer-stable": true
 }

@@ -1,5 +1,7 @@
 /vendor/
 /packages/**/vendor/
 /packages/**/composer.lock
+/.phpunit.cache
 /.phpunit.result.cache
+/packages/**/.phpunit.cache
 /packages/**/.phpunit.result.cache

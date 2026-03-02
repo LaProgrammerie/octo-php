@@ -3,16 +3,6 @@
     "description": "Symfony Messenger transport for the Async PHP Platform — in-process message passing via bounded OpenSwoole channels with backpressure.",
     "type": "library",
     "license": "MIT",
-    "repositories": [
-        {
-            "type": "path",
-            "url": "../runtime-pack"
-        },
-        {
-            "type": "path",
-            "url": "../symfony-bridge"
-        }
-    ],
     "require": {
         "php": ">=8.3",
         "async-platform/runtime-pack": "@dev",
@@ -36,6 +26,6 @@
     "config": {
         "sort-packages": true
     },
-    "minimum-stability": "dev",
+    "minimum-stability": "stable",
     "prefer-stable": true
 }

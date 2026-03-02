@@ -1,29 +1,51 @@
 {
     "name": "async-platform/monorepo",
-    "description": "Async PHP Platform monorepo — OpenSwoole runtime pack, skeleton, and tooling.",
+    "description": "Async PHP Platform monorepo — OpenSwoole runtime pack, Symfony bridge suite, skeleton, and tooling.",
     "type": "project",
     "license": "MIT",
     "require": {
         "php": ">=8.3"
     },
+    "require-dev": {
+        "async-platform/runtime-pack": "@dev",
+        "async-platform/symfony-bridge": "@dev",
+        "async-platform/symfony-bundle": "@dev",
+        "async-platform/symfony-messenger": "@dev",
+        "async-platform/symfony-otel": "@dev",
+        "async-platform/symfony-realtime": "@dev",
+        "giorgiosironi/eris": "^1.0",
+        "phpunit/phpunit": "^11.0"
+    },
     "repositories": [
         {
             "type": "path",
-            "url": "packages/runtime-pack"
+            "url": "packages/*"
         }
     ],
-    "autoload": {
-        "psr-4": {
-            "AsyncPlatform\\RuntimePack\\": "packages/runtime-pack/src/"
-        }
-    },
+    "autoload": {},
     "autoload-dev": {
         "psr-4": {
-            "AsyncPlatform\\RuntimePack\\Tests\\": "packages/runtime-pack/tests/"
+            "AsyncPlatform\\RuntimePack\\Tests\\": "packages/runtime-pack/tests/",
+            "AsyncPlatform\\SymfonyBridge\\Tests\\": "packages/symfony-bridge/tests/",
+            "AsyncPlatform\\SymfonyBundle\\Tests\\": "packages/symfony-bundle/tests/",
+            "AsyncPlatform\\SymfonyMessenger\\Tests\\": "packages/symfony-messenger/tests/",
+            "AsyncPlatform\\SymfonyOtel\\Tests\\": "packages/symfony-otel/tests/",
+            "AsyncPlatform\\SymfonyRealtime\\Tests\\": "packages/symfony-realtime/tests/"
         }
     },
+    "scripts": {
+        "test": "phpunit",
+        "test:unit": "phpunit --testsuite unit",
+        "test:property": "phpunit --testsuite property",
+        "test:integration": "phpunit --testsuite integration",
+        "lint": "php-cs-fixer fix --dry-run --diff",
+        "lint:fix": "php-cs-fixer fix"
+    },
     "config": {
-        "sort-packages": true
+        "sort-packages": true,
+        "allow-plugins": {
+            "php-http/discovery": false
+        }
     },
     "minimum-stability": "stable",
     "prefer-stable": true

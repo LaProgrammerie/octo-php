@@ -3,16 +3,6 @@
     "description": "OpenTelemetry integration for the Async PHP Platform — coroutine-safe span export, request tracing, and metrics bridge for Symfony applications.",
     "type": "library",
     "license": "MIT",
-    "repositories": [
-        {
-            "type": "path",
-            "url": "../runtime-pack"
-        },
-        {
-            "type": "path",
-            "url": "../symfony-bridge"
-        }
-    ],
     "require": {
         "php": ">=8.3",
         "async-platform/symfony-bridge": "@dev"
@@ -34,6 +24,6 @@
     "config": {
         "sort-packages": true
     },
-    "minimum-stability": "dev",
+    "minimum-stability": "stable",
     "prefer-stable": true
 }

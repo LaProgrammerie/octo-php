@@ -10,6 +10,6 @@
         "async-platform/symfony-otel": "^0.1",
         "async-platform/symfony-realtime": "^0.1"
     },
-    "minimum-stability": "dev",
+    "minimum-stability": "stable",
     "prefer-stable": true
 }
