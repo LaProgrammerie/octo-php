@@ -102,7 +102,6 @@ final class ServerBootstrapTest extends TestCase
         $this->assertSame(5000, $settings['max_request']);
         $this->assertTrue($settings['open_http_protocol']);
         $this->assertTrue($settings['http_compression']);
-        $this->assertSame('', $settings['http_server_software']);
     }
 
     public function testBuildSettingsWithDefaults(): void
@@ -119,18 +118,17 @@ final class ServerBootstrapTest extends TestCase
         $this->assertSame(10_000, $settings['max_request']);
         $this->assertTrue($settings['open_http_protocol']);
         $this->assertTrue($settings['http_compression']);
-        $this->assertSame('', $settings['http_server_software']);
     }
 
-    public function testBuildSettingsAlwaysStripsServerSoftwareHeader(): void
+    public function testBuildSettingsDoesNotContainUnsupportedOptions(): void
     {
         $method = new \ReflectionMethod(ServerBootstrap::class, 'buildSettings');
 
         $config = new \AsyncPlatform\RuntimePack\ServerConfig();
         $settings = $method->invoke(null, $config);
 
-        $this->assertArrayHasKey('http_server_software', $settings);
-        $this->assertSame('', $settings['http_server_software']);
+        // http_server_software is not supported in OpenSwoole 26.x
+        $this->assertArrayNotHasKey('http_server_software', $settings);
     }
 
     public function testBuildSettingsContainsExactlyExpectedKeys(): void
@@ -147,7 +145,6 @@ final class ServerBootstrapTest extends TestCase
             'max_request',
             'open_http_protocol',
             'http_compression',
-            'http_server_software',
         ];
 
         $this->assertSame($expectedKeys, array_keys($settings));

@@ -3,7 +3,7 @@
 # =============================================================================
 # Stages:
 #   base — PHP 8.3 CLI (Debian bookworm) + OpenSwoole extension
-#   dev  — base + Composer + Xdebug (for local development)
+#   dev  — base + Composer (for local development)
 #   prod — base + OPcache + non-root user + HEALTHCHECK
 #
 # Architecture: supports amd64 and arm64 (no arch-specific binaries)
@@ -19,8 +19,16 @@
 FROM php:8.3-cli-bookworm AS base
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libcurl4-openssl-dev \
+    git \
+    unzip \
+    zip \
+    libzip-dev \
+    build-essential \
+    autoconf \
+    pkg-config \
     libssl-dev \
+    libcurl4-openssl-dev \
+    && docker-php-ext-install zip sockets \
     && pecl install openswoole \
     && docker-php-ext-enable openswoole \
     && apt-get clean \
@@ -36,15 +44,9 @@ RUN php -r " \
 WORKDIR /app
 
 # ---------------------------------------------------------------------------
-# Stage 2: dev — base + Composer + Xdebug
+# Stage 2: dev — base + Composer
 # ---------------------------------------------------------------------------
-# NOTE: Xdebug is INCOMPATIBLE with coroutine scheduling.
-# The startup check in prod mode refuses to start if Xdebug is loaded.
-# In dev mode, Xdebug is tolerated for step-debugging.
 FROM base AS dev
-
-RUN pecl install xdebug \
-    && docker-php-ext-enable xdebug
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
@@ -56,15 +58,11 @@ CMD ["php", "bin/console", "async:serve"]
 # ---------------------------------------------------------------------------
 # Stage 3: prod — base + OPcache, non-root user, HEALTHCHECK
 # ---------------------------------------------------------------------------
-# NO Xdebug — incompatible with coroutine scheduling
 FROM base AS prod
 
 # Enable OPcache with production-tuned configuration
 RUN docker-php-ext-enable opcache
 COPY docker/php/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
-
-# Verify Xdebug is NOT loaded in the prod stage (double protection)
-RUN php -r "if (extension_loaded('xdebug')) { fwrite(STDERR, 'ERROR: Xdebug loaded in prod stage\n'); exit(1); }"
 
 # Install Composer for dependency installation during build
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -90,3 +88,7 @@ HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
     CMD php -r "echo file_get_contents('http://127.0.0.1:8080/healthz');" || exit 1
 
 CMD ["php", "bin/console", "async:run"]
+
+FROM dev AS dev-xdebug
+RUN pecl install xdebug \
+    && docker-php-ext-enable xdebug

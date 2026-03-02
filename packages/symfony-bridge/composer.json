@@ -5,16 +5,12 @@
     "license": "MIT",
     "require": {
         "php": ">=8.3",
-        "async-platform/runtime-pack": "@dev",
+        "async-platform/runtime-pack": "^0.1",
         "psr/log": "^3.0",
         "symfony/http-foundation": "^6.4|^7.0",
         "symfony/http-kernel": "^6.4|^7.0"
     },
     "require-dev": {
-        "async-platform/symfony-bundle": "@dev",
-        "async-platform/symfony-messenger": "@dev",
-        "async-platform/symfony-otel": "@dev",
-        "async-platform/symfony-realtime": "@dev",
         "giorgiosironi/eris": "^1.0",
         "phpunit/phpunit": "^11.0",
         "symfony/framework-bundle": "^6.4|^7.0"
@@ -36,6 +32,9 @@
     "config": {
         "sort-packages": true
     },
-    "minimum-stability": "stable",
-    "prefer-stable": true
+    "extra": {
+        "branch-alias": {
+            "dev-main": "0.1.x-dev"
+        }
+    }
 }

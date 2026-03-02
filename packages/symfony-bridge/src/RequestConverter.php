@@ -31,7 +31,8 @@ final class RequestConverter
         $post = $swooleRequest->post ?? [];
         $cookies = $swooleRequest->cookie ?? [];
         $files = $this->buildFiles($swooleRequest->files ?? []);
-        $content = $swooleRequest->rawContent() ?: null;
+        $rawContent = $swooleRequest->rawContent();
+        $content = ($rawContent === '' || $rawContent === false) ? null : $rawContent;
 
         $request = new Request(
             query: $query,

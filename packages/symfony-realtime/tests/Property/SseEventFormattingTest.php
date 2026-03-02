@@ -102,9 +102,15 @@ final class SseEventFormattingTest extends TestCase
             $sseEvent = new SseEvent(data: $data);
             $formatted = $sseEvent->format();
 
-            self::assertStringNotContainsString('event:', $formatted);
-            self::assertStringNotContainsString('id:', $formatted);
-            self::assertStringNotContainsString('retry:', $formatted);
+            // Check that optional SSE fields don't appear as line prefixes.
+            // The data content itself may contain these strings, so we check
+            // line-by-line that no line starts with event:/id:/retry:.
+            $lines = explode("\n", rtrim($formatted, "\n"));
+            foreach ($lines as $line) {
+                self::assertFalse(str_starts_with($line, 'event:'), "No line should start with 'event:' when event is null, got: {$line}");
+                self::assertFalse(str_starts_with($line, 'id:'), "No line should start with 'id:' when id is null, got: {$line}");
+                self::assertFalse(str_starts_with($line, 'retry:'), "No line should start with 'retry:' when retry is null, got: {$line}");
+            }
         });
     }
 

@@ -10,6 +10,9 @@
         "async-platform/symfony-otel": "^0.1",
         "async-platform/symfony-realtime": "^0.1"
     },
-    "minimum-stability": "stable",
-    "prefer-stable": true
+    "extra": {
+        "branch-alias": {
+            "dev-main": "0.1.x-dev"
+        }
+    }
 }

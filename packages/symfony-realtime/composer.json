@@ -5,8 +5,8 @@
     "license": "MIT",
     "require": {
         "php": ">=8.3",
-        "async-platform/runtime-pack": "@dev",
-        "async-platform/symfony-bridge": "@dev"
+        "async-platform/runtime-pack": "^0.1",
+        "async-platform/symfony-bridge": "^0.1"
     },
     "require-dev": {
         "giorgiosironi/eris": "^1.0",
@@ -25,6 +25,9 @@
     "config": {
         "sort-packages": true
     },
-    "minimum-stability": "stable",
-    "prefer-stable": true
+    "extra": {
+        "branch-alias": {
+            "dev-main": "0.1.x-dev"
+        }
+    }
 }

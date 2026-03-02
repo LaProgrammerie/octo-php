@@ -9,7 +9,7 @@ declare(strict_types=1);
  * and /readyz returns 503 when the loop is stalled.
  */
 
-require_once dirname(__DIR__, 4) . '/vendor/autoload.php';
+require_once dirname(__DIR__, 5) . '/vendor/autoload.php';
 
 use AsyncPlatform\RuntimePack\ServerBootstrap;
 

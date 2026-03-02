@@ -68,11 +68,15 @@ final class ScopeRunnerTest extends TestCase
 
     public function testMaxConcurrentScopesPositiveCreatesSemaphore(): void
     {
-        $runner = new ScopeRunner($this->metrics, $this->logger, 5);
+        $channel = null;
 
-        $ref = new \ReflectionClass($runner);
-        $prop = $ref->getProperty('concurrencySemaphore');
-        $channel = $prop->getValue($runner);
+        \OpenSwoole\Coroutine::run(function () use (&$channel) {
+            $runner = new ScopeRunner($this->metrics, $this->logger, 5);
+
+            $ref = new \ReflectionClass($runner);
+            $prop = $ref->getProperty('concurrencySemaphore');
+            $channel = $prop->getValue($runner);
+        });
 
         $this->assertNotNull($channel);
         $this->assertInstanceOf(\OpenSwoole\Coroutine\Channel::class, $channel);
@@ -98,10 +102,16 @@ final class ScopeRunnerTest extends TestCase
 
     public function testMaxConcurrentScopesStoredAsProperty(): void
     {
-        $runner = new ScopeRunner($this->metrics, $this->logger, 3);
+        $value = null;
 
-        $ref = new \ReflectionClass($runner);
-        $prop = $ref->getProperty('maxConcurrentScopes');
-        $this->assertSame(3, $prop->getValue($runner));
+        \OpenSwoole\Coroutine::run(function () use (&$value) {
+            $runner = new ScopeRunner($this->metrics, $this->logger, 3);
+
+            $ref = new \ReflectionClass($runner);
+            $prop = $ref->getProperty('maxConcurrentScopes');
+            $value = $prop->getValue($runner);
+        });
+
+        $this->assertSame(3, $value);
     }
 }

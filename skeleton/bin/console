@@ -16,8 +16,8 @@ declare(strict_types=1);
 
 // Autoload
 $autoloadPaths = [
-    __DIR__ . '/../vendor/autoload.php',
-    __DIR__ . '/../../../vendor/autoload.php', // monorepo layout
+    __DIR__ . '/../../vendor/autoload.php', // monorepo layout (preferred)
+    __DIR__ . '/../vendor/autoload.php',    // standalone install
 ];
 
 $autoloaded = false;

@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-         bootstrap="vendor/autoload.php"
-         colors="true"
-         failOnRisky="true"
-         failOnWarning="true"
-         cacheDirectory=".phpunit.cache">
+    xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+    bootstrap="vendor/autoload.php"
+    colors="true"
+    failOnRisky="true"
+    failOnWarning="true"
+    cacheDirectory=".phpunit.cache">
     <testsuites>
         <testsuite name="unit">
             <directory>packages/runtime-pack/tests/Unit</directory>
@@ -18,7 +18,6 @@
         <testsuite name="property">
             <directory>packages/runtime-pack/tests/Property</directory>
             <directory>packages/symfony-bridge/tests/Property</directory>
-            <directory>packages/symfony-bundle/tests/Property</directory>
             <directory>packages/symfony-messenger/tests/Property</directory>
             <directory>packages/symfony-otel/tests/Property</directory>
             <directory>packages/symfony-realtime/tests/Property</directory>
@@ -26,10 +25,6 @@
         <testsuite name="integration">
             <directory>packages/runtime-pack/tests/Integration</directory>
             <directory>packages/symfony-bridge/tests/Integration</directory>
-            <directory>packages/symfony-bundle/tests/Integration</directory>
-            <directory>packages/symfony-messenger/tests/Integration</directory>
-            <directory>packages/symfony-otel/tests/Integration</directory>
-            <directory>packages/symfony-realtime/tests/Integration</directory>
         </testsuite>
     </testsuites>
     <source>

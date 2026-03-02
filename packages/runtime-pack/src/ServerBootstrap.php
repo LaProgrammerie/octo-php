@@ -77,8 +77,28 @@ final class ServerBootstrap
             $gracefulShutdown->logShutdownComplete(!$gracefulShutdown->isForcedShutdown());
         });
 
-        // === 5. ON WORKER START ===
-        $server->on('WorkerStart', function (\OpenSwoole\Http\Server $srv, int $workerId, ) use ($config, $production, $appHandler, $gracefulShutdown, $hookFlags, $jobRegistrar, ): void {
+        // === 5. PER-WORKER REQUEST HANDLER REGISTRY ===
+        // OpenSwoole requires onRequest to be registered before start().
+        // Each worker creates its own RequestHandler in onWorkerStart and stores it here.
+        // The onRequest callback dispatches to the correct per-worker handler.
+        /** @var array<int, RequestHandler> $workerHandlers */
+        $workerHandlers = [];
+
+        $server->on('Request', function (\OpenSwoole\Http\Request $request, \OpenSwoole\Http\Response $response, ) use (&$workerHandlers): void {
+            $workerId = $request->server['worker_id'] ?? \OpenSwoole\Coroutine::getCid();
+            // Resolve handler for current worker
+            $handler = $workerHandlers[\posix_getpid()] ?? null;
+            if ($handler === null) {
+                $response->status(503);
+                $response->header('Content-Type', 'application/json');
+                $response->end('{"error":"Worker not ready"}');
+                return;
+            }
+            $handler->handle($request, $response);
+        });
+
+        // === 6. ON WORKER START ===
+        $server->on('WorkerStart', function (\OpenSwoole\Http\Server $srv, int $workerId, ) use (&$workerHandlers, $config, $production, $appHandler, $gracefulShutdown, $hookFlags, $jobRegistrar, ): void {
             self::onWorkerStart(
                 $srv,
                 $workerId,
@@ -88,6 +108,7 @@ final class ServerBootstrap
                 $gracefulShutdown,
                 $hookFlags,
                 $jobRegistrar,
+                $workerHandlers,
             );
         });
 
@@ -209,11 +230,6 @@ final class ServerBootstrap
 
             // Always enable HTTP compression (gzip/br/deflate based on Accept-Encoding)
             'http_compression' => true,
-
-            // Security: strip server version header
-            // OpenSwoole adds "Server: OpenSwoole x.x.x" by default.
-            // Setting to empty string suppresses it.
-            'http_server_software' => '',
         ];
     }
 
@@ -232,6 +248,7 @@ final class ServerBootstrap
         GracefulShutdown $gracefulShutdown,
         int $hookFlags,
         ?callable $jobRegistrar,
+        array &$workerHandlers,
     ): void {
         // --- Per-worker component instantiation ---
         $logger = new JsonLogger($production);
@@ -293,7 +310,7 @@ final class ServerBootstrap
             ),
         ]);
 
-        // --- Register onRequest handler via RequestHandler ---
+        // --- Store RequestHandler for this worker (dispatched by onRequest in run()) ---
         $requestHandler = new RequestHandler(
             health: $healthController,
             requestId: $requestIdMiddleware,
@@ -304,9 +321,7 @@ final class ServerBootstrap
             appHandler: $appHandler,
         );
 
-        $server->on('Request', function (\OpenSwoole\Http\Request $request, \OpenSwoole\Http\Response $response, ) use ($requestHandler): void {
-            $requestHandler->handle($request, $response);
-        });
+        $workerHandlers[\posix_getpid()] = $requestHandler;
     }
 
     /**

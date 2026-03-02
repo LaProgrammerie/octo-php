@@ -58,13 +58,13 @@ final class RequestConversionRoundTripTest extends TestCase
 
         return new class ($server, $headers, $query, $post, $cookies, [], $body) {
             public function __construct(
-                public array $server,
-                public array $header,
-                public array $get,
-                public array $post,
-                public array $cookie,
-                public array $files,
-                private string $content,
+            public array $server,
+            public array $header,
+            public array $get,
+            public array $post,
+            public array $cookie,
+            public array $files,
+            private string $content,
             ) {}
 
             public function rawContent(): string
@@ -84,7 +84,7 @@ final class RequestConversionRoundTripTest extends TestCase
     private static function safeAsciiString(): \Eris\Generator
     {
         return Generators::map(
-            fn (int $len): string => self::randomPrintableAscii($len),
+            fn(int $len): string => self::randomPrintableAscii($len),
             Generators::choose(1, 50),
         );
     }
@@ -104,7 +104,7 @@ final class RequestConversionRoundTripTest extends TestCase
     private static function headerNameGenerator(): \Eris\Generator
     {
         return Generators::map(
-            fn (int $len): string => self::randomHeaderName($len),
+            fn(int $len): string => self::randomHeaderName($len),
             Generators::choose(1, 20),
         );
     }
@@ -125,7 +125,7 @@ final class RequestConversionRoundTripTest extends TestCase
     private static function cookieNameGenerator(): \Eris\Generator
     {
         return Generators::map(
-            fn (int $len): string => self::randomCookieName($len),
+            fn(int $len): string => self::randomCookieName($len),
             Generators::choose(1, 20),
         );
     }
@@ -133,7 +133,7 @@ final class RequestConversionRoundTripTest extends TestCase
     private static function randomCookieName(int $length): string
     {
         $chars = 'abcdefghijklmnopqrstuvwxyz0123456789_';
-        $result = '';
+        $result = 'c'; // prefix to avoid purely numeric names (PHP casts to int keys)
         for ($i = 0; $i < $length; $i++) {
             $result .= $chars[random_int(0, strlen($chars) - 1)];
         }
