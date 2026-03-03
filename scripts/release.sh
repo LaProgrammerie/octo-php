@@ -57,6 +57,16 @@ if [[ ! -f "$CHANGELOG" ]]; then
   exit 1
 fi
 
+# Pre-flight: if gh is installed, verify auth before doing anything destructive.
+# This avoids the "tag pushed but GitHub Release failed" scenario.
+if command -v gh >/dev/null 2>&1; then
+  if ! gh auth status >/dev/null 2>&1; then
+    echo "Error: gh is installed but not authenticated." >&2
+    echo "Run 'gh auth login' first, or uninstall gh to skip GitHub Release creation." >&2
+    exit 1
+  fi
+fi
+
 # ---------------------------------------------------------------------------
 # Compute next version
 # ---------------------------------------------------------------------------
@@ -83,6 +93,8 @@ NEXT_TAG="v${NEXT_VER}"
 
 if git rev-parse "$NEXT_TAG" >/dev/null 2>&1; then
   echo "Error: tag already exists: $NEXT_TAG" >&2
+  echo "If the GitHub Release is missing, create it manually:" >&2
+  echo "  gh release create $NEXT_TAG --generate-notes --title \"$NEXT_TAG\"" >&2
   exit 1
 fi
 
@@ -103,6 +115,14 @@ else
   RANGE="${LAST_TAG}..HEAD"
 fi
 
+# Generate git log entries for this release
+GIT_LOG_FILE="$(mktemp "${TMPDIR:-/tmp}/release-gitlog.XXXXXX.txt")"
+if [[ "$LAST_TAG" == "v0.0.0" ]]; then
+  git log --no-merges --pretty=format:'- %s (%h)' HEAD > "$GIT_LOG_FILE"
+else
+  git log --no-merges --pretty=format:'- %s (%h)' "$RANGE" > "$GIT_LOG_FILE"
+fi
+
 NOTES_FILE="$(mktemp "${TMPDIR:-/tmp}/release-notes.XXXXXX.md")"
 {
   if [[ -n "$TITLE" ]]; then
@@ -113,11 +133,7 @@ NOTES_FILE="$(mktemp "${TMPDIR:-/tmp}/release-notes.XXXXXX.md")"
   echo
   echo "## Changes"
   echo
-  if [[ "$LAST_TAG" == "v0.0.0" ]]; then
-    git log --no-merges --pretty=format:'- %s (%h)' HEAD
-  else
-    git log --no-merges --pretty=format:'- %s (%h)' "$RANGE"
-  fi
+  cat "$GIT_LOG_FILE"
   echo
 } > "$NOTES_FILE"
 
@@ -127,6 +143,11 @@ NOTES_FILE="$(mktemp "${TMPDIR:-/tmp}/release-notes.XXXXXX.md")"
 # Strategy: awk processes line by line. No multiline -v variables (BSD compat).
 # The empty [Unreleased] template is printed inline from the awk script.
 # We write to a temp file then mv (portable, no sed -i differences).
+#
+# If [Unreleased] contains only empty sub-headings (no real items), the git
+# log is injected as fallback under "### Changed".
+# The git log file is read by awk as a second input (ARGV[2]) before the
+# changelog, so it works on both BSD and GNU awk.
 # ---------------------------------------------------------------------------
 
 TMP_CL="$(mktemp "${TMPDIR:-/tmp}/changelog.XXXXXX.md")"
@@ -137,10 +158,18 @@ awk -v next_ver="$NEXT_VER" \
     -v title="$TITLE" \
     -v repo_url="$REPO_URL" \
     -v last_tag="$LAST_TAG" \
+    -v gitlog_file="$GIT_LOG_FILE" \
 '
 BEGIN {
   state = "passthrough"  # passthrough | unreleased | links
   unreleased_buf = ""
+
+  # Read git log fallback from file (portable, no multiline -v)
+  gitlog = ""
+  while ((getline line < gitlog_file) > 0) {
+    gitlog = gitlog line "\n"
+  }
+  close(gitlog_file)
 }
 
 # ── [Unreleased] heading ──────────────────────────────────────────────
@@ -171,13 +200,26 @@ state == "unreleased" && /^## \[/ {
   if (title != "") header = header " \342\200\224 " title
   print header
   print ""
-  # Trim and emit accumulated content
-  gsub(/^\n+/, "", unreleased_buf)
-  gsub(/\n+$/, "", unreleased_buf)
-  if (unreleased_buf != "") {
+
+  # Check if unreleased content has real items (not just empty sub-headings)
+  check = unreleased_buf
+  gsub(/### (Added|Changed|Deprecated|Removed|Fixed|Security)/, "", check)
+  gsub(/[[:space:]]/, "", check)
+
+  if (check != "") {
+    # Has real content — use it as-is
+    gsub(/^\n+/, "", unreleased_buf)
+    gsub(/\n+$/, "", unreleased_buf)
     print unreleased_buf
     print ""
+  } else if (gitlog != "") {
+    # Empty unreleased — inject git log as fallback
+    print "### Changed"
+    print ""
+    printf "%s", gitlog
+    print ""
   }
+
   # Print the old version heading we just matched
   print $0
   state = "passthrough"
@@ -230,10 +272,20 @@ END {
     if (title != "") header = header " \342\200\224 " title
     print header
     print ""
-    gsub(/^\n+/, "", unreleased_buf)
-    gsub(/\n+$/, "", unreleased_buf)
-    if (unreleased_buf != "") {
+
+    check = unreleased_buf
+    gsub(/### (Added|Changed|Deprecated|Removed|Fixed|Security)/, "", check)
+    gsub(/[[:space:]]/, "", check)
+
+    if (check != "") {
+      gsub(/^\n+/, "", unreleased_buf)
+      gsub(/\n+$/, "", unreleased_buf)
       print unreleased_buf
+      print ""
+    } else if (gitlog != "") {
+      print "### Changed"
+      print ""
+      printf "%s", gitlog
       print ""
     }
   }
@@ -287,4 +339,4 @@ else
 fi
 
 # Cleanup
-rm -f "$NOTES_FILE"
+rm -f "$NOTES_FILE" "$GIT_LOG_FILE"
