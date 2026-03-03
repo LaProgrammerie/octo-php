@@ -24,16 +24,15 @@ final class OtelSpanFactory
 {
     public function __construct(
         private readonly TracerInterface $tracer,
-    ) {
-    }
+    ) {}
 
     /**
      * Create a root span for an incoming HTTP request.
      *
-     * @param string $requestId  The X-Request-Id header value
-     * @param string $method     HTTP method (GET, POST, etc.)
-     * @param string $url        Request URI
-     * @param array<string, string>|null $parentContext Extracted W3C trace context
+     * @param string $requestId The X-Request-Id header value
+     * @param string $method HTTP method (GET, POST, etc.)
+     * @param string $url Request URI
+     * @param null|array<string, string> $parentContext Extracted W3C trace context
      */
     public function createRootSpan(
         string $requestId,
@@ -45,7 +44,8 @@ final class OtelSpanFactory
             ->setSpanKind(SpanKind::KIND_SERVER)
             ->setAttribute('http.method', $method)
             ->setAttribute('http.url', $url)
-            ->setAttribute('http.request_id', $requestId);
+            ->setAttribute('http.request_id', $requestId)
+        ;
 
         if ($parentContext !== null && $parentContext !== []) {
             $builder->setParent($parentContext);
@@ -63,6 +63,7 @@ final class OtelSpanFactory
     {
         return $this->tracer->spanBuilder($name)
             ->setSpanKind(SpanKind::KIND_INTERNAL)
-            ->startSpan();
+            ->startSpan()
+        ;
     }
 }

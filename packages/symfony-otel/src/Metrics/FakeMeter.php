@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyOtel\Metrics;
 
+use Override;
+
 /**
  * In-memory meter for testing without the OTEL SDK.
  *
@@ -17,11 +19,13 @@ final class FakeMeter implements MeterInterface
     /** @var array<string, list<float>> */
     private array $histograms = [];
 
+    #[Override]
     public function counter(string $name, int $value, string $description = ''): void
     {
         $this->counters[$name] = ($this->counters[$name] ?? 0) + $value;
     }
 
+    #[Override]
     public function histogram(string $name, float $value, string $description = ''): void
     {
         $this->histograms[$name][] = $value;

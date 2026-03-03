@@ -9,6 +9,8 @@ use Octo\SymfonyMessenger\OpenSwooleTransport;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
+use stdClass;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
 
@@ -53,7 +55,7 @@ final class ConsumerManagerTest extends TestCase
     public function consumerDispatchesAndAcksMessage(): void
     {
         $transport = new OpenSwooleTransport(channelCapacity: 10);
-        $message = new \stdClass();
+        $message = new stdClass();
         $message->text = 'test';
         $envelope = new Envelope($message);
         $transport->send($envelope);
@@ -62,11 +64,13 @@ final class ConsumerManagerTest extends TestCase
         $bus = $this->createMock(MessageBusInterface::class);
         $bus->expects(self::once())
             ->method('dispatch')
-            ->with(self::callback(function (Envelope $e) use (&$dispatched): bool {
+            ->with(self::callback(static function (Envelope $e) use (&$dispatched): bool {
                 $dispatched[] = $e;
+
                 return true;
             }))
-            ->willReturn($envelope);
+            ->willReturn($envelope)
+        ;
 
         $manager = new ConsumerManager(
             transport: $transport,
@@ -87,22 +91,23 @@ final class ConsumerManagerTest extends TestCase
 
         // Transport uses the same logger so reject() logs a warning
         $transport = new OpenSwooleTransport(channelCapacity: 10, logger: $logger);
-        $message = new \stdClass();
+        $message = new stdClass();
         $envelope = new Envelope($message);
         $transport->send($envelope);
 
         $bus = $this->createMock(MessageBusInterface::class);
         $bus->method('dispatch')
-            ->willThrowException(new \RuntimeException('Handler failed'));
+            ->willThrowException(new RuntimeException('Handler failed'))
+        ;
 
         $logger->expects(self::atLeastOnce())
             ->method('error')
-            ->with('Consumer failed to process message', self::callback(function (array $ctx): bool {
-                return isset($ctx['consumer_id']) && isset($ctx['error']);
-            }));
+            ->with('Consumer failed to process message', self::callback(static fn (array $ctx): bool => isset($ctx['consumer_id']) && isset($ctx['error'])))
+        ;
 
         $logger->expects(self::atLeastOnce())
-            ->method('warning');
+            ->method('warning')
+        ;
 
         $manager = new ConsumerManager(
             transport: $transport,
@@ -121,9 +126,10 @@ final class ConsumerManagerTest extends TestCase
         $bus = $this->createMock(MessageBusInterface::class);
 
         $spawnCount = 0;
-        $spawner = function (callable $fn) use (&$spawnCount): int {
-            $spawnCount++;
+        $spawner = static function (callable $fn) use (&$spawnCount): int {
+            ++$spawnCount;
             $fn();
+
             return $spawnCount;
         };
 
@@ -146,9 +152,10 @@ final class ConsumerManagerTest extends TestCase
         $bus = $this->createMock(MessageBusInterface::class);
 
         $spawnCount = 0;
-        $spawner = function (callable $fn) use (&$spawnCount): int {
-            $spawnCount++;
+        $spawner = static function (callable $fn) use (&$spawnCount): int {
+            ++$spawnCount;
             $fn();
+
             return $spawnCount;
         };
 
@@ -170,9 +177,9 @@ final class ConsumerManagerTest extends TestCase
     {
         $transport = new OpenSwooleTransport(channelCapacity: 10);
 
-        $msg1 = new \stdClass();
+        $msg1 = new stdClass();
         $msg1->id = 1;
-        $msg2 = new \stdClass();
+        $msg2 = new stdClass();
         $msg2->id = 2;
 
         $transport->send(new Envelope($msg1));
@@ -181,14 +188,17 @@ final class ConsumerManagerTest extends TestCase
         $dispatched = [];
         $bus = $this->createMock(MessageBusInterface::class);
         $bus->method('dispatch')
-            ->willReturnCallback(function (Envelope $e) use (&$dispatched): Envelope {
+            ->willReturnCallback(static function (Envelope $e) use (&$dispatched): Envelope {
                 $dispatched[] = $e->getMessage();
+
                 return $e;
-            });
+            })
+        ;
 
         // Custom spawner that runs the consume loop twice to drain both messages
-        $spawner = function (callable $fn): int {
+        $spawner = static function (callable $fn): int {
             $fn(); // first iteration gets msg1
+
             return 1;
         };
 

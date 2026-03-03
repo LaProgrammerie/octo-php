@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyMessenger;
 
+use Override;
 use Psr\Log\LoggerInterface;
+use SensitiveParameter;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 use Symfony\Component\Messenger\Transport\TransportFactoryInterface;
 use Symfony\Component\Messenger\Transport\TransportInterface;
@@ -27,11 +29,13 @@ final class OpenSwooleTransportFactory implements TransportFactoryInterface
     public function __construct(
         private readonly ?LoggerInterface $logger = null,
         private readonly ?MessengerMetrics $metrics = null,
-    ) {
-    }
+    ) {}
 
-    public function createTransport(#[\SensitiveParameter] string $dsn, array $options, SerializerInterface $serializer): TransportInterface
+    /** @phpstan-ignore-next-line missingType.iterableValue (parent interface defines untyped array) */
+    #[Override]
+    public function createTransport(#[SensitiveParameter] string $dsn, array $options, SerializerInterface $serializer): TransportInterface
     {
+        /** @var array{channel_capacity?: int|string, send_timeout?: float|string} $options */
         $channelCapacity = (int) ($options['channel_capacity'] ?? 100);
         $sendTimeout = (float) ($options['send_timeout'] ?? 5.0);
 
@@ -43,7 +47,9 @@ final class OpenSwooleTransportFactory implements TransportFactoryInterface
         );
     }
 
-    public function supports(#[\SensitiveParameter] string $dsn, array $options): bool
+    /** @phpstan-ignore-next-line missingType.iterableValue (parent interface defines untyped array) */
+    #[Override]
+    public function supports(#[SensitiveParameter] string $dsn, array $options): bool
     {
         return str_starts_with($dsn, self::DSN_SCHEME);
     }

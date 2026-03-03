@@ -4,8 +4,15 @@ declare(strict_types=1);
 
 namespace App\Handler;
 
+use const JSON_THROW_ON_ERROR;
+use const JSON_UNESCAPED_SLASHES;
+use const JSON_UNESCAPED_UNICODE;
+
+use OpenSwoole\Http\Request;
+use OpenSwoole\Http\Response;
+
 /**
- * Example handler: GET / → 200 {"message":"Hello, Async PHP!"}
+ * Example handler: GET / → 200 {"message":"Hello, Async PHP!"}.
  *
  * This is a minimal async-safe handler demonstrating the request/response pattern.
  * The handler receives the raw OpenSwoole Request and Response objects.
@@ -16,15 +23,15 @@ namespace App\Handler;
 final class HomeHandler
 {
     /**
-     * @param object $request  OpenSwoole\Http\Request
-     * @param object $response OpenSwoole\Http\Response
+     * @param object&Request $request OpenSwoole\Http\Request
+     * @param object&Response $response OpenSwoole\Http\Response
      */
     public function __invoke(object $request, object $response): void
     {
         $response->header('Content-Type', 'application/json');
-        $response->end(\json_encode(
+        $response->end(json_encode(
             ['message' => 'Hello, Async PHP!'],
-            \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES | \JSON_THROW_ON_ERROR,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR,
         ));
     }
 }

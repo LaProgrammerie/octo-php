@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack\Tests\Unit;
 
+use const JSON_THROW_ON_ERROR;
+use const SIGINT;
+use const SIGTERM;
+
 use Octo\RuntimePack\GracefulShutdown;
 use Octo\RuntimePack\JsonLogger;
 use Octo\RuntimePack\MetricsCollector;
@@ -12,6 +16,8 @@ use Octo\RuntimePack\ServerConfig;
 use Octo\RuntimePack\SignalAdapter;
 use Octo\RuntimePack\WorkerLifecycle;
 use PHPUnit\Framework\TestCase;
+
+use function is_resource;
 
 /**
  * Fake SignalAdapter that captures signal/timer registrations for testing.
@@ -24,7 +30,7 @@ final class FakeSignalAdapter implements SignalAdapter
     /** @var array<int, array{ms: int, callback: callable}> timerId => timer info */
     public array $timers = [];
 
-    /** @var int[] Cleared timer IDs */
+    /** @var list<int> Cleared timer IDs */
     public array $clearedTimers = [];
 
     private int $nextTimerId = 1;
@@ -38,6 +44,7 @@ final class FakeSignalAdapter implements SignalAdapter
     {
         $id = $this->nextTimerId++;
         $this->timers[$id] = ['ms' => $ms, 'callback' => $callback];
+
         return $id;
     }
 
@@ -72,7 +79,7 @@ final class FakeServer
 
     public function shutdown(): void
     {
-        $this->shutdownCount++;
+        ++$this->shutdownCount;
     }
 }
 
@@ -101,30 +108,6 @@ final class GracefulShutdownTest extends TestCase
         }
     }
 
-    private function createShutdown(ServerConfig $config): GracefulShutdown
-    {
-        return new GracefulShutdown($config, $this->logger, $this->adapter);
-    }
-
-    private function createLifecycle(ServerConfig $config): WorkerLifecycle
-    {
-        $metrics = new MetricsCollector();
-        $reloadPolicy = new ReloadPolicy($config, $this->logger);
-        return new WorkerLifecycle($config, $reloadPolicy, $metrics, $this->logger, workerId: 0);
-    }
-
-    /** @return array<int, array<string, mixed>> */
-    private function getLogEntries(): array
-    {
-        rewind($this->logStream);
-        $output = stream_get_contents($this->logStream);
-        $lines = array_filter(explode("\n", $output));
-        return array_map(
-            fn(string $line) => json_decode($line, true, 512, JSON_THROW_ON_ERROR),
-            array_values($lines),
-        );
-    }
-
     // =========================================================================
     // 6.1: registerMaster registers signal handlers
     // =========================================================================
@@ -134,7 +117,7 @@ final class GracefulShutdownTest extends TestCase
         $shutdown = $this->createShutdown($this->prodConfig);
         $shutdown->registerMaster(new FakeServer());
 
-        $this->assertArrayHasKey(SIGTERM, $this->adapter->signals);
+        self::assertArrayHasKey(SIGTERM, $this->adapter->signals);
     }
 
     public function testRegisterMasterInstallsSigIntInDevMode(): void
@@ -142,7 +125,7 @@ final class GracefulShutdownTest extends TestCase
         $shutdown = $this->createShutdown($this->devConfig);
         $shutdown->registerMaster(new FakeServer());
 
-        $this->assertArrayHasKey(SIGINT, $this->adapter->signals);
+        self::assertArrayHasKey(SIGINT, $this->adapter->signals);
     }
 
     public function testRegisterMasterDoesNotInstallSigIntInProduction(): void
@@ -150,7 +133,7 @@ final class GracefulShutdownTest extends TestCase
         $shutdown = $this->createShutdown($this->prodConfig);
         $shutdown->registerMaster(new FakeServer());
 
-        $this->assertArrayNotHasKey(SIGINT, $this->adapter->signals);
+        self::assertArrayNotHasKey(SIGINT, $this->adapter->signals);
     }
 
     // =========================================================================
@@ -163,7 +146,7 @@ final class GracefulShutdownTest extends TestCase
         $lifecycle = $this->createLifecycle($this->prodConfig);
         $shutdown->registerWorker(new FakeServer(), $lifecycle);
 
-        $this->assertArrayHasKey(SIGTERM, $this->adapter->signals);
+        self::assertArrayHasKey(SIGTERM, $this->adapter->signals);
     }
 
     public function testRegisterWorkerInstallsSigIntInDevMode(): void
@@ -172,7 +155,7 @@ final class GracefulShutdownTest extends TestCase
         $lifecycle = $this->createLifecycle($this->devConfig);
         $shutdown->registerWorker(new FakeServer(), $lifecycle);
 
-        $this->assertArrayHasKey(SIGINT, $this->adapter->signals);
+        self::assertArrayHasKey(SIGINT, $this->adapter->signals);
     }
 
     public function testRegisterWorkerDoesNotInstallSigIntInProduction(): void
@@ -181,7 +164,7 @@ final class GracefulShutdownTest extends TestCase
         $lifecycle = $this->createLifecycle($this->prodConfig);
         $shutdown->registerWorker(new FakeServer(), $lifecycle);
 
-        $this->assertArrayNotHasKey(SIGINT, $this->adapter->signals);
+        self::assertArrayNotHasKey(SIGINT, $this->adapter->signals);
     }
 
     // =========================================================================
@@ -194,9 +177,9 @@ final class GracefulShutdownTest extends TestCase
         $lifecycle = $this->createLifecycle($this->prodConfig);
         $shutdown->registerWorker(new FakeServer(), $lifecycle);
 
-        $this->assertFalse($lifecycle->isShuttingDown());
+        self::assertFalse($lifecycle->isShuttingDown());
         $this->adapter->fireSignal(SIGTERM);
-        $this->assertTrue($lifecycle->isShuttingDown());
+        self::assertTrue($lifecycle->isShuttingDown());
     }
 
     public function testWorkerSigTermLogsShutdownStartedWithInflightAndTimeout(): void
@@ -210,15 +193,15 @@ final class GracefulShutdownTest extends TestCase
         $entries = $this->getLogEntries();
         $shutdownLogs = array_values(array_filter(
             $entries,
-            fn(array $e) => str_contains($e['message'], 'Graceful shutdown started (worker)'),
+            static fn (array $e) => str_contains($e['message'], 'Graceful shutdown started (worker)'),
         ));
 
-        $this->assertCount(1, $shutdownLogs);
+        self::assertCount(1, $shutdownLogs);
         $log = $shutdownLogs[0];
-        $this->assertSame('info', $log['level']);
-        $this->assertSame(0, $log['extra']['worker_inflight']);
-        $this->assertSame(30, $log['extra']['timeout']);
-        $this->assertSame(0, $log['extra']['worker_id']);
+        self::assertSame('info', $log['level']);
+        self::assertSame(0, $log['extra']['worker_inflight']);
+        self::assertSame(30, $log['extra']['timeout']);
+        self::assertSame(0, $log['extra']['worker_id']);
     }
 
     public function testWorkerSigTermLogsCorrectInflightCount(): void
@@ -235,10 +218,10 @@ final class GracefulShutdownTest extends TestCase
         $entries = $this->getLogEntries();
         $log = array_values(array_filter(
             $entries,
-            fn(array $e) => str_contains($e['message'], 'Graceful shutdown started (worker)'),
+            static fn (array $e) => str_contains($e['message'], 'Graceful shutdown started (worker)'),
         ))[0];
 
-        $this->assertSame(2, $log['extra']['worker_inflight']);
+        self::assertSame(2, $log['extra']['worker_inflight']);
     }
 
     // =========================================================================
@@ -257,7 +240,7 @@ final class GracefulShutdownTest extends TestCase
 
         // After SIGTERM, lifecycle.isShuttingDown() is true
         // RequestHandler checks this for 503 refusal
-        $this->assertTrue($lifecycle->isShuttingDown());
+        self::assertTrue($lifecycle->isShuttingDown());
     }
 
     // =========================================================================
@@ -271,9 +254,9 @@ final class GracefulShutdownTest extends TestCase
 
         $this->adapter->fireSignal(SIGTERM);
 
-        $this->assertCount(1, $this->adapter->timers);
+        self::assertCount(1, $this->adapter->timers);
         $timer = array_values($this->adapter->timers)[0];
-        $this->assertSame(30_000, $timer['ms']);
+        self::assertSame(30_000, $timer['ms']);
     }
 
     public function testHardTimerUsesConfiguredTimeout(): void
@@ -286,7 +269,7 @@ final class GracefulShutdownTest extends TestCase
         $adapter->fireSignal(SIGTERM);
 
         $timer = array_values($adapter->timers)[0];
-        $this->assertSame(15_000, $timer['ms']);
+        self::assertSame(15_000, $timer['ms']);
     }
 
     public function testHardTimerForcesServerShutdown(): void
@@ -300,8 +283,8 @@ final class GracefulShutdownTest extends TestCase
         $timerId = array_key_first($this->adapter->timers);
         $this->adapter->fireTimer($timerId);
 
-        $this->assertSame(1, $server->shutdownCount);
-        $this->assertTrue($shutdown->isForcedShutdown());
+        self::assertSame(1, $server->shutdownCount);
+        self::assertTrue($shutdown->isForcedShutdown());
     }
 
     public function testHardTimerLogsForced(): void
@@ -316,10 +299,10 @@ final class GracefulShutdownTest extends TestCase
         $entries = $this->getLogEntries();
         $forcedLogs = array_filter(
             $entries,
-            fn(array $e) => str_contains($e['message'], 'timeout reached'),
+            static fn (array $e) => str_contains($e['message'], 'timeout reached'),
         );
-        $this->assertNotEmpty($forcedLogs);
-        $this->assertSame('warning', array_values($forcedLogs)[0]['level']);
+        self::assertNotEmpty($forcedLogs);
+        self::assertSame('warning', array_values($forcedLogs)[0]['level']);
     }
 
     // =========================================================================
@@ -332,9 +315,9 @@ final class GracefulShutdownTest extends TestCase
         $shutdown->logShutdownComplete(true);
 
         $entries = $this->getLogEntries();
-        $this->assertCount(1, $entries);
-        $this->assertStringContainsString('clean', $entries[0]['message']);
-        $this->assertSame('info', $entries[0]['level']);
+        self::assertCount(1, $entries);
+        self::assertStringContainsString('clean', $entries[0]['message']);
+        self::assertSame('info', $entries[0]['level']);
     }
 
     public function testLogShutdownCompleteForced(): void
@@ -343,9 +326,9 @@ final class GracefulShutdownTest extends TestCase
         $shutdown->logShutdownComplete(false);
 
         $entries = $this->getLogEntries();
-        $this->assertCount(1, $entries);
-        $this->assertStringContainsString('forced', $entries[0]['message']);
-        $this->assertSame('warning', $entries[0]['level']);
+        self::assertCount(1, $entries);
+        self::assertStringContainsString('forced', $entries[0]['message']);
+        self::assertSame('warning', $entries[0]['level']);
     }
 
     // =========================================================================
@@ -359,12 +342,12 @@ final class GracefulShutdownTest extends TestCase
         $shutdown->registerMaster($server);
 
         $this->adapter->fireSignal(SIGTERM);
-        $this->assertTrue($shutdown->isSigTermReceived());
-        $this->assertSame(0, $server->shutdownCount);
+        self::assertTrue($shutdown->isSigTermReceived());
+        self::assertSame(0, $server->shutdownCount);
 
         $this->adapter->fireSignal(SIGTERM);
-        $this->assertSame(1, $server->shutdownCount);
-        $this->assertTrue($shutdown->isForcedShutdown());
+        self::assertSame(1, $server->shutdownCount);
+        self::assertTrue($shutdown->isForcedShutdown());
     }
 
     public function testDoubleSigTermClearsHardTimer(): void
@@ -376,7 +359,7 @@ final class GracefulShutdownTest extends TestCase
         $timerId = array_key_first($this->adapter->timers);
 
         $this->adapter->fireSignal(SIGTERM);
-        $this->assertContains($timerId, $this->adapter->clearedTimers);
+        self::assertContains($timerId, $this->adapter->clearedTimers);
     }
 
     public function testDoubleSigTermLogsWarning(): void
@@ -390,10 +373,10 @@ final class GracefulShutdownTest extends TestCase
         $entries = $this->getLogEntries();
         $doubleLogs = array_filter(
             $entries,
-            fn(array $e) => str_contains($e['message'], 'Double SIGTERM'),
+            static fn (array $e) => str_contains($e['message'], 'Double SIGTERM'),
         );
-        $this->assertNotEmpty($doubleLogs);
-        $this->assertSame('warning', array_values($doubleLogs)[0]['level']);
+        self::assertNotEmpty($doubleLogs);
+        self::assertSame('warning', array_values($doubleLogs)[0]['level']);
     }
 
     // =========================================================================
@@ -408,7 +391,7 @@ final class GracefulShutdownTest extends TestCase
 
         $this->adapter->fireSignal(SIGINT);
 
-        $this->assertSame(1, $server->shutdownCount);
+        self::assertSame(1, $server->shutdownCount);
     }
 
     public function testSigIntInDevLogsImmediateStop(): void
@@ -421,9 +404,9 @@ final class GracefulShutdownTest extends TestCase
         $entries = $this->getLogEntries();
         $sigintLogs = array_filter(
             $entries,
-            fn(array $e) => str_contains($e['message'], 'SIGINT'),
+            static fn (array $e) => str_contains($e['message'], 'SIGINT'),
         );
-        $this->assertNotEmpty($sigintLogs);
+        self::assertNotEmpty($sigintLogs);
     }
 
     // =========================================================================
@@ -442,26 +425,26 @@ final class GracefulShutdownTest extends TestCase
         $entries = $this->getLogEntries();
         $shutdownLogs = array_filter(
             $entries,
-            fn(array $e) => str_contains($e['message'], 'Graceful shutdown started (worker)'),
+            static fn (array $e) => str_contains($e['message'], 'Graceful shutdown started (worker)'),
         );
-        $this->assertCount(1, $shutdownLogs);
+        self::assertCount(1, $shutdownLogs);
     }
 
     public function testMasterSigTermSetsReceivedFlag(): void
     {
         $shutdown = $this->createShutdown($this->prodConfig);
-        $this->assertFalse($shutdown->isSigTermReceived());
+        self::assertFalse($shutdown->isSigTermReceived());
 
         $shutdown->registerMaster(new FakeServer());
         $this->adapter->fireSignal(SIGTERM);
 
-        $this->assertTrue($shutdown->isSigTermReceived());
+        self::assertTrue($shutdown->isSigTermReceived());
     }
 
     public function testForcedShutdownIsFalseByDefault(): void
     {
         $shutdown = $this->createShutdown($this->prodConfig);
-        $this->assertFalse($shutdown->isForcedShutdown());
+        self::assertFalse($shutdown->isForcedShutdown());
     }
 
     public function testMasterSigTermLogsShutdownStartedWithTimeout(): void
@@ -474,12 +457,12 @@ final class GracefulShutdownTest extends TestCase
         $entries = $this->getLogEntries();
         $startLogs = array_values(array_filter(
             $entries,
-            fn(array $e) => str_contains($e['message'], 'Graceful shutdown started (master)'),
+            static fn (array $e) => str_contains($e['message'], 'Graceful shutdown started (master)'),
         ));
 
-        $this->assertCount(1, $startLogs);
-        $this->assertSame('info', $startLogs[0]['level']);
-        $this->assertSame(30, $startLogs[0]['extra']['timeout']);
+        self::assertCount(1, $startLogs);
+        self::assertSame('info', $startLogs[0]['level']);
+        self::assertSame(30, $startLogs[0]['extra']['timeout']);
     }
 
     public function testFirstSigTermDoesNotShutdownServerImmediately(): void
@@ -492,6 +475,32 @@ final class GracefulShutdownTest extends TestCase
 
         // Critical: first SIGTERM must NOT call $server->shutdown() immediately
         // Only the hard timer or double SIGTERM should trigger it
-        $this->assertSame(0, $server->shutdownCount);
+        self::assertSame(0, $server->shutdownCount);
+    }
+
+    private function createShutdown(ServerConfig $config): GracefulShutdown
+    {
+        return new GracefulShutdown($config, $this->logger, $this->adapter);
+    }
+
+    private function createLifecycle(ServerConfig $config): WorkerLifecycle
+    {
+        $metrics = new MetricsCollector();
+        $reloadPolicy = new ReloadPolicy($config, $this->logger);
+
+        return new WorkerLifecycle($config, $reloadPolicy, $metrics, $this->logger, workerId: 0);
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function getLogEntries(): array
+    {
+        rewind($this->logStream);
+        $output = stream_get_contents($this->logStream);
+        $lines = array_filter(explode("\n", $output));
+
+        return array_map(
+            static fn (string $line) => json_decode($line, true, 512, JSON_THROW_ON_ERROR),
+            array_values($lines),
+        );
     }
 }

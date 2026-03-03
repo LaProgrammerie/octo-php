@@ -15,6 +15,7 @@ interface TextMapPropagatorInterface
      * Extract trace context from carrier (HTTP headers).
      *
      * @param array<string, string> $carrier HTTP headers (lowercase keys)
+     *
      * @return array<string, string> Extracted context (traceparent, tracestate)
      */
     public function extract(array $carrier): array;

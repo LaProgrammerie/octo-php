@@ -7,6 +7,7 @@ namespace Octo\SymfonyBridge;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Contracts\Service\ResetInterface;
+use Throwable;
 
 /**
  * Manages state reset between requests in a long-running process.
@@ -24,7 +25,7 @@ use Symfony\Contracts\Service\ResetInterface;
  */
 final class ResetManager
 {
-    /** @var ResetHookInterface[] */
+    /** @var list<ResetHookInterface> */
     private array $hooks = [];
 
     public function __construct(
@@ -32,8 +33,7 @@ final class ResetManager
         private readonly LoggerInterface $logger,
         private readonly ?MetricsBridge $metricsBridge,
         private readonly int $resetWarningMs = 50,
-    ) {
-    }
+    ) {}
 
     public function addHook(ResetHookInterface $hook): void
     {
@@ -52,7 +52,7 @@ final class ResetManager
 
         try {
             $this->resetKernel();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->logger->error('Reset failed', [
                 'request_id' => $requestId,
                 'error' => $e->getMessage(),
@@ -97,6 +97,7 @@ final class ResetManager
         // Strategy 1: Kernel implements ResetInterface
         if ($this->kernel instanceof ResetInterface) {
             $this->kernel->reset();
+
             return;
         }
 
@@ -105,6 +106,7 @@ final class ResetManager
             $container = $this->kernel->getContainer();
             if ($container !== null && $container->has('services_resetter')) {
                 $container->get('services_resetter')->reset();
+
                 return;
             }
         }
@@ -122,7 +124,7 @@ final class ResetManager
         foreach ($this->hooks as $hook) {
             try {
                 $hook->reset();
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $this->logger->error('ResetHook failed', [
                     'request_id' => $requestId,
                     'hook' => $hook::class,

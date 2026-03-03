@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace Octo\RuntimePack\Tests\Unit;
 
 use Octo\RuntimePack\Exception\ConfigValidationException;
-use Octo\RuntimePack\ServerConfig;
 use Octo\RuntimePack\ServerConfigFactory;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -15,7 +13,8 @@ final class ServerConfigFactoryTest extends TestCase
 {
     /**
      * Env vars set by this test — cleaned up in tearDown.
-     * @var string[]
+     *
+     * @var list<string>
      */
     private array $envVarsSet = [];
 
@@ -27,42 +26,10 @@ final class ServerConfigFactoryTest extends TestCase
         $this->envVarsSet = [];
     }
 
-    private function setEnv(string $name, string $value): void
-    {
-        putenv("{$name}={$value}");
-        $this->envVarsSet[] = $name;
-    }
-
-    private function clearAllEnvVars(): void
-    {
-        $vars = [
-            'APP_HOST',
-            'APP_PORT',
-            'APP_WORKERS',
-            'MAX_REQUEST_BODY_SIZE',
-            'MAX_CONNECTIONS',
-            'REQUEST_HANDLER_TIMEOUT',
-            'SHUTDOWN_TIMEOUT',
-            'MAX_REQUESTS',
-            'MAX_UPTIME',
-            'MAX_MEMORY_RSS',
-            'WORKER_RESTART_MIN_INTERVAL',
-            'BLOCKING_POOL_WORKERS',
-            'BLOCKING_POOL_QUEUE_SIZE',
-            'BLOCKING_POOL_TIMEOUT',
-            'MAX_CONCURRENT_SCOPES',
-            'EVENT_LOOP_LAG_THRESHOLD_MS',
-        ];
-        foreach ($vars as $var) {
-            putenv($var);
-            $this->envVarsSet[] = $var;
-        }
-    }
-
     // ── Defaults ──
 
     #[Test]
-    public function dev_defaults(): void
+    public function devDefaults(): void
     {
         $this->clearAllEnvVars();
 
@@ -90,13 +57,13 @@ final class ServerConfigFactoryTest extends TestCase
     }
 
     #[Test]
-    public function prod_defaults_use_cpu_count(): void
+    public function prodDefaultsUseCpuCount(): void
     {
         $this->clearAllEnvVars();
 
         $result = ServerConfigFactory::fromEnvironment(
             production: true,
-            cpuCountResolver: static fn(): int => 16,
+            cpuCountResolver: static fn (): int => 16,
         );
         $config = $result['config'];
 
@@ -108,7 +75,7 @@ final class ServerConfigFactoryTest extends TestCase
     // ── Custom values ──
 
     #[Test]
-    public function reads_all_env_vars(): void
+    public function readsAllEnvVars(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('APP_HOST', '127.0.0.1');
@@ -152,7 +119,7 @@ final class ServerConfigFactoryTest extends TestCase
     // ── resolveWorkers ──
 
     #[Test]
-    public function workers_zero_dev_resolves_to_two(): void
+    public function workersZeroDevResolvesToTwo(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('APP_WORKERS', '0');
@@ -163,28 +130,28 @@ final class ServerConfigFactoryTest extends TestCase
     }
 
     #[Test]
-    public function workers_zero_prod_resolves_to_cpu_count(): void
+    public function workersZeroProdResolvesToCpuCount(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('APP_WORKERS', '0');
 
         $config = ServerConfigFactory::fromEnvironment(
-        production: true,
-        cpuCountResolver: static fn(): int => 4,
+            production: true,
+            cpuCountResolver: static fn (): int => 4,
         )['config'];
 
         self::assertSame(4, $config->workers);
     }
 
     #[Test]
-    public function workers_explicit_overrides_auto(): void
+    public function workersExplicitOverridesAuto(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('APP_WORKERS', '12');
 
         $config = ServerConfigFactory::fromEnvironment(
-        production: true,
-        cpuCountResolver: static fn(): int => 4,
+            production: true,
+            cpuCountResolver: static fn (): int => 4,
         )['config'];
 
         self::assertSame(12, $config->workers);
@@ -193,7 +160,7 @@ final class ServerConfigFactoryTest extends TestCase
     // ── Validation errors ──
 
     #[Test]
-    public function invalid_port_zero(): void
+    public function invalidPortZero(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('APP_PORT', '0');
@@ -204,12 +171,13 @@ final class ServerConfigFactoryTest extends TestCase
             ServerConfigFactory::fromEnvironment();
         } catch (ConfigValidationException $e) {
             self::assertArrayHasKey('APP_PORT', $e->errors);
+
             throw $e;
         }
     }
 
     #[Test]
-    public function invalid_port_too_high(): void
+    public function invalidPortTooHigh(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('APP_PORT', '99999');
@@ -220,12 +188,13 @@ final class ServerConfigFactoryTest extends TestCase
             ServerConfigFactory::fromEnvironment();
         } catch (ConfigValidationException $e) {
             self::assertArrayHasKey('APP_PORT', $e->errors);
+
             throw $e;
         }
     }
 
     #[Test]
-    public function invalid_port_non_numeric(): void
+    public function invalidPortNonNumeric(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('APP_PORT', 'abc');
@@ -237,12 +206,13 @@ final class ServerConfigFactoryTest extends TestCase
         } catch (ConfigValidationException $e) {
             self::assertArrayHasKey('APP_PORT', $e->errors);
             self::assertStringContainsString('must be an integer', $e->errors['APP_PORT']);
+
             throw $e;
         }
     }
 
     #[Test]
-    public function invalid_workers_negative(): void
+    public function invalidWorkersNegative(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('APP_WORKERS', '-1');
@@ -253,12 +223,13 @@ final class ServerConfigFactoryTest extends TestCase
             ServerConfigFactory::fromEnvironment();
         } catch (ConfigValidationException $e) {
             self::assertArrayHasKey('APP_WORKERS', $e->errors);
+
             throw $e;
         }
     }
 
     #[Test]
-    public function invalid_port_float(): void
+    public function invalidPortFloat(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('APP_PORT', '3.14');
@@ -269,12 +240,13 @@ final class ServerConfigFactoryTest extends TestCase
             ServerConfigFactory::fromEnvironment();
         } catch (ConfigValidationException $e) {
             self::assertArrayHasKey('APP_PORT', $e->errors);
+
             throw $e;
         }
     }
 
     #[Test]
-    public function collects_multiple_errors(): void
+    public function collectsMultipleErrors(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('APP_PORT', '0');
@@ -290,12 +262,13 @@ final class ServerConfigFactoryTest extends TestCase
             self::assertArrayHasKey('APP_PORT', $e->errors);
             self::assertArrayHasKey('APP_WORKERS', $e->errors);
             self::assertArrayHasKey('MAX_CONNECTIONS', $e->errors);
+
             throw $e;
         }
     }
 
     #[Test]
-    public function invalid_event_loop_lag_threshold_negative(): void
+    public function invalidEventLoopLagThresholdNegative(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('EVENT_LOOP_LAG_THRESHOLD_MS', '-10');
@@ -306,12 +279,13 @@ final class ServerConfigFactoryTest extends TestCase
             ServerConfigFactory::fromEnvironment();
         } catch (ConfigValidationException $e) {
             self::assertArrayHasKey('EVENT_LOOP_LAG_THRESHOLD_MS', $e->errors);
+
             throw $e;
         }
     }
 
     #[Test]
-    public function invalid_event_loop_lag_threshold_non_numeric(): void
+    public function invalidEventLoopLagThresholdNonNumeric(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('EVENT_LOOP_LAG_THRESHOLD_MS', 'fast');
@@ -323,12 +297,13 @@ final class ServerConfigFactoryTest extends TestCase
         } catch (ConfigValidationException $e) {
             self::assertArrayHasKey('EVENT_LOOP_LAG_THRESHOLD_MS', $e->errors);
             self::assertStringContainsString('must be a number', $e->errors['EVENT_LOOP_LAG_THRESHOLD_MS']);
+
             throw $e;
         }
     }
 
     #[Test]
-    public function event_loop_lag_threshold_zero_is_valid(): void
+    public function eventLoopLagThresholdZeroIsValid(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('EVENT_LOOP_LAG_THRESHOLD_MS', '0');
@@ -339,7 +314,7 @@ final class ServerConfigFactoryTest extends TestCase
     }
 
     #[Test]
-    public function max_concurrent_scopes_zero_is_valid(): void
+    public function maxConcurrentScopesZeroIsValid(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('MAX_CONCURRENT_SCOPES', '0');
@@ -350,7 +325,7 @@ final class ServerConfigFactoryTest extends TestCase
     }
 
     #[Test]
-    public function invalid_max_concurrent_scopes_negative(): void
+    public function invalidMaxConcurrentScopesNegative(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('MAX_CONCURRENT_SCOPES', '-1');
@@ -361,12 +336,13 @@ final class ServerConfigFactoryTest extends TestCase
             ServerConfigFactory::fromEnvironment();
         } catch (ConfigValidationException $e) {
             self::assertArrayHasKey('MAX_CONCURRENT_SCOPES', $e->errors);
+
             throw $e;
         }
     }
 
     #[Test]
-    public function invalid_blocking_pool_queue_size_zero(): void
+    public function invalidBlockingPoolQueueSizeZero(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('BLOCKING_POOL_QUEUE_SIZE', '0');
@@ -377,12 +353,13 @@ final class ServerConfigFactoryTest extends TestCase
             ServerConfigFactory::fromEnvironment();
         } catch (ConfigValidationException $e) {
             self::assertArrayHasKey('BLOCKING_POOL_QUEUE_SIZE', $e->errors);
+
             throw $e;
         }
     }
 
     #[Test]
-    public function invalid_request_handler_timeout_zero(): void
+    public function invalidRequestHandlerTimeoutZero(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('REQUEST_HANDLER_TIMEOUT', '0');
@@ -393,12 +370,13 @@ final class ServerConfigFactoryTest extends TestCase
             ServerConfigFactory::fromEnvironment();
         } catch (ConfigValidationException $e) {
             self::assertArrayHasKey('REQUEST_HANDLER_TIMEOUT', $e->errors);
+
             throw $e;
         }
     }
 
     #[Test]
-    public function invalid_shutdown_timeout_zero(): void
+    public function invalidShutdownTimeoutZero(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('SHUTDOWN_TIMEOUT', '0');
@@ -409,12 +387,13 @@ final class ServerConfigFactoryTest extends TestCase
             ServerConfigFactory::fromEnvironment();
         } catch (ConfigValidationException $e) {
             self::assertArrayHasKey('SHUTDOWN_TIMEOUT', $e->errors);
+
             throw $e;
         }
     }
 
     #[Test]
-    public function invalid_max_request_body_size_zero(): void
+    public function invalidMaxRequestBodySizeZero(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('MAX_REQUEST_BODY_SIZE', '0');
@@ -425,6 +404,7 @@ final class ServerConfigFactoryTest extends TestCase
             ServerConfigFactory::fromEnvironment();
         } catch (ConfigValidationException $e) {
             self::assertArrayHasKey('MAX_REQUEST_BODY_SIZE', $e->errors);
+
             throw $e;
         }
     }
@@ -432,7 +412,7 @@ final class ServerConfigFactoryTest extends TestCase
     // ── Prod warning: all reload policies disabled ──
 
     #[Test]
-    public function prod_warning_when_all_reload_policies_disabled(): void
+    public function prodWarningWhenAllReloadPoliciesDisabled(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('MAX_REQUESTS', '0');
@@ -441,7 +421,7 @@ final class ServerConfigFactoryTest extends TestCase
 
         $result = ServerConfigFactory::fromEnvironment(
             production: true,
-            cpuCountResolver: static fn(): int => 2,
+            cpuCountResolver: static fn (): int => 2,
         );
 
         self::assertNotEmpty($result['warnings']);
@@ -449,7 +429,7 @@ final class ServerConfigFactoryTest extends TestCase
     }
 
     #[Test]
-    public function no_warning_when_at_least_one_reload_policy_active(): void
+    public function noWarningWhenAtLeastOneReloadPolicyActive(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('MAX_REQUESTS', '0');
@@ -458,14 +438,14 @@ final class ServerConfigFactoryTest extends TestCase
 
         $result = ServerConfigFactory::fromEnvironment(
             production: true,
-            cpuCountResolver: static fn(): int => 2,
+            cpuCountResolver: static fn (): int => 2,
         );
 
         self::assertEmpty($result['warnings']);
     }
 
     #[Test]
-    public function no_warning_in_dev_mode_even_if_all_disabled(): void
+    public function noWarningInDevModeEvenIfAllDisabled(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('MAX_REQUESTS', '0');
@@ -480,7 +460,7 @@ final class ServerConfigFactoryTest extends TestCase
     // ── Edge cases ──
 
     #[Test]
-    public function max_requests_zero_is_valid_disabled(): void
+    public function maxRequestsZeroIsValidDisabled(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('MAX_REQUESTS', '0');
@@ -491,7 +471,7 @@ final class ServerConfigFactoryTest extends TestCase
     }
 
     #[Test]
-    public function max_uptime_zero_is_valid_disabled(): void
+    public function maxUptimeZeroIsValidDisabled(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('MAX_UPTIME', '0');
@@ -502,7 +482,7 @@ final class ServerConfigFactoryTest extends TestCase
     }
 
     #[Test]
-    public function max_memory_rss_zero_is_valid_disabled(): void
+    public function maxMemoryRssZeroIsValidDisabled(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('MAX_MEMORY_RSS', '0');
@@ -513,7 +493,7 @@ final class ServerConfigFactoryTest extends TestCase
     }
 
     #[Test]
-    public function port_boundary_values(): void
+    public function portBoundaryValues(): void
     {
         $this->clearAllEnvVars();
 
@@ -529,7 +509,7 @@ final class ServerConfigFactoryTest extends TestCase
     }
 
     #[Test]
-    public function invalid_max_concurrent_scopes_non_numeric(): void
+    public function invalidMaxConcurrentScopesNonNumeric(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('MAX_CONCURRENT_SCOPES', 'unlimited');
@@ -541,12 +521,13 @@ final class ServerConfigFactoryTest extends TestCase
         } catch (ConfigValidationException $e) {
             self::assertArrayHasKey('MAX_CONCURRENT_SCOPES', $e->errors);
             self::assertStringContainsString('must be an integer', $e->errors['MAX_CONCURRENT_SCOPES']);
+
             throw $e;
         }
     }
 
     #[Test]
-    public function event_loop_lag_threshold_float_value(): void
+    public function eventLoopLagThresholdFloatValue(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('EVENT_LOOP_LAG_THRESHOLD_MS', '123.456');
@@ -557,7 +538,7 @@ final class ServerConfigFactoryTest extends TestCase
     }
 
     #[Test]
-    public function max_concurrent_scopes_positive_value(): void
+    public function maxConcurrentScopesPositiveValue(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('MAX_CONCURRENT_SCOPES', '100');
@@ -568,7 +549,7 @@ final class ServerConfigFactoryTest extends TestCase
     }
 
     #[Test]
-    public function workers_zero_prod_without_resolver_uses_default(): void
+    public function workersZeroProdWithoutResolverUsesDefault(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('APP_WORKERS', '0');
@@ -576,15 +557,15 @@ final class ServerConfigFactoryTest extends TestCase
         // Without cpuCountResolver, prod mode would call swoole_cpu_num()
         // We provide a resolver to avoid the dependency
         $config = ServerConfigFactory::fromEnvironment(
-        production: true,
-        cpuCountResolver: static fn(): int => 8,
+            production: true,
+            cpuCountResolver: static fn (): int => 8,
         )['config'];
 
         self::assertSame(8, $config->workers);
     }
 
     #[Test]
-    public function invalid_port_negative(): void
+    public function invalidPortNegative(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('APP_PORT', '-1');
@@ -595,12 +576,13 @@ final class ServerConfigFactoryTest extends TestCase
             ServerConfigFactory::fromEnvironment();
         } catch (ConfigValidationException $e) {
             self::assertArrayHasKey('APP_PORT', $e->errors);
+
             throw $e;
         }
     }
 
     #[Test]
-    public function invalid_port_65536(): void
+    public function invalidPort65536(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('APP_PORT', '65536');
@@ -612,12 +594,13 @@ final class ServerConfigFactoryTest extends TestCase
         } catch (ConfigValidationException $e) {
             self::assertArrayHasKey('APP_PORT', $e->errors);
             self::assertStringContainsString('must be between 1 and 65535', $e->errors['APP_PORT']);
+
             throw $e;
         }
     }
 
     #[Test]
-    public function prod_warning_message_mentions_all_three_variables(): void
+    public function prodWarningMessageMentionsAllThreeVariables(): void
     {
         $this->clearAllEnvVars();
         $this->setEnv('MAX_REQUESTS', '0');
@@ -626,12 +609,44 @@ final class ServerConfigFactoryTest extends TestCase
 
         $result = ServerConfigFactory::fromEnvironment(
             production: true,
-            cpuCountResolver: static fn(): int => 2,
+            cpuCountResolver: static fn (): int => 2,
         );
 
         $warning = $result['warnings'][0];
         self::assertStringContainsString('MAX_REQUESTS=0', $warning);
         self::assertStringContainsString('MAX_UPTIME=0', $warning);
         self::assertStringContainsString('MAX_MEMORY_RSS=0', $warning);
+    }
+
+    private function setEnv(string $name, string $value): void
+    {
+        putenv("{$name}={$value}");
+        $this->envVarsSet[] = $name;
+    }
+
+    private function clearAllEnvVars(): void
+    {
+        $vars = [
+            'APP_HOST',
+            'APP_PORT',
+            'APP_WORKERS',
+            'MAX_REQUEST_BODY_SIZE',
+            'MAX_CONNECTIONS',
+            'REQUEST_HANDLER_TIMEOUT',
+            'SHUTDOWN_TIMEOUT',
+            'MAX_REQUESTS',
+            'MAX_UPTIME',
+            'MAX_MEMORY_RSS',
+            'WORKER_RESTART_MIN_INTERVAL',
+            'BLOCKING_POOL_WORKERS',
+            'BLOCKING_POOL_QUEUE_SIZE',
+            'BLOCKING_POOL_TIMEOUT',
+            'MAX_CONCURRENT_SCOPES',
+            'EVENT_LOOP_LAG_THRESHOLD_MS',
+        ];
+        foreach ($vars as $var) {
+            putenv($var);
+            $this->envVarsSet[] = $var;
+        }
     }
 }

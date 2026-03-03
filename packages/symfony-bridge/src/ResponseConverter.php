@@ -9,6 +9,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedJsonResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 /**
  * Converts an HttpFoundation Response into an OpenSwoole response via ResponseFacade.
@@ -30,13 +31,12 @@ final class ResponseConverter
 {
     public function __construct(
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     /**
-     * @param Response $sfResponse       Symfony response
-     * @param object   $facade           ResponseFacade from runtime pack (status/header/write/end)
-     * @param object   $rawSwooleResponse OpenSwoole\Http\Response (for sendfile/cookie)
+     * @param Response $sfResponse Symfony response
+     * @param object&\OpenSwoole\Http\Response $facade ResponseFacade from runtime pack (status/header/write/end)
+     * @param object&\OpenSwoole\Http\Response $rawSwooleResponse OpenSwoole\Http\Response (for sendfile/cookie)
      */
     public function convert(
         Response $sfResponse,
@@ -58,6 +58,9 @@ final class ResponseConverter
 
     /**
      * Standard response: status + headers + cookies + end($body).
+     *
+     * @param object&\OpenSwoole\Http\Response $facade
+     * @param object&\OpenSwoole\Http\Response $rawSwooleResponse
      */
     private function convertStandard(
         Response $sfResponse,
@@ -77,6 +80,9 @@ final class ResponseConverter
      * before starting the stream.
      *
      * If the callback throws, logs the error and terminates the response.
+     *
+     * @param object&\OpenSwoole\Http\Response $facade
+     * @param object&\OpenSwoole\Http\Response $rawSwooleResponse
      */
     private function convertStreamed(
         StreamedResponse $sfResponse,
@@ -94,23 +100,24 @@ final class ResponseConverter
 
         // Intercept callback output via ob_start and redirect to ResponseFacade::write()
         try {
-            ob_start(function (string $chunk) use ($facade): string {
+            ob_start(static function (string $chunk) use ($facade): string {
                 if ($chunk !== '') {
                     $facade->write($chunk);
                 }
+
                 return '';
             }, 1); // chunk_size=1 for immediate flush
 
             $sfResponse->sendContent();
 
             ob_end_clean();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             if (ob_get_level() > 0) {
                 ob_end_clean();
             }
             $this->logger->error('StreamedResponse callback exception', [
                 'error' => $e->getMessage(),
-                'exception_class' => \get_class($e),
+                'exception_class' => $e::class,
             ]);
         }
 
@@ -119,6 +126,9 @@ final class ResponseConverter
 
     /**
      * Binary file response: use sendfile() for optimal performance.
+     *
+     * @param object&\OpenSwoole\Http\Response $facade
+     * @param object&\OpenSwoole\Http\Response $rawSwooleResponse
      */
     private function convertBinaryFile(
         BinaryFileResponse $sfResponse,
@@ -136,12 +146,14 @@ final class ResponseConverter
     /**
      * Writes all headers (except cookies) from the Symfony response to the facade.
      * Multi-valued headers are preserved by iterating over all values.
+     *
+     * @param object&\OpenSwoole\Http\Response $facade
      */
     private function writeHeaders(Response $sfResponse, object $facade): void
     {
         foreach ($sfResponse->headers->allPreserveCaseWithoutCookies() as $name => $values) {
             foreach ($values as $value) {
-                $facade->header($name, $value);
+                $facade->header((string) $name, $value);
             }
         }
     }
@@ -149,6 +161,8 @@ final class ResponseConverter
     /**
      * Maps HttpFoundation cookies to the raw OpenSwoole response via cookie().
      * Preserves all attributes: name, value, expiration, path, domain, secure, httpOnly, sameSite.
+     *
+     * @param object&\OpenSwoole\Http\Response $rawSwooleResponse
      */
     private function writeCookies(Response $sfResponse, object $rawSwooleResponse): void
     {
@@ -172,7 +186,7 @@ final class ResponseConverter
     private function isSSE(Response $sfResponse): bool
     {
         return str_contains(
-            $sfResponse->headers->get('Content-Type', ''),
+            $sfResponse->headers->get('Content-Type', '') ?? '',
             'text/event-stream',
         );
     }
@@ -180,6 +194,8 @@ final class ResponseConverter
     /**
      * Disables HTTP compression and buffering for SSE.
      * Sets X-Accel-Buffering: no and Cache-Control: no-cache on the raw response.
+     *
+     * @param object&\OpenSwoole\Http\Response $rawSwooleResponse
      */
     private function disableBuffering(object $rawSwooleResponse): void
     {

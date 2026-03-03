@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyBundle\DependencyInjection;
 
+use Monolog\Logger;
+use Override;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\Extension;
@@ -20,9 +22,12 @@ use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
  */
 final class OctoExtension extends Extension
 {
+    #[Override]
     public function load(array $configs, ContainerBuilder $container): void
     {
         $configuration = new Configuration();
+
+        /** @var array{memory_warning_threshold: int, reset_warning_ms: int, kernel_reboot_every: int, messenger: array{channel_capacity: int, consumers: int, send_timeout: float}, realtime: array{ws_max_lifetime_seconds: int}, otel: array{enabled: bool}} $config */
         $config = $this->processConfiguration($configuration, $configs);
 
         // Map config to container parameters
@@ -57,10 +62,11 @@ final class OctoExtension extends Extension
         $this->configureOtel($container, $config);
     }
 
+    /** @param array{memory_warning_threshold: int, reset_warning_ms: int, kernel_reboot_every: int, messenger: array{channel_capacity: int, consumers: int, send_timeout: float}, realtime: array{ws_max_lifetime_seconds: int}, otel: array{enabled: bool}} $config */
     private function configureCore(ContainerBuilder $container, array $config): void
     {
         // Auto-register RequestIdProcessor as Monolog processor if Monolog is available
-        if (\class_exists(\Monolog\Logger::class) && $container->hasDefinition('Octo\SymfonyBridge\RequestIdProcessor')) {
+        if (class_exists(Logger::class) && $container->hasDefinition('Octo\SymfonyBridge\RequestIdProcessor')) {
             $definition = $container->getDefinition('Octo\SymfonyBridge\RequestIdProcessor');
             if (!$definition->hasTag('monolog.processor')) {
                 $definition->addTag('monolog.processor');
@@ -70,10 +76,12 @@ final class OctoExtension extends Extension
 
     /**
      * If symfony-messenger is installed, register OpenSwooleTransport + factory.
+     *
+     * @param array{memory_warning_threshold: int, reset_warning_ms: int, kernel_reboot_every: int, messenger: array{channel_capacity: int, consumers: int, send_timeout: float}, realtime: array{ws_max_lifetime_seconds: int}, otel: array{enabled: bool}} $config
      */
     private function configureMessenger(ContainerBuilder $container, array $config): void
     {
-        if (!\class_exists('Octo\SymfonyMessenger\OpenSwooleTransport')) {
+        if (!class_exists('Octo\SymfonyMessenger\OpenSwooleTransport')) {
             return;
         }
 
@@ -83,21 +91,25 @@ final class OctoExtension extends Extension
                 $config['messenger']['send_timeout'],
                 null, // logger injected via setter or autowiring
             ])
-            ->setPublic(false);
+            ->setPublic(false)
+        ;
 
-        if (\class_exists('Octo\SymfonyMessenger\OpenSwooleTransportFactory')) {
+        if (class_exists('Octo\SymfonyMessenger\OpenSwooleTransportFactory')) {
             $container->register('octo.messenger.transport_factory', 'Octo\SymfonyMessenger\OpenSwooleTransportFactory')
                 ->addTag('messenger.transport_factory')
-                ->setPublic(false);
+                ->setPublic(false)
+            ;
         }
     }
 
     /**
      * If symfony-realtime is installed, register WebSocketHandler + SSE helpers.
+     *
+     * @param array{memory_warning_threshold: int, reset_warning_ms: int, kernel_reboot_every: int, messenger: array{channel_capacity: int, consumers: int, send_timeout: float}, realtime: array{ws_max_lifetime_seconds: int}, otel: array{enabled: bool}} $config
      */
     private function configureRealtime(ContainerBuilder $container, array $config): void
     {
-        if (!\class_exists('Octo\SymfonyRealtime\RealtimeServerAdapter')) {
+        if (!class_exists('Octo\SymfonyRealtime\RealtimeServerAdapter')) {
             return;
         }
 
@@ -109,11 +121,14 @@ final class OctoExtension extends Extension
                 null, // WebSocketHandler — provided by the application
                 null, // logger
             ])
-            ->setPublic(true);
+            ->setPublic(true)
+        ;
     }
 
     /**
      * If symfony-otel is installed, configure span processor + metrics exporter.
+     *
+     * @param array{memory_warning_threshold: int, reset_warning_ms: int, kernel_reboot_every: int, messenger: array{channel_capacity: int, consumers: int, send_timeout: float}, realtime: array{ws_max_lifetime_seconds: int}, otel: array{enabled: bool}} $config
      */
     private function configureOtel(ContainerBuilder $container, array $config): void
     {
@@ -121,21 +136,24 @@ final class OctoExtension extends Extension
             return;
         }
 
-        if (!\class_exists('Octo\SymfonyOtel\OtelSpanFactory')) {
+        if (!class_exists('Octo\SymfonyOtel\OtelSpanFactory')) {
             return;
         }
 
         $container->register('octo.otel.span_factory', 'Octo\SymfonyOtel\OtelSpanFactory')
-            ->setPublic(false);
+            ->setPublic(false)
+        ;
 
-        if (\class_exists('Octo\SymfonyOtel\OtelRequestListener')) {
+        if (class_exists('Octo\SymfonyOtel\OtelRequestListener')) {
             $container->register('octo.otel.request_listener', 'Octo\SymfonyOtel\OtelRequestListener')
-                ->setPublic(false);
+                ->setPublic(false)
+            ;
         }
 
-        if (\class_exists('Octo\SymfonyOtel\OtelMetricsExporter')) {
+        if (class_exists('Octo\SymfonyOtel\OtelMetricsExporter')) {
             $container->register('octo.otel.metrics_exporter', 'Octo\SymfonyOtel\OtelMetricsExporter')
-                ->setPublic(false);
+                ->setPublic(false)
+            ;
         }
     }
 }

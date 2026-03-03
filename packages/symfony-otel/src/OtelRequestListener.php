@@ -7,6 +7,8 @@ namespace Octo\SymfonyOtel;
 use Octo\SymfonyOtel\Tracing\SpanInterface;
 use Octo\SymfonyOtel\Tracing\StatusCode;
 use Octo\SymfonyOtel\Tracing\TextMapPropagatorInterface;
+use OpenSwoole\Http\Request;
+use Throwable;
 
 /**
  * OTEL listener integrated into the HttpKernelAdapter lifecycle.
@@ -26,28 +28,28 @@ final class OtelRequestListener
     public function __construct(
         private readonly OtelSpanFactory $spanFactory,
         private readonly TextMapPropagatorInterface $propagator,
-    ) {
-    }
+    ) {}
 
     /**
      * Create the root span and extract incoming trace context.
      *
      * Called BEFORE HttpKernel::handle().
      *
-     * @param object $swooleRequest OpenSwoole Request (for W3C headers)
+     * @param object&Request $swooleRequest OpenSwoole Request (for W3C headers)
+     *
      * @return SpanInterface The active root span
      */
     public function beforeHandle(object $swooleRequest): SpanInterface
     {
-        $headers = $swooleRequest->header ?? [];
-        $server = $swooleRequest->server ?? [];
+        $headers = $swooleRequest->header;
+        $server = $swooleRequest->server;
 
         // Extract W3C trace context from incoming headers
         $parentContext = $this->propagator->extract($headers);
 
         return $this->spanFactory->createRootSpan(
             requestId: $headers['x-request-id'] ?? 'unknown',
-            method: strtoupper($server['request_method'] ?? 'GET'),
+            method: mb_strtoupper($server['request_method'] ?? 'GET'),
             url: $server['request_uri'] ?? '/',
             parentContext: $parentContext !== [] ? $parentContext : null,
         );
@@ -82,7 +84,7 @@ final class OtelRequestListener
      * If exception occurs before child spans are created, the root span
      * still captures the exception and can be ended correctly via afterHandle().
      */
-    public function onException(SpanInterface $rootSpan, \Throwable $e): void
+    public function onException(SpanInterface $rootSpan, Throwable $e): void
     {
         $rootSpan->recordException($e);
         $rootSpan->setStatus(StatusCode::STATUS_ERROR, $e->getMessage());

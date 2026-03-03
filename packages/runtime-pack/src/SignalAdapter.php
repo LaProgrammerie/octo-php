@@ -19,7 +19,7 @@ interface SignalAdapter
      * Install a process signal handler.
      *
      * @param int $signal Signal number (SIGTERM, SIGINT, etc.)
-     * @param callable $handler Signal handler callback
+     * @param callable(): void $handler Signal handler callback
      */
     public function installSignal(int $signal, callable $handler): void;
 
@@ -27,7 +27,8 @@ interface SignalAdapter
      * Schedule a one-shot timer.
      *
      * @param int $ms Delay in milliseconds
-     * @param callable $callback Timer callback
+     * @param callable(): void $callback Timer callback
+     *
      * @return int Timer ID
      */
     public function scheduleTimer(int $ms, callable $callback): int;

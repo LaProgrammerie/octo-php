@@ -15,7 +15,5 @@ final class SpanKind
     public const KIND_PRODUCER = 3;
     public const KIND_CONSUMER = 4;
 
-    private function __construct()
-    {
-    }
+    private function __construct() {}
 }

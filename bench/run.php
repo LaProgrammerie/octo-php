@@ -11,9 +11,13 @@ declare(strict_types=1);
  */
 
 require_once __DIR__ . '/Job.php';
+
 require_once __DIR__ . '/RunnerSync.php';
+
 require_once __DIR__ . '/RunnerAsync.php';
+
 require_once __DIR__ . '/Report.php';
+
 require_once __DIR__ . '/Matrix.php';
 
 use Octo\Bench\Matrix;
@@ -34,8 +38,12 @@ $options = getopt('', [
     'help',
 ]);
 
-if (isset($options['help'])) {
-    echo <<<HELP
+if ($options === false) {
+    $options = [];
+}
+
+if (array_key_exists('help', $options)) {
+    echo <<<'HELP'
 Async PHP Platform — Bench
 
 Options:
@@ -60,6 +68,7 @@ Examples:
   php bench/run.php --mode=async --jobs=10000 --concurrency=500
 
 HELP;
+
     exit(0);
 }
 
@@ -93,22 +102,26 @@ $yieldEvery = array_key_exists('yield-every', $options)
 
 $validModes = ['sync', 'async', 'both', 'matrix'];
 if (!in_array($mode, $validModes, true)) {
-    fwrite(STDERR, "Error: --mode must be one of: " . implode(', ', $validModes) . "\n");
+    fwrite(STDERR, 'Error: --mode must be one of: ' . implode(', ', $validModes) . "\n");
+
     exit(1);
 }
 
 if ($jobs <= 0) {
     fwrite(STDERR, "Error: --jobs must be > 0\n");
+
     exit(1);
 }
 
 if ($concurrency <= 0 && $mode !== 'sync') {
     fwrite(STDERR, "Error: --concurrency must be > 0\n");
+
     exit(1);
 }
 
 if ($cpuN < 0 || $ioMs < 0 || $jsonKb <= 0) {
     fwrite(STDERR, "Error: --cpu >= 0, --io-ms >= 0, --json-kb > 0\n");
+
     exit(1);
 }
 
@@ -126,6 +139,7 @@ if ($mode === 'matrix') {
 
     $matrix = new Matrix(jobs: $jobs, jsonKb: $jsonKb);
     $matrix->run();
+
     exit(0);
 }
 

@@ -6,14 +6,16 @@ namespace Octo\SymfonyBridge\Tests\Integration;
 
 require_once __DIR__ . '/IntegrationTestDoubles.php';
 
-use Octo\SymfonyBundle\DependencyInjection\OctoExtension;
-use Octo\SymfonyBundle\DependencyInjection\Compiler\ResetHookCompilerPass;
 use Octo\SymfonyBridge\HttpKernelAdapter;
+use Octo\SymfonyBridge\MetricsBridge;
+use Octo\SymfonyBridge\RequestIdProcessor;
 use Octo\SymfonyBridge\ResetHookInterface;
 use Octo\SymfonyBridge\ResetManager;
-use Octo\SymfonyBridge\RequestIdProcessor;
-use Octo\SymfonyBridge\MetricsBridge;
+use Octo\SymfonyBundle\DependencyInjection\Compiler\ResetHookCompilerPass;
+use Octo\SymfonyBundle\DependencyInjection\OctoExtension;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
+use stdClass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 
@@ -30,42 +32,28 @@ use Symfony\Component\DependencyInjection\Definition;
  */
 final class BundleIntegrationTest extends TestCase
 {
-    private function loadExtension(array $config = []): ContainerBuilder
-    {
-        $container = new ContainerBuilder();
-
-        // Provide required service stubs
-        $container->register('kernel', \stdClass::class);
-        $container->register('logger', \Psr\Log\NullLogger::class);
-
-        $extension = new OctoExtension();
-        $extension->load([$config], $container);
-
-        return $container;
-    }
-
     public function testCoreServicesRegistered(): void
     {
         $container = $this->loadExtension();
 
-        $this->assertTrue($container->hasDefinition(HttpKernelAdapter::class));
-        $this->assertTrue($container->hasDefinition(ResetManager::class));
-        $this->assertTrue($container->hasDefinition(RequestIdProcessor::class));
-        $this->assertTrue($container->hasDefinition(MetricsBridge::class));
+        self::assertTrue($container->hasDefinition(HttpKernelAdapter::class));
+        self::assertTrue($container->hasDefinition(ResetManager::class));
+        self::assertTrue($container->hasDefinition(RequestIdProcessor::class));
+        self::assertTrue($container->hasDefinition(MetricsBridge::class));
     }
 
     public function testDefaultConfigurationValues(): void
     {
         $container = $this->loadExtension();
 
-        $this->assertSame(104_857_600, $container->getParameter('octo.memory_warning_threshold'));
-        $this->assertSame(50, $container->getParameter('octo.reset_warning_ms'));
-        $this->assertSame(0, $container->getParameter('octo.kernel_reboot_every'));
-        $this->assertSame(100, $container->getParameter('octo.messenger.channel_capacity'));
-        $this->assertSame(1, $container->getParameter('octo.messenger.consumers'));
-        $this->assertSame(5.0, $container->getParameter('octo.messenger.send_timeout'));
-        $this->assertSame(3600, $container->getParameter('octo.realtime.ws_max_lifetime_seconds'));
-        $this->assertTrue($container->getParameter('octo.otel.enabled'));
+        self::assertSame(104_857_600, $container->getParameter('octo.memory_warning_threshold'));
+        self::assertSame(50, $container->getParameter('octo.reset_warning_ms'));
+        self::assertSame(0, $container->getParameter('octo.kernel_reboot_every'));
+        self::assertSame(100, $container->getParameter('octo.messenger.channel_capacity'));
+        self::assertSame(1, $container->getParameter('octo.messenger.consumers'));
+        self::assertSame(5.0, $container->getParameter('octo.messenger.send_timeout'));
+        self::assertSame(3600, $container->getParameter('octo.realtime.ws_max_lifetime_seconds'));
+        self::assertTrue($container->getParameter('octo.otel.enabled'));
     }
 
     public function testCustomConfigurationOverrides(): void
@@ -87,14 +75,14 @@ final class BundleIntegrationTest extends TestCase
             ],
         ]);
 
-        $this->assertSame(200_000_000, $container->getParameter('octo.memory_warning_threshold'));
-        $this->assertSame(100, $container->getParameter('octo.reset_warning_ms'));
-        $this->assertSame(500, $container->getParameter('octo.kernel_reboot_every'));
-        $this->assertSame(50, $container->getParameter('octo.messenger.channel_capacity'));
-        $this->assertSame(4, $container->getParameter('octo.messenger.consumers'));
-        $this->assertSame(10.0, $container->getParameter('octo.messenger.send_timeout'));
-        $this->assertSame(7200, $container->getParameter('octo.realtime.ws_max_lifetime_seconds'));
-        $this->assertFalse($container->getParameter('octo.otel.enabled'));
+        self::assertSame(200_000_000, $container->getParameter('octo.memory_warning_threshold'));
+        self::assertSame(100, $container->getParameter('octo.reset_warning_ms'));
+        self::assertSame(500, $container->getParameter('octo.kernel_reboot_every'));
+        self::assertSame(50, $container->getParameter('octo.messenger.channel_capacity'));
+        self::assertSame(4, $container->getParameter('octo.messenger.consumers'));
+        self::assertSame(10.0, $container->getParameter('octo.messenger.send_timeout'));
+        self::assertSame(7200, $container->getParameter('octo.realtime.ws_max_lifetime_seconds'));
+        self::assertFalse($container->getParameter('octo.otel.enabled'));
     }
 
     public function testAutoDetectionMessengerPackageInstalled(): void
@@ -102,7 +90,7 @@ final class BundleIntegrationTest extends TestCase
         $container = $this->loadExtension();
 
         // Since symfony-messenger IS installed in dev, the transport should be registered
-        $this->assertTrue(
+        self::assertTrue(
             $container->hasDefinition('octo.messenger.transport'),
             'Messenger transport should be auto-registered when package is installed',
         );
@@ -113,7 +101,7 @@ final class BundleIntegrationTest extends TestCase
         $container = $this->loadExtension();
 
         // Since symfony-realtime IS installed in dev, the adapter should be registered
-        $this->assertTrue(
+        self::assertTrue(
             $container->hasDefinition('octo.realtime.adapter'),
             'Realtime adapter should be auto-registered when package is installed',
         );
@@ -124,7 +112,7 @@ final class BundleIntegrationTest extends TestCase
         $container = $this->loadExtension();
 
         // Since symfony-otel IS installed in dev, OTEL services should be registered
-        $this->assertTrue(
+        self::assertTrue(
             $container->hasDefinition('octo.otel.span_factory'),
             'OTEL span factory should be auto-registered when package is installed',
         );
@@ -136,7 +124,7 @@ final class BundleIntegrationTest extends TestCase
             'otel' => ['enabled' => false],
         ]);
 
-        $this->assertFalse(
+        self::assertFalse(
             $container->hasDefinition('octo.otel.span_factory'),
             'OTEL services should NOT be registered when otel.enabled=false',
         );
@@ -145,8 +133,8 @@ final class BundleIntegrationTest extends TestCase
     public function testResetHookCompilerPassAutoTagsAndInjects(): void
     {
         $container = new ContainerBuilder();
-        $container->register('kernel', \stdClass::class);
-        $container->register('logger', \Psr\Log\NullLogger::class);
+        $container->register('kernel', stdClass::class);
+        $container->register('logger', NullLogger::class);
 
         $extension = new OctoExtension();
         $extension->load([[]], $container);
@@ -160,12 +148,26 @@ final class BundleIntegrationTest extends TestCase
         $pass->process($container);
 
         // The hook should be tagged
-        $this->assertTrue($hookDef->hasTag(ResetHookCompilerPass::TAG));
+        self::assertTrue($hookDef->hasTag(ResetHookCompilerPass::TAG));
 
         // The ResetManager should have addHook() method calls
         $resetManagerDef = $container->getDefinition(ResetManager::class);
         $methodCalls = $resetManagerDef->getMethodCalls();
-        $addHookCalls = array_filter($methodCalls, fn(array $call) => $call[0] === 'addHook');
-        $this->assertNotEmpty($addHookCalls, 'ResetManager should have addHook() calls for tagged services');
+        $addHookCalls = array_filter($methodCalls, static fn (array $call) => $call[0] === 'addHook');
+        self::assertNotEmpty($addHookCalls, 'ResetManager should have addHook() calls for tagged services');
+    }
+
+    private function loadExtension(array $config = []): ContainerBuilder
+    {
+        $container = new ContainerBuilder();
+
+        // Provide required service stubs
+        $container->register('kernel', stdClass::class);
+        $container->register('logger', NullLogger::class);
+
+        $extension = new OctoExtension();
+        $extension->load([$config], $container);
+
+        return $container;
     }
 }

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack;
 
+use const PHP_FLOAT_MAX;
+use const PHP_INT_MAX;
+
 /**
  * Internal metrics collector for the runtime pack.
  *
@@ -15,6 +18,9 @@ namespace Octo\RuntimePack;
  */
 final class MetricsCollector
 {
+    // --- Histogram bucketisé ---
+    /** @var list<float|int> */
+    private const HISTOGRAM_BUCKETS_MS = [5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000];
     // --- Counters ---
     private int $requestsTotal = 0;
 
@@ -36,10 +42,6 @@ final class MetricsCollector
     private int $scopeRejectedTotal = 0;
     private int $cooperativeYieldTotal = 0;
 
-    // --- Histogram bucketisé ---
-    /** @var list<int|float> */
-    private const HISTOGRAM_BUCKETS_MS = [5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000];
-
     /** @var array<int, int> bucket upper bound => count */
     private array $bucketCounts = [];
     private float $durationSumMs = 0.0;
@@ -50,7 +52,7 @@ final class MetricsCollector
     public function __construct()
     {
         foreach (self::HISTOGRAM_BUCKETS_MS as $bucket) {
-            $this->bucketCounts[$bucket] = 0;
+            $this->bucketCounts[(int) $bucket] = 0;
         }
         $this->bucketCounts[PHP_INT_MAX] = 0; // +Inf bucket
     }
@@ -60,7 +62,7 @@ final class MetricsCollector
     /** Increments the requests_total counter. */
     public function incrementRequests(): void
     {
-        $this->requestsTotal++;
+        ++$this->requestsTotal;
     }
 
     // ---- Gauges ----
@@ -112,7 +114,7 @@ final class MetricsCollector
     /** Increments the inflight_scopes gauge. */
     public function incrementInflightScopes(): void
     {
-        $this->inflightScopes++;
+        ++$this->inflightScopes;
     }
 
     /** Decrements the inflight_scopes gauge. */
@@ -124,43 +126,43 @@ final class MetricsCollector
     /** Increments the cancelled_requests_total counter. */
     public function incrementCancelledRequests(): void
     {
-        $this->cancelledRequestsTotal++;
+        ++$this->cancelledRequestsTotal;
     }
 
     /** Increments the blocking_tasks_total counter. */
     public function incrementBlockingTasks(): void
     {
-        $this->blockingTasksTotal++;
+        ++$this->blockingTasksTotal;
     }
 
     /** Increments the blocking_pool_rejected counter (queue full). */
     public function incrementBlockingPoolRejected(): void
     {
-        $this->blockingPoolRejected++;
+        ++$this->blockingPoolRejected;
     }
 
     /** Increments the blocking_pool_send_failed counter (pool down/broken socket). */
     public function incrementBlockingPoolSendFailed(): void
     {
-        $this->blockingPoolSendFailed++;
+        ++$this->blockingPoolSendFailed;
     }
 
     /** Increments the scope_rejected_total counter (semaphore full). */
     public function incrementScopeRejected(): void
     {
-        $this->scopeRejectedTotal++;
+        ++$this->scopeRejectedTotal;
     }
 
     /** Records a scope child (updates high watermark). */
     public function recordScopeChild(): void
     {
-        $this->taskScopeChildrenMax++;
+        ++$this->taskScopeChildrenMax;
     }
 
     /** Increments the cooperative_yield_total counter. */
     public function incrementCooperativeYield(): void
     {
-        $this->cooperativeYieldTotal++;
+        ++$this->cooperativeYieldTotal;
     }
 
     // ---- Histogram ----
@@ -174,7 +176,7 @@ final class MetricsCollector
     public function recordDuration(float $durationMs): void
     {
         $this->durationSumMs += $durationMs;
-        $this->durationCount++;
+        ++$this->durationCount;
 
         if ($durationMs < $this->durationMinMs) {
             $this->durationMinMs = $durationMs;
@@ -186,13 +188,14 @@ final class MetricsCollector
         // Find the correct bucket: value goes into the first bucket where value <= boundary
         foreach (self::HISTOGRAM_BUCKETS_MS as $bucket) {
             if ($durationMs <= $bucket) {
-                $this->bucketCounts[$bucket]++;
+                $this->bucketCounts[(int) $bucket] = ($this->bucketCounts[(int) $bucket] ?? 0) + 1;
+
                 return;
             }
         }
 
         // Above all defined buckets → +Inf
-        $this->bucketCounts[PHP_INT_MAX]++;
+        $this->bucketCounts[PHP_INT_MAX] = ($this->bucketCounts[PHP_INT_MAX] ?? 0) + 1;
     }
 
     // ---- Snapshot ----
@@ -229,9 +232,9 @@ final class MetricsCollector
     {
         $buckets = [];
         foreach (self::HISTOGRAM_BUCKETS_MS as $bucket) {
-            $buckets[] = ['le' => $bucket, 'count' => $this->bucketCounts[$bucket]];
+            $buckets[] = ['le' => $bucket, 'count' => $this->bucketCounts[(int) $bucket] ?? 0];
         }
-        $buckets[] = ['le' => '+Inf', 'count' => $this->bucketCounts[PHP_INT_MAX]];
+        $buckets[] = ['le' => '+Inf', 'count' => $this->bucketCounts[PHP_INT_MAX] ?? 0];
 
         return [
             'requests_total' => $this->requestsTotal,

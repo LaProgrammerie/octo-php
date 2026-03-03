@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyRealtime\Tests\Property;
 
-use Octo\SymfonyRealtime\SseEvent;
 use Eris\Generators;
 use Eris\TestTrait;
+use Octo\SymfonyRealtime\SseEvent;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Property 14: SSE format/parse round-trip
+ * Property 14: SSE format/parse round-trip.
  *
  * **Validates: Requirements 13.4**
  *
@@ -32,7 +32,7 @@ final class SseRoundTripTest extends TestCase
 
         $this->forAll(
             Generators::string(),
-        )->then(function (string $data): void {
+        )->then(static function (string $data): void {
             // Filter \r to avoid cross-platform issues in SSE parsing
             $data = str_replace("\r", '', $data);
 
@@ -56,7 +56,7 @@ final class SseRoundTripTest extends TestCase
             Generators::elements(['message', 'update', 'ping', 'custom']),
             Generators::elements(['1', '42', 'evt-abc', 'id-xyz']),
             Generators::choose(0, 60000),
-        )->then(function (string $data, string $event, string $id, int $retry): void {
+        )->then(static function (string $data, string $event, string $id, int $retry): void {
             $data = str_replace("\r", '', $data);
 
             $original = new SseEvent(
@@ -82,9 +82,9 @@ final class SseRoundTripTest extends TestCase
 
         $this->forAll(
             Generators::choose(1, 20),
-        )->then(function (int $lineCount): void {
+        )->then(static function (int $lineCount): void {
             $lines = [];
-            for ($i = 0; $i < $lineCount; $i++) {
+            for ($i = 0; $i < $lineCount; ++$i) {
                 $lines[] = 'content-line-' . $i . '-' . bin2hex(random_bytes(4));
             }
             $data = implode("\n", $lines);
@@ -112,7 +112,7 @@ final class SseRoundTripTest extends TestCase
             Generators::elements([null, 'evt-type']),
             Generators::elements([null, 'id-123']),
             Generators::elements([null, 1000]),
-        )->then(function (?string $event, ?string $id, ?int $retry): void {
+        )->then(static function (?string $event, ?string $id, ?int $retry): void {
             $original = new SseEvent(
                 data: 'test-payload',
                 event: $event,

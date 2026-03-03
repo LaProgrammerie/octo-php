@@ -6,9 +6,9 @@ namespace Octo\SymfonyBridge\Tests\Integration;
 
 use Octo\SymfonyBridge\ResetHookInterface;
 use Psr\Log\NullLogger;
+use Stringable;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Contracts\Service\ResetInterface;
 
@@ -20,12 +20,12 @@ use Symfony\Contracts\Service\ResetInterface;
 
 // --- Spy Logger ---
 
-class IntegrationSpyLogger extends NullLogger
+final class IntegrationSpyLogger extends NullLogger
 {
     /** @var list<array{level: string, message: string, context: array}> */
     public array $logs = [];
 
-    public function log(mixed $level, string|\Stringable $message, array $context = []): void
+    public function log(mixed $level, string|Stringable $message, array $context = []): void
     {
         $this->logs[] = [
             'level' => (string) $level,
@@ -41,6 +41,7 @@ class IntegrationSpyLogger extends NullLogger
                 return true;
             }
         }
+
         return false;
     }
 
@@ -49,15 +50,14 @@ class IntegrationSpyLogger extends NullLogger
     {
         return array_values(array_filter(
             $this->logs,
-            fn(array $log) => $log['level'] === $level,
+            static fn (array $log) => $log['level'] === $level,
         ));
     }
 }
 
-
 // --- Mini HttpKernel (test double implementing HttpKernelInterface) ---
 
-class MiniHttpKernel implements HttpKernelInterface, ResetInterface
+final class MiniHttpKernel implements HttpKernelInterface, ResetInterface
 {
     public int $handleCount = 0;
     public int $terminateCount = 0;
@@ -71,18 +71,19 @@ class MiniHttpKernel implements HttpKernelInterface, ResetInterface
 
     public function handle(Request $request, int $type = self::MAIN_REQUEST, bool $catch = true): Response
     {
-        $this->handleCount++;
+        ++$this->handleCount;
+
         return $this->fixedResponse;
     }
 
     public function terminate(Request $request, Response $response): void
     {
-        $this->terminateCount++;
+        ++$this->terminateCount;
     }
 
     public function reset(): void
     {
-        $this->resetCount++;
+        ++$this->resetCount;
     }
 
     public function setResponse(Response $response): void
@@ -93,33 +94,37 @@ class MiniHttpKernel implements HttpKernelInterface, ResetInterface
 
 // --- Counting Reset Hook ---
 
-class CountingResetHook implements ResetHookInterface
+final class CountingResetHook implements ResetHookInterface
 {
     public int $resetCount = 0;
 
     public function reset(): void
     {
-        $this->resetCount++;
+        ++$this->resetCount;
     }
 }
 
 // --- Fake OpenSwoole Request ---
 
-class IntegrationFakeSwooleRequest
+final class IntegrationFakeSwooleRequest
 {
     /** @var array<string, string> */
     public array $header = [];
+
     /** @var array<string, mixed> */
     public array $server = [];
-    /** @var array<string, string>|null */
+
+    /** @var null|array<string, string> */
     public ?array $get = null;
-    /** @var array<string, string>|null */
+
+    /** @var null|array<string, string> */
     public ?array $post = null;
-    /** @var array<string, string>|null */
+
+    /** @var null|array<string, string> */
     public ?array $cookie = null;
-    /** @var array<string, mixed>|null */
+
+    /** @var null|array<string, mixed> */
     public ?array $files = null;
-    /** @var int */
     public int $fd = 0;
     private string $rawBody;
 
@@ -130,7 +135,7 @@ class IntegrationFakeSwooleRequest
         string $body = '',
     ) {
         $this->server = [
-            'request_method' => strtolower($method),
+            'request_method' => mb_strtolower($method),
             'request_uri' => $uri,
             'query_string' => '',
             'server_protocol' => 'HTTP/1.1',
@@ -152,6 +157,7 @@ class IntegrationFakeSwooleRequest
     public static function get(string $uri = '/', string $requestId = ''): self
     {
         $headers = $requestId !== '' ? ['x-request-id' => $requestId] : [];
+
         return new self('GET', $uri, $headers);
     }
 
@@ -172,17 +178,21 @@ class IntegrationFakeSwooleRequest
 
 // --- Fake OpenSwoole Response (records all operations) ---
 
-class IntegrationFakeSwooleResponse
+final class IntegrationFakeSwooleResponse
 {
     public ?int $statusCode = null;
+
     /** @var array<string, string> */
     public array $headers = [];
+
     /** @var list<array{name: string, value: string, expires: int, path: string, domain: string, secure: bool, httpOnly: bool, sameSite: string}> */
     public array $cookies = [];
+
     /** @var list<string> */
     public array $writes = [];
     public bool $endCalled = false;
     public string $endContent = '';
+
     /** @var list<string> */
     public array $pushes = [];
     public bool $closed = false;
@@ -200,6 +210,7 @@ class IntegrationFakeSwooleResponse
     public function write(string $content): bool
     {
         $this->writes[] = $content;
+
         return true;
     }
 

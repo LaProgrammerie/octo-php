@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack\Tests\Unit;
 
+use const SWOOLE_HOOK_CURL;
+
 use Octo\RuntimePack\ExecutionPolicy;
 use Octo\RuntimePack\ExecutionStrategy;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+use function define;
+use function defined;
+
 // Define SWOOLE_HOOK_CURL if not available (no OpenSwoole extension in test env)
-if (!\defined('SWOOLE_HOOK_CURL')) {
-    \define('SWOOLE_HOOK_CURL', 1 << 23);
+if (!defined('SWOOLE_HOOK_CURL')) {
+    define('SWOOLE_HOOK_CURL', 1 << 23);
 }
 
 /**

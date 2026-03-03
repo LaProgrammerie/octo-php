@@ -13,7 +13,8 @@ interface SpanExporterInterface
      * Export a batch of spans.
      *
      * @param list<SpanInterface> $spans
-     * @return bool True if export succeeded.
+     *
+     * @return bool true if export succeeded
      */
     public function export(array $spans): bool;
 

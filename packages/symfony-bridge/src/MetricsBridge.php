@@ -30,12 +30,11 @@ final class MetricsBridge
 
     public function __construct(
         private readonly MetricsCollector $collector,
-    ) {
-    }
+    ) {}
 
     public function incrementRequests(): void
     {
-        $this->requestsTotal++;
+        ++$this->requestsTotal;
     }
 
     public function recordRequestDuration(float $ms): void
@@ -45,7 +44,7 @@ final class MetricsBridge
 
     public function incrementExceptions(): void
     {
-        $this->exceptionsTotal++;
+        ++$this->exceptionsTotal;
     }
 
     public function recordResetDuration(float $ms): void

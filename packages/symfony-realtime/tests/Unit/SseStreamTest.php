@@ -37,7 +37,7 @@ final class SseStreamTest extends TestCase
     public function shouldSendKeepAliveReturnsFalseImmediately(): void
     {
         $stream = new SseStream(
-            writeFn: fn(string $s) => true,
+            writeFn: static fn (string $s) => true,
             keepAliveSeconds: 15,
         );
 
@@ -49,7 +49,7 @@ final class SseStreamTest extends TestCase
     {
         // Use 0 seconds so it's immediately due
         $stream = new SseStream(
-            writeFn: fn(string $s) => true,
+            writeFn: static fn (string $s) => true,
             keepAliveSeconds: 0,
         );
 
@@ -60,7 +60,7 @@ final class SseStreamTest extends TestCase
     public function sendResetsKeepAliveTimer(): void
     {
         $stream = new SseStream(
-            writeFn: fn(string $s) => true,
+            writeFn: static fn (string $s) => true,
             keepAliveSeconds: 9999,
         );
 
@@ -71,7 +71,7 @@ final class SseStreamTest extends TestCase
     #[Test]
     public function tracksLastEventId(): void
     {
-        $stream = new SseStream(writeFn: fn(string $s) => true);
+        $stream = new SseStream(writeFn: static fn (string $s) => true);
         self::assertNull($stream->getLastEventId());
 
         $stream->send(new SseEvent(data: 'a', id: 'evt-1'));
@@ -89,7 +89,7 @@ final class SseStreamTest extends TestCase
     public function supportsLastEventIdFromConstructor(): void
     {
         $stream = new SseStream(
-            writeFn: fn(string $s) => true,
+            writeFn: static fn (string $s) => true,
             lastEventId: 'reconnect-42',
         );
 
@@ -100,12 +100,14 @@ final class SseStreamTest extends TestCase
      * Creates a write callable that captures all written content.
      *
      * @param list<string> $written
+     *
      * @return callable(string): bool
      */
     private function captureFn(array &$written): callable
     {
-        return function (string $content) use (&$written): bool {
+        return static function (string $content) use (&$written): bool {
             $written[] = $content;
+
             return true;
         };
     }

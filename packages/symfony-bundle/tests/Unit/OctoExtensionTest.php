@@ -114,8 +114,8 @@ final class OctoExtensionTest extends TestCase
      */
     public function testMessengerServicesRegisteredWhenAvailable(): void
     {
-        if (!\class_exists('Octo\SymfonyMessenger\OpenSwooleTransport')) {
-            $this->markTestSkipped('symfony-messenger package not autoloaded');
+        if (!class_exists('Octo\SymfonyMessenger\OpenSwooleTransport')) {
+            self::markTestSkipped('symfony-messenger package not autoloaded');
         }
 
         $this->extension->load([], $this->container);
@@ -129,8 +129,8 @@ final class OctoExtensionTest extends TestCase
      */
     public function testRealtimeServicesRegisteredWhenAvailable(): void
     {
-        if (!\class_exists('Octo\SymfonyRealtime\RealtimeServerAdapter')) {
-            $this->markTestSkipped('symfony-realtime package not autoloaded');
+        if (!class_exists('Octo\SymfonyRealtime\RealtimeServerAdapter')) {
+            self::markTestSkipped('symfony-realtime package not autoloaded');
         }
 
         $this->extension->load([], $this->container);
@@ -144,8 +144,8 @@ final class OctoExtensionTest extends TestCase
      */
     public function testOtelServicesRegisteredWhenAvailable(): void
     {
-        if (!\class_exists('Octo\SymfonyOtel\OtelSpanFactory')) {
-            $this->markTestSkipped('symfony-otel package not autoloaded');
+        if (!class_exists('Octo\SymfonyOtel\OtelSpanFactory')) {
+            self::markTestSkipped('symfony-otel package not autoloaded');
         }
 
         $this->extension->load([], $this->container);

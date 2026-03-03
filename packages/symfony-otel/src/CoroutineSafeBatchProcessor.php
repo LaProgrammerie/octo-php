@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyOtel;
 
+use Closure;
 use Octo\SymfonyOtel\Tracing\SpanExporterInterface;
 use Octo\SymfonyOtel\Tracing\SpanInterface;
 use Octo\SymfonyOtel\Tracing\SpanProcessorInterface;
+use Override;
+
+use function count;
 
 /**
  * Coroutine-safe batch span processor.
@@ -30,36 +34,32 @@ final class CoroutineSafeBatchProcessor implements SpanProcessorInterface
 
     private ?int $timerId = null;
 
-    /** @var callable(int, callable): int */
-    private $timerStarter;
+    private readonly Closure $timerStarter; // @phpstan-ignore missingType.callable
 
-    /** @var callable(int): void */
-    private $timerClearer;
+    private readonly Closure $timerClearer; // @phpstan-ignore missingType.callable
 
     /**
-     * @param SpanExporterInterface $exporter  The span exporter
-     * @param int $batchSize                   Max spans before auto-flush (default 512)
-     * @param int $exportIntervalMs            Periodic export interval in ms (default 5000)
-     * @param callable|null $timerStarter      Injectable timer starter (default: no-op for tests)
-     * @param callable|null $timerClearer      Injectable timer clearer (default: no-op for tests)
+     * @phpstan-param null|\Closure(int, callable): int $timerStarter
+     * @phpstan-param null|\Closure(int): void $timerClearer
      */
-    public function __construct(
+    public function __construct(// @phpstan-ignore missingType.callable
         private readonly SpanExporterInterface $exporter,
         private readonly int $batchSize = 512,
         private readonly int $exportIntervalMs = 5000,
-        ?callable $timerStarter = null,
-        ?callable $timerClearer = null,
+        ?Closure $timerStarter = null,
+        ?Closure $timerClearer = null,
     ) {
-        // Default: no-op timer for tests. In production, inject OpenSwoole\Timer::tick/clear.
-        $this->timerStarter = $timerStarter ?? static fn(int $ms, callable $cb): int => 0;
-        $this->timerClearer = $timerClearer ?? static fn(int $id): null => null;
+        $this->timerStarter = $timerStarter ?? static fn (int $ms, callable $cb): int => 0;
+        $this->timerClearer = $timerClearer ?? static fn (int $id): null => null;
     }
 
+    #[Override]
     public function onStart(SpanInterface $span): void
     {
         // No-op for batch processor — spans are collected on end.
     }
 
+    #[Override]
     public function onEnd(SpanInterface $span): void
     {
         $this->batch[] = $span;
@@ -69,11 +69,13 @@ final class CoroutineSafeBatchProcessor implements SpanProcessorInterface
         }
     }
 
+    #[Override]
     public function forceFlush(): bool
     {
         return $this->flush();
     }
 
+    #[Override]
     public function shutdown(): bool
     {
         if ($this->timerId !== null) {
@@ -101,7 +103,7 @@ final class CoroutineSafeBatchProcessor implements SpanProcessorInterface
 
         $this->timerId = ($this->timerStarter)(
             $this->exportIntervalMs,
-            fn() => $this->flush(),
+            fn () => $this->flush(),
         );
     }
 

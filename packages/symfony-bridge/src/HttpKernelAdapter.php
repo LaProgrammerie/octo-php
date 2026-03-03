@@ -4,11 +4,20 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyBridge;
 
+use const ENT_QUOTES;
+use const JSON_UNESCAPED_SLASHES;
+use const JSON_UNESCAPED_UNICODE;
+
 use Octo\RuntimePack\JsonLogger;
 use Octo\RuntimePack\MetricsCollector;
+use OpenSwoole\Http\Request;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\ErrorHandler\ErrorRenderer\HtmlErrorRenderer;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
+use Throwable;
+
+use function sprintf;
 
 /**
  * Callable handler compatible with ServerBootstrap::run($handler).
@@ -82,25 +91,31 @@ final class HttpKernelAdapter
      * For double-send protection, the bridge tracks whether it has already
      * written a response via an internal flag.
      *
-     * @param object $swooleRequest  OpenSwoole\Http\Request
-     * @param object $swooleResponse OpenSwoole\Http\Response (raw or ResponseFacade)
+     * @param object&Request $swooleRequest OpenSwoole\Http\Request
+     * @param object&\OpenSwoole\Http\Response $swooleResponse OpenSwoole\Http\Response (raw or ResponseFacade)
      */
     public function __invoke(object $swooleRequest, object $swooleResponse): void
     {
-        $startTime = \microtime(true);
-        $this->requestCount++;
+        $startTime = microtime(true);
+        ++$this->requestCount;
         $exceptionClass = null;
         $statusCode = 200;
         $responseSent = false;
 
         // 1. Extract request_id
-        $headers = $swooleRequest->header ?? [];
-        $requestId = $headers['x-request-id'] ?? \bin2hex(\random_bytes(8));
+        $headers = $swooleRequest->header;
+        $requestId = $headers['x-request-id'] ?? bin2hex(random_bytes(8));
 
         // Check if the response object exposes isSent() (ResponseFacade from runtime pack)
-        $isAlreadySent = fn(): bool =>
-            (\method_exists($swooleResponse, 'isSent') && $swooleResponse->isSent())
-            || $responseSent;
+        $isAlreadySent = static function () use ($swooleResponse, &$responseSent): bool {
+            // $responseSent is captured by reference — updated after response is written
+            /** @var bool $responseSent */
+            if ($responseSent) {
+                return true;
+            }
+
+            return method_exists($swooleResponse, 'isSent') && $swooleResponse->isSent();
+        };
 
         try {
             // 2. Convert request
@@ -130,7 +145,7 @@ final class HttpKernelAdapter
                         HttpKernelInterface::MAIN_REQUEST,
                     );
                     $statusCode = $sfResponse->getStatusCode();
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     $exceptionClass = $e::class;
                     $this->metricsBridge?->incrementExceptions();
                     $sfResponse = $this->handleException($e, $requestId);
@@ -138,7 +153,7 @@ final class HttpKernelAdapter
                 }
 
                 // 5. Convert response → OpenSwoole (if not already sent)
-                if (!$isAlreadySent()) {
+                if (!$isAlreadySent()) { // @phpstan-ignore booleanNot.alwaysTrue (by-ref mutation in closure not tracked)
                     $this->responseConverter->convert($sfResponse, $swooleResponse, $swooleResponse);
                     $responseSent = true;
                 } else {
@@ -150,12 +165,12 @@ final class HttpKernelAdapter
             }
 
             // 6. kernel->terminate()
-            if (\method_exists($this->kernel, 'terminate')) {
+            if (method_exists($this->kernel, 'terminate')) {
                 $this->kernel->terminate($sfRequest, $sfResponse);
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // Catch-all: no exception must bubble up to the runtime pack
-            $exceptionClass = $exceptionClass ?? $e::class;
+            $exceptionClass ??= $e::class;
             $this->metricsBridge?->incrementExceptions();
             $this->logger->error('Unhandled exception in HttpKernelAdapter', [
                 'request_id' => $requestId,
@@ -167,15 +182,16 @@ final class HttpKernelAdapter
             // Try to send a 500 if response not yet sent
             if (!$isAlreadySent()) {
                 $statusCode = 500;
+
                 try {
                     $swooleResponse->status(500);
                     $swooleResponse->header('Content-Type', 'application/json');
-                    $swooleResponse->end(\json_encode(
+                    $swooleResponse->end(json_encode(
                         ['error' => 'Internal Server Error'],
-                        \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES,
-                    ));
+                        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+                    ) ?: '{"error":"Internal Server Error"}');
                     $responseSent = true;
-                } catch (\Throwable) {
+                } catch (Throwable) {
                     // Response write failed — nothing more we can do
                 }
             }
@@ -183,7 +199,7 @@ final class HttpKernelAdapter
             // 7. ResetManager::reset() — ALWAYS executed
             try {
                 $this->resetManager->reset($requestId);
-            } catch (\Throwable $e) {
+            } catch (Throwable $e) {
                 $this->logger->error('Reset failed in finally block', [
                     'request_id' => $requestId,
                     'error' => $e->getMessage(),
@@ -195,7 +211,7 @@ final class HttpKernelAdapter
             $this->requestIdProcessor->setCurrentRequest(null);
 
             // 8. Metrics
-            $durationMs = (\microtime(true) - $startTime) * 1000;
+            $durationMs = (microtime(true) - $startTime) * 1000;
             $this->metricsBridge?->incrementRequests();
             $this->metricsBridge?->recordRequestDuration($durationMs);
 
@@ -206,7 +222,7 @@ final class HttpKernelAdapter
             $logContext = [
                 'request_id' => $requestId,
                 'status_code' => $statusCode,
-                'duration_ms' => \round($durationMs, 2),
+                'duration_ms' => round($durationMs, 2),
                 'component' => 'symfony_bridge',
             ];
             if ($exceptionClass !== null) {
@@ -247,7 +263,7 @@ final class HttpKernelAdapter
      * Prod: 500 JSON generic {"error":"Internal Server Error"} — no stacktrace.
      * Dev: Symfony error page with stacktrace via HtmlErrorRenderer.
      */
-    private function handleException(\Throwable $e, string $requestId): Response
+    private function handleException(Throwable $e, string $requestId): Response
     {
         $this->logger->error('Exception during request handling', [
             'request_id' => $requestId,
@@ -261,10 +277,10 @@ final class HttpKernelAdapter
         }
 
         return new Response(
-            \json_encode(
+            json_encode(
                 ['error' => 'Internal Server Error'],
-                \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES,
-            ),
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+            ) ?: '{"error":"Internal Server Error"}',
             500,
             ['Content-Type' => 'application/json'],
         );
@@ -273,11 +289,11 @@ final class HttpKernelAdapter
     /**
      * Renders a dev-mode error page using Symfony ErrorHandler.
      */
-    private function renderDevError(\Throwable $e): Response
+    private function renderDevError(Throwable $e): Response
     {
         try {
-            if (\class_exists(\Symfony\Component\ErrorHandler\ErrorRenderer\HtmlErrorRenderer::class)) {
-                $renderer = new \Symfony\Component\ErrorHandler\ErrorRenderer\HtmlErrorRenderer(true);
+            if (class_exists(HtmlErrorRenderer::class)) {
+                $renderer = new HtmlErrorRenderer(true);
                 $rendered = $renderer->render($e);
 
                 return new Response(
@@ -286,17 +302,17 @@ final class HttpKernelAdapter
                     $rendered->getHeaders(),
                 );
             }
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // Fall through to generic response
         }
 
         // Fallback: plain text with stacktrace
         return new Response(
-            \sprintf(
+            sprintf(
                 "<pre>%s: %s\n\n%s</pre>",
-                \htmlspecialchars($e::class, \ENT_QUOTES),
-                \htmlspecialchars($e->getMessage(), \ENT_QUOTES),
-                \htmlspecialchars($e->getTraceAsString(), \ENT_QUOTES),
+                htmlspecialchars($e::class, ENT_QUOTES),
+                htmlspecialchars($e->getMessage(), ENT_QUOTES),
+                htmlspecialchars($e->getTraceAsString(), ENT_QUOTES),
             ),
             500,
             ['Content-Type' => 'text/html'],
@@ -315,15 +331,15 @@ final class HttpKernelAdapter
                 'component' => 'symfony_bridge',
             ]);
 
-            if (\method_exists($this->kernel, 'shutdown')) {
+            if (method_exists($this->kernel, 'shutdown')) {
                 $this->kernel->shutdown();
             }
-            if (\method_exists($this->kernel, 'boot')) {
+            if (method_exists($this->kernel, 'boot')) {
                 $this->kernel->boot();
             }
 
             $this->rebuildReferences();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->logger->error('Kernel reboot failed', [
                 'request_id' => $requestId,
                 'error' => $e->getMessage(),
@@ -352,7 +368,7 @@ final class HttpKernelAdapter
      */
     private function measureMemory(string $requestId): void
     {
-        $rssBytes = \memory_get_usage(true);
+        $rssBytes = memory_get_usage(true);
 
         $this->metricsBridge?->recordMemoryRss($rssBytes);
 

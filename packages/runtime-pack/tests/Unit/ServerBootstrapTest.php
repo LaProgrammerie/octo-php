@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack\Tests\Unit;
 
+use Octo\RuntimePack\RequestHandler;
 use Octo\RuntimePack\ServerBootstrap;
+use Octo\RuntimePack\ServerConfig;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
+use ReflectionMethod;
 
 /**
  * Minimal unit tests for ServerBootstrap.
@@ -26,64 +30,64 @@ final class ServerBootstrapTest extends TestCase
 {
     public function testClassExists(): void
     {
-        $this->assertTrue(class_exists(ServerBootstrap::class));
+        self::assertTrue(class_exists(ServerBootstrap::class));
     }
 
     public function testClassIsFinal(): void
     {
-        $reflection = new \ReflectionClass(ServerBootstrap::class);
-        $this->assertTrue($reflection->isFinal());
+        $reflection = new ReflectionClass(ServerBootstrap::class);
+        self::assertTrue($reflection->isFinal());
     }
 
     public function testRunMethodExists(): void
     {
-        $reflection = new \ReflectionClass(ServerBootstrap::class);
-        $this->assertTrue($reflection->hasMethod('run'));
+        $reflection = new ReflectionClass(ServerBootstrap::class);
+        self::assertTrue($reflection->hasMethod('run'));
     }
 
     public function testRunMethodIsPublicStatic(): void
     {
-        $method = new \ReflectionMethod(ServerBootstrap::class, 'run');
-        $this->assertTrue($method->isPublic());
-        $this->assertTrue($method->isStatic());
+        $method = new ReflectionMethod(ServerBootstrap::class, 'run');
+        self::assertTrue($method->isPublic());
+        self::assertTrue($method->isStatic());
     }
 
     public function testRunMethodReturnTypeIsVoid(): void
     {
-        $method = new \ReflectionMethod(ServerBootstrap::class, 'run');
+        $method = new ReflectionMethod(ServerBootstrap::class, 'run');
         $returnType = $method->getReturnType();
-        $this->assertNotNull($returnType);
-        $this->assertSame('void', $returnType->getName());
+        self::assertNotNull($returnType);
+        self::assertSame('void', $returnType->getName());
     }
 
     public function testRunMethodHasExpectedParameters(): void
     {
-        $method = new \ReflectionMethod(ServerBootstrap::class, 'run');
+        $method = new ReflectionMethod(ServerBootstrap::class, 'run');
         $params = $method->getParameters();
 
-        $this->assertCount(3, $params);
+        self::assertCount(3, $params);
 
         // $appHandler: callable
-        $this->assertSame('appHandler', $params[0]->getName());
-        $this->assertFalse($params[0]->isOptional());
+        self::assertSame('appHandler', $params[0]->getName());
+        self::assertFalse($params[0]->isOptional());
 
         // $production: bool, default false
-        $this->assertSame('production', $params[1]->getName());
-        $this->assertTrue($params[1]->isOptional());
-        $this->assertFalse($params[1]->getDefaultValue());
+        self::assertSame('production', $params[1]->getName());
+        self::assertTrue($params[1]->isOptional());
+        self::assertFalse($params[1]->getDefaultValue());
 
         // $jobRegistrar: ?callable, default null
-        $this->assertSame('jobRegistrar', $params[2]->getName());
-        $this->assertTrue($params[2]->isOptional());
-        $this->assertNull($params[2]->getDefaultValue());
+        self::assertSame('jobRegistrar', $params[2]->getName());
+        self::assertTrue($params[2]->isOptional());
+        self::assertNull($params[2]->getDefaultValue());
     }
 
     public function testBuildSettingsProducesCorrectMapping(): void
     {
         // Access private buildSettings via reflection
-        $method = new \ReflectionMethod(ServerBootstrap::class, 'buildSettings');
+        $method = new ReflectionMethod(ServerBootstrap::class, 'buildSettings');
 
-        $config = new \Octo\RuntimePack\ServerConfig(
+        $config = new ServerConfig(
             host: '127.0.0.1',
             port: 9090,
             workers: 4,
@@ -96,46 +100,46 @@ final class ServerBootstrapTest extends TestCase
         $settings = $method->invoke(null, $config);
 
         // Verify all expected OpenSwoole settings
-        $this->assertSame(4, $settings['worker_num']);
-        $this->assertSame(4_194_304, $settings['package_max_length']);
-        $this->assertSame(2048, $settings['max_connection']);
-        $this->assertSame(5000, $settings['max_request']);
-        $this->assertTrue($settings['open_http_protocol']);
-        $this->assertTrue($settings['http_compression']);
+        self::assertSame(4, $settings['worker_num']);
+        self::assertSame(4_194_304, $settings['package_max_length']);
+        self::assertSame(2048, $settings['max_connection']);
+        self::assertSame(5000, $settings['max_request']);
+        self::assertTrue($settings['open_http_protocol']);
+        self::assertTrue($settings['http_compression']);
     }
 
     public function testBuildSettingsWithDefaults(): void
     {
-        $method = new \ReflectionMethod(ServerBootstrap::class, 'buildSettings');
+        $method = new ReflectionMethod(ServerBootstrap::class, 'buildSettings');
 
-        $config = new \Octo\RuntimePack\ServerConfig();
+        $config = new ServerConfig();
         $settings = $method->invoke(null, $config);
 
         // Default values from ServerConfig
-        $this->assertSame(0, $settings['worker_num']); // 0 = auto-detect (resolved by factory)
-        $this->assertSame(2_097_152, $settings['package_max_length']); // 2 MB
-        $this->assertSame(1024, $settings['max_connection']);
-        $this->assertSame(10_000, $settings['max_request']);
-        $this->assertTrue($settings['open_http_protocol']);
-        $this->assertTrue($settings['http_compression']);
+        self::assertSame(0, $settings['worker_num']); // 0 = auto-detect (resolved by factory)
+        self::assertSame(2_097_152, $settings['package_max_length']); // 2 MB
+        self::assertSame(1024, $settings['max_connection']);
+        self::assertSame(10_000, $settings['max_request']);
+        self::assertTrue($settings['open_http_protocol']);
+        self::assertTrue($settings['http_compression']);
     }
 
     public function testBuildSettingsDoesNotContainUnsupportedOptions(): void
     {
-        $method = new \ReflectionMethod(ServerBootstrap::class, 'buildSettings');
+        $method = new ReflectionMethod(ServerBootstrap::class, 'buildSettings');
 
-        $config = new \Octo\RuntimePack\ServerConfig();
+        $config = new ServerConfig();
         $settings = $method->invoke(null, $config);
 
         // http_server_software is not supported in OpenSwoole 26.x
-        $this->assertArrayNotHasKey('http_server_software', $settings);
+        self::assertArrayNotHasKey('http_server_software', $settings);
     }
 
     public function testBuildSettingsContainsExactlyExpectedKeys(): void
     {
-        $method = new \ReflectionMethod(ServerBootstrap::class, 'buildSettings');
+        $method = new ReflectionMethod(ServerBootstrap::class, 'buildSettings');
 
-        $config = new \Octo\RuntimePack\ServerConfig();
+        $config = new ServerConfig();
         $settings = $method->invoke(null, $config);
 
         $expectedKeys = [
@@ -147,29 +151,29 @@ final class ServerBootstrapTest extends TestCase
             'http_compression',
         ];
 
-        $this->assertSame($expectedKeys, array_keys($settings));
+        self::assertSame($expectedKeys, array_keys($settings));
     }
 
     public function testRunStartupChecksMethodExists(): void
     {
-        $reflection = new \ReflectionClass(ServerBootstrap::class);
-        $this->assertTrue($reflection->hasMethod('runStartupChecks'));
+        $reflection = new ReflectionClass(ServerBootstrap::class);
+        self::assertTrue($reflection->hasMethod('runStartupChecks'));
     }
 
     public function testOnWorkerStartMethodExists(): void
     {
-        $reflection = new \ReflectionClass(ServerBootstrap::class);
-        $this->assertTrue($reflection->hasMethod('onWorkerStart'));
+        $reflection = new ReflectionClass(ServerBootstrap::class);
+        self::assertTrue($reflection->hasMethod('onWorkerStart'));
     }
 
     public function testOnRequestMethodRemovedInFavorOfRequestHandler(): void
     {
         // onRequest was moved to RequestHandler::handle() (Task 10)
-        $reflection = new \ReflectionClass(ServerBootstrap::class);
-        $this->assertFalse($reflection->hasMethod('onRequest'));
+        $reflection = new ReflectionClass(ServerBootstrap::class);
+        self::assertFalse($reflection->hasMethod('onRequest'));
 
         // Verify RequestHandler exists and has handle()
-        $rhReflection = new \ReflectionClass(\Octo\RuntimePack\RequestHandler::class);
-        $this->assertTrue($rhReflection->hasMethod('handle'));
+        $rhReflection = new ReflectionClass(RequestHandler::class);
+        self::assertTrue($rhReflection->hasMethod('handle'));
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Octo\SymfonyBridge;
 
 use Doctrine\ORM\EntityManagerInterface;
+use Override;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -23,9 +24,9 @@ final class DoctrineResetHook implements ResetHookInterface
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
+    #[Override]
     public function reset(): void
     {
         $connection = $this->em->getConnection();

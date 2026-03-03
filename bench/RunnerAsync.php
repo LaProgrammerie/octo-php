@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Octo\Bench;
 
+use InvalidArgumentException;
 use OpenSwoole\Coroutine;
 use OpenSwoole\Coroutine\Channel;
 
@@ -33,25 +34,25 @@ final class RunnerAsync
     /**
      * @return array{
      *     total_ns: int,
-     *     queue_wait_ns: int[],
-     *     exec_ns: int[],
-     *     cpu_ns: int[],
-     *     io_ns: int[],
-     *     e2e_ns: int[],
-     *     rss_kb: int|null
+     *     queue_wait_ns: list<int>,
+     *     exec_ns: list<int>,
+     *     cpu_ns: list<int>,
+     *     io_ns: list<int>,
+     *     e2e_ns: list<int>,
+     *     rss_kb: null|int
      * }
      */
     public function run(int $jobs, int $concurrency, int $cpuIterations, int $ioMs, int $jsonKb, int $yieldEvery = 0): array
     {
         if ($concurrency <= 0) {
-            throw new \InvalidArgumentException('Concurrency must be > 0');
+            throw new InvalidArgumentException('Concurrency must be > 0');
         }
 
         $totalNs = 0;
         $metrics = [];
         $rssKb = null;
 
-        Coroutine::run(function () use ($jobs, $concurrency, $cpuIterations, $ioMs, $jsonKb, $yieldEvery, &$totalNs, &$metrics, &$rssKb, ): void {
+        Coroutine::run(static function () use ($jobs, $concurrency, $cpuIterations, $ioMs, $jsonKb, $yieldEvery, &$totalNs, &$metrics, &$rssKb): void {
             $job = new Job(
                 cpuIterations: $cpuIterations,
                 ioMs: $ioMs,
@@ -71,8 +72,8 @@ final class RunnerAsync
             $startTotal = hrtime(true);
 
             // ── Spawn N persistent workers ──────────────────────────────
-            for ($w = 0; $w < $concurrency; $w++) {
-                Coroutine::create(function () use ($job, $queue, $results): void {
+            for ($w = 0; $w < $concurrency; ++$w) {
+                Coroutine::create(static function () use ($job, $queue, $results): void {
                     while (true) {
                         $item = $queue->pop();
 
@@ -103,29 +104,38 @@ final class RunnerAsync
             }
 
             // ── Producer: enqueue all jobs ──────────────────────────────
-            for ($i = 0; $i < $jobs; $i++) {
+            for ($i = 0; $i < $jobs; ++$i) {
                 $tEnqueue = hrtime(true);
                 $queue->push([$i, $tEnqueue]);
             }
 
             // ── Collect all results ─────────────────────────────────────
-            for ($i = 0; $i < $jobs; $i++) {
+            for ($i = 0; $i < $jobs; ++$i) {
                 $metrics[] = $results->pop();
             }
 
             // ── Send poison pills to shut down workers ──────────────────
-            for ($w = 0; $w < $concurrency; $w++) {
+            for ($w = 0; $w < $concurrency; ++$w) {
                 $queue->push(null);
             }
 
-            $totalNs = hrtime(true) - $startTotal;
+            $totalNs = (int) (hrtime(true) - $startTotal);
             $rssKb = self::readRssKb();
         });
 
+        /** @var list<int> $queueWaitNs */
         $queueWaitNs = array_column($metrics, 'queue_wait');
+
+        /** @var list<int> $execNs */
         $execNs = array_column($metrics, 'exec');
+
+        /** @var list<int> $cpuNs */
         $cpuNs = array_column($metrics, 'cpu');
+
+        /** @var list<int> $ioNs */
         $ioNs = array_column($metrics, 'io');
+
+        /** @var list<int> $e2eNs */
         $e2eNs = array_column($metrics, 'e2e');
 
         return [

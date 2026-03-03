@@ -13,6 +13,10 @@ use Octo\RuntimePack\RequestIdMiddleware;
 use Octo\RuntimePack\ServerConfig;
 use Octo\RuntimePack\WorkerLifecycle;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
+
+use function is_array;
+use function is_resource;
 
 /**
  * Fake request object mimicking OpenSwoole\Http\Request for unit testing.
@@ -42,6 +46,7 @@ final class FakeRequest
 final class FakeHandlerResponse
 {
     public int $statusCode = 200;
+
     /** @var array<string, string> */
     public array $headers = [];
     public string $body = '';
@@ -60,9 +65,9 @@ final class FakeHandlerResponse
 
     public function end(string $body = ''): void
     {
-        $this->endCallCount++;
+        ++$this->endCallCount;
         if ($this->ended) {
-            throw new \RuntimeException('Response already ended');
+            throw new RuntimeException('Response already ended');
         }
         $this->ended = true;
         $this->body = $body;
@@ -77,6 +82,7 @@ final class RequestHandlerTest extends TestCase
     private RequestIdMiddleware $requestIdMiddleware;
     private MetricsCollector $metrics;
     private JsonLogger $logger;
+
     /** @var resource */
     private $logStream;
 
@@ -103,53 +109,9 @@ final class RequestHandlerTest extends TestCase
 
     protected function tearDown(): void
     {
-        if (\is_resource($this->logStream)) {
+        if (is_resource($this->logStream)) {
             fclose($this->logStream);
         }
-    }
-
-    private function createHandler(?callable $appHandler = null): RequestHandler
-    {
-        return new RequestHandler(
-            health: $this->healthController,
-            requestId: $this->requestIdMiddleware,
-            logger: $this->logger,
-            metrics: $this->metrics,
-            config: $this->config,
-            lifecycle: $this->lifecycle,
-            appHandler: $appHandler ?? function (object $req, object $res): void {
-                $res->status(200);
-                $res->header('Content-Type', 'application/json');
-                $res->end('{"ok":true}');
-            },
-        );
-    }
-
-    private function getLogOutput(): string
-    {
-        rewind($this->logStream);
-
-        return stream_get_contents($this->logStream);
-    }
-
-    /**
-     * Parse all NDJSON log lines from the log stream.
-     *
-     * @return list<array<string, mixed>>
-     */
-    private function getLogEntries(): array
-    {
-        $output = $this->getLogOutput();
-        $lines = array_filter(explode("\n", $output));
-        $entries = [];
-        foreach ($lines as $line) {
-            $decoded = json_decode($line, true);
-            if (\is_array($decoded)) {
-                $entries[] = $decoded;
-            }
-        }
-
-        return $entries;
     }
 
     // =====================================================================
@@ -164,9 +126,9 @@ final class RequestHandlerTest extends TestCase
 
         $handler->handle($request, $response);
 
-        $this->assertSame(200, $response->statusCode);
+        self::assertSame(200, $response->statusCode);
         $decoded = json_decode($response->body, true);
-        $this->assertSame('alive', $decoded['status']);
+        self::assertSame('alive', $decoded['status']);
     }
 
     public function testRoutingHealthzSetsContentTypeAndCacheControl(): void
@@ -177,8 +139,8 @@ final class RequestHandlerTest extends TestCase
 
         $handler->handle($request, $response);
 
-        $this->assertSame('application/json', $response->headers['Content-Type']);
-        $this->assertSame('no-store', $response->headers['Cache-Control']);
+        self::assertSame('application/json', $response->headers['Content-Type']);
+        self::assertSame('no-store', $response->headers['Cache-Control']);
     }
 
     // =====================================================================
@@ -193,9 +155,9 @@ final class RequestHandlerTest extends TestCase
 
         $handler->handle($request, $response);
 
-        $this->assertSame(200, $response->statusCode);
+        self::assertSame(200, $response->statusCode);
         $decoded = json_decode($response->body, true);
-        $this->assertSame('ready', $decoded['status']);
+        self::assertSame('ready', $decoded['status']);
     }
 
     public function testRoutingReadyzReturns503DuringShutdown(): void
@@ -207,9 +169,9 @@ final class RequestHandlerTest extends TestCase
 
         $handler->handle($request, $response);
 
-        $this->assertSame(503, $response->statusCode);
+        self::assertSame(503, $response->statusCode);
         $decoded = json_decode($response->body, true);
-        $this->assertSame('shutting_down', $decoded['status']);
+        self::assertSame('shutting_down', $decoded['status']);
     }
 
     // =====================================================================
@@ -219,7 +181,7 @@ final class RequestHandlerTest extends TestCase
     public function testRoutingAppRouteCallsAppHandler(): void
     {
         $called = false;
-        $handler = $this->createHandler(function (object $req, object $res) use (&$called): void {
+        $handler = $this->createHandler(static function (object $req, object $res) use (&$called): void {
             $called = true;
             $res->status(200);
             $res->end('ok');
@@ -230,8 +192,8 @@ final class RequestHandlerTest extends TestCase
 
         $handler->handle($request, $response);
 
-        $this->assertTrue($called);
-        $this->assertSame('ok', $response->body);
+        self::assertTrue($called);
+        self::assertSame('ok', $response->body);
     }
 
     // =====================================================================
@@ -246,8 +208,8 @@ final class RequestHandlerTest extends TestCase
 
         $handler->handle($request, $response);
 
-        $this->assertArrayHasKey('X-Request-Id', $response->headers);
-        $this->assertNotEmpty($response->headers['X-Request-Id']);
+        self::assertArrayHasKey('X-Request-Id', $response->headers);
+        self::assertNotEmpty($response->headers['X-Request-Id']);
     }
 
     public function testXRequestIdAlwaysSetOnHealthz(): void
@@ -258,8 +220,8 @@ final class RequestHandlerTest extends TestCase
 
         $handler->handle($request, $response);
 
-        $this->assertArrayHasKey('X-Request-Id', $response->headers);
-        $this->assertNotEmpty($response->headers['X-Request-Id']);
+        self::assertArrayHasKey('X-Request-Id', $response->headers);
+        self::assertNotEmpty($response->headers['X-Request-Id']);
     }
 
     public function testXRequestIdAlwaysSetOnShutdown503(): void
@@ -271,9 +233,9 @@ final class RequestHandlerTest extends TestCase
 
         $handler->handle($request, $response);
 
-        $this->assertArrayHasKey('X-Request-Id', $response->headers);
-        $this->assertNotEmpty($response->headers['X-Request-Id']);
-        $this->assertSame(503, $response->statusCode);
+        self::assertArrayHasKey('X-Request-Id', $response->headers);
+        self::assertNotEmpty($response->headers['X-Request-Id']);
+        self::assertSame(503, $response->statusCode);
     }
 
     public function testXRequestIdPropagatedFromIncomingHeader(): void
@@ -284,7 +246,7 @@ final class RequestHandlerTest extends TestCase
 
         $handler->handle($request, $response);
 
-        $this->assertSame('my-trace-id-123', $response->headers['X-Request-Id']);
+        self::assertSame('my-trace-id-123', $response->headers['X-Request-Id']);
     }
 
     // =====================================================================
@@ -300,10 +262,10 @@ final class RequestHandlerTest extends TestCase
 
         $handler->handle($request, $response);
 
-        $this->assertSame(503, $response->statusCode);
+        self::assertSame(503, $response->statusCode);
         $decoded = json_decode($response->body, true);
-        $this->assertSame('Server shutting down', $decoded['error']);
-        $this->assertSame('application/json', $response->headers['Content-Type']);
+        self::assertSame('Server shutting down', $decoded['error']);
+        self::assertSame('application/json', $response->headers['Content-Type']);
     }
 
     public function testShutdown503DoesNotCallBeginRequest(): void
@@ -316,7 +278,7 @@ final class RequestHandlerTest extends TestCase
         $handler->handle($request, $response);
 
         // inflightScopes should remain 0 — beginRequest was never called
-        $this->assertSame(0, $this->lifecycle->getInflightScopes());
+        self::assertSame(0, $this->lifecycle->getInflightScopes());
     }
 
     public function testShutdownAllowsHealthz(): void
@@ -328,7 +290,7 @@ final class RequestHandlerTest extends TestCase
 
         $handler->handle($request, $response);
 
-        $this->assertSame(200, $response->statusCode);
+        self::assertSame(200, $response->statusCode);
     }
 
     public function testShutdownAllowsReadyz(): void
@@ -341,9 +303,9 @@ final class RequestHandlerTest extends TestCase
         $handler->handle($request, $response);
 
         // readyz returns 503 during shutdown, but it's still served (not refused)
-        $this->assertSame(503, $response->statusCode);
+        self::assertSame(503, $response->statusCode);
         $decoded = json_decode($response->body, true);
-        $this->assertSame('shutting_down', $decoded['status']);
+        self::assertSame('shutting_down', $decoded['status']);
     }
 
     // =====================================================================
@@ -361,13 +323,13 @@ final class RequestHandlerTest extends TestCase
         $entries = $this->getLogEntries();
         $accessLog = $this->findAccessLog($entries, '/api/users');
 
-        $this->assertNotNull($accessLog, 'Access log entry not found');
-        $this->assertSame('GET', $accessLog['extra']['method']);
-        $this->assertSame('/api/users', $accessLog['extra']['path']);
-        $this->assertSame(200, $accessLog['extra']['status_code']);
-        $this->assertArrayHasKey('duration_ms', $accessLog['extra']);
+        self::assertNotNull($accessLog, 'Access log entry not found');
+        self::assertSame('GET', $accessLog['extra']['method']);
+        self::assertSame('/api/users', $accessLog['extra']['path']);
+        self::assertSame(200, $accessLog['extra']['status_code']);
+        self::assertArrayHasKey('duration_ms', $accessLog['extra']);
         // request_id is a top-level field set via withRequestId(), not in extra
-        $this->assertNotNull($accessLog['request_id']);
+        self::assertNotNull($accessLog['request_id']);
     }
 
     public function testAccessLogWrittenForShutdown503(): void
@@ -382,8 +344,8 @@ final class RequestHandlerTest extends TestCase
         $entries = $this->getLogEntries();
         $accessLog = $this->findAccessLog($entries, '/api/orders');
 
-        $this->assertNotNull($accessLog, 'Access log should be written even for 503 shutdown');
-        $this->assertSame(503, $accessLog['extra']['status_code']);
+        self::assertNotNull($accessLog, 'Access log should be written even for 503 shutdown');
+        self::assertSame(503, $accessLog['extra']['status_code']);
     }
 
     public function testAccessLogWrittenForHealthz(): void
@@ -397,8 +359,8 @@ final class RequestHandlerTest extends TestCase
         $entries = $this->getLogEntries();
         $accessLog = $this->findAccessLog($entries, '/healthz');
 
-        $this->assertNotNull($accessLog, 'Access log should be written for healthz');
-        $this->assertSame(200, $accessLog['extra']['status_code']);
+        self::assertNotNull($accessLog, 'Access log should be written for healthz');
+        self::assertSame(200, $accessLog['extra']['status_code']);
     }
 
     public function testAccessLogContainsDurationMs(): void
@@ -412,9 +374,9 @@ final class RequestHandlerTest extends TestCase
         $entries = $this->getLogEntries();
         $accessLog = $this->findAccessLog($entries, '/api/test');
 
-        $this->assertNotNull($accessLog);
-        $this->assertIsNumeric($accessLog['extra']['duration_ms']);
-        $this->assertGreaterThanOrEqual(0, $accessLog['extra']['duration_ms']);
+        self::assertNotNull($accessLog);
+        self::assertIsNumeric($accessLog['extra']['duration_ms']);
+        self::assertGreaterThanOrEqual(0, $accessLog['extra']['duration_ms']);
     }
 
     // =====================================================================
@@ -428,13 +390,13 @@ final class RequestHandlerTest extends TestCase
         $response = new FakeHandlerResponse();
 
         $snapshot = $this->metrics->snapshot();
-        $this->assertSame(0, $snapshot['requests_total']);
+        self::assertSame(0, $snapshot['requests_total']);
 
         $handler->handle($request, $response);
 
         $snapshot = $this->metrics->snapshot();
-        $this->assertSame(1, $snapshot['requests_total']);
-        $this->assertSame(1, $snapshot['request_duration_ms']['count']);
+        self::assertSame(1, $snapshot['requests_total']);
+        self::assertSame(1, $snapshot['request_duration_ms']['count']);
     }
 
     public function testMetricsIncrementedForHealthz(): void
@@ -446,7 +408,7 @@ final class RequestHandlerTest extends TestCase
         $handler->handle($request, $response);
 
         $snapshot = $this->metrics->snapshot();
-        $this->assertSame(1, $snapshot['requests_total']);
+        self::assertSame(1, $snapshot['requests_total']);
     }
 
     public function testMetricsIncrementedForShutdown503(): void
@@ -459,7 +421,7 @@ final class RequestHandlerTest extends TestCase
         $handler->handle($request, $response);
 
         $snapshot = $this->metrics->snapshot();
-        $this->assertSame(1, $snapshot['requests_total']);
+        self::assertSame(1, $snapshot['requests_total']);
     }
 
     // =====================================================================
@@ -468,8 +430,8 @@ final class RequestHandlerTest extends TestCase
 
     public function testExceptionInHandlerReturns500(): void
     {
-        $handler = $this->createHandler(function (object $req, object $res): void {
-            throw new \RuntimeException('Something went wrong');
+        $handler = $this->createHandler(static function (object $req, object $res): void {
+            throw new RuntimeException('Something went wrong');
         });
 
         $request = new FakeRequest('GET', '/api/fail');
@@ -477,10 +439,10 @@ final class RequestHandlerTest extends TestCase
 
         $handler->handle($request, $response);
 
-        $this->assertSame(500, $response->statusCode);
+        self::assertSame(500, $response->statusCode);
         $decoded = json_decode($response->body, true);
-        $this->assertSame('Internal Server Error', $decoded['error']);
-        $this->assertSame('application/json', $response->headers['Content-Type']);
+        self::assertSame('Internal Server Error', $decoded['error']);
+        self::assertSame('application/json', $response->headers['Content-Type']);
     }
 
     public function testExceptionLogsErrorWithoutDetailsInProd(): void
@@ -503,8 +465,8 @@ final class RequestHandlerTest extends TestCase
             metrics: $metrics,
             config: $prodConfig,
             lifecycle: $lifecycle,
-            appHandler: function (object $req, object $res): void {
-                throw new \RuntimeException('Secret database password leaked');
+            appHandler: static function (object $req, object $res): void {
+                throw new RuntimeException('Secret database password leaked');
             },
         );
 
@@ -518,14 +480,14 @@ final class RequestHandlerTest extends TestCase
         fclose($logStream);
 
         // Error log should NOT contain the actual exception message in prod
-        $this->assertStringNotContainsString('Secret database password leaked', $logOutput);
-        $this->assertStringContainsString('Internal Server Error', $logOutput);
+        self::assertStringNotContainsString('Secret database password leaked', $logOutput);
+        self::assertStringContainsString('Internal Server Error', $logOutput);
     }
 
     public function testExceptionLogsErrorWithDetailsInDev(): void
     {
-        $handler = $this->createHandler(function (object $req, object $res): void {
-            throw new \RuntimeException('Debug info for dev');
+        $handler = $this->createHandler(static function (object $req, object $res): void {
+            throw new RuntimeException('Debug info for dev');
         });
 
         $request = new FakeRequest('GET', '/api/fail');
@@ -534,15 +496,16 @@ final class RequestHandlerTest extends TestCase
         $handler->handle($request, $response);
 
         $logOutput = $this->getLogOutput();
-        $this->assertStringContainsString('Debug info for dev', $logOutput);
+        self::assertStringContainsString('Debug info for dev', $logOutput);
     }
 
     public function testExceptionHandlerDoesNotCrashIfResponseAlreadySent(): void
     {
-        $handler = $this->createHandler(function (object $req, object $res): void {
+        $handler = $this->createHandler(static function (object $req, object $res): void {
             $res->status(200);
             $res->end('partial response');
-            throw new \RuntimeException('Error after response sent');
+
+            throw new RuntimeException('Error after response sent');
         });
 
         $request = new FakeRequest('GET', '/api/fail');
@@ -552,7 +515,7 @@ final class RequestHandlerTest extends TestCase
         $handler->handle($request, $response);
 
         // The original response body is preserved (first end() wins)
-        $this->assertSame('partial response', $response->body);
+        self::assertSame('partial response', $response->body);
     }
 
     // =====================================================================
@@ -567,8 +530,8 @@ final class RequestHandlerTest extends TestCase
 
         $handler->handle($request, $response);
 
-        $this->assertSame('', $response->headers['Server']);
-        $this->assertSame('', $response->headers['X-Powered-By']);
+        self::assertSame('', $response->headers['Server']);
+        self::assertSame('', $response->headers['X-Powered-By']);
     }
 
     public function testVersionHeadersStrippedOnHealthz(): void
@@ -579,8 +542,8 @@ final class RequestHandlerTest extends TestCase
 
         $handler->handle($request, $response);
 
-        $this->assertSame('', $response->headers['Server']);
-        $this->assertSame('', $response->headers['X-Powered-By']);
+        self::assertSame('', $response->headers['Server']);
+        self::assertSame('', $response->headers['X-Powered-By']);
     }
 
     public function testVersionHeadersStrippedOnShutdown503(): void
@@ -592,8 +555,8 @@ final class RequestHandlerTest extends TestCase
 
         $handler->handle($request, $response);
 
-        $this->assertSame('', $response->headers['Server']);
-        $this->assertSame('', $response->headers['X-Powered-By']);
+        self::assertSame('', $response->headers['Server']);
+        self::assertSame('', $response->headers['X-Powered-By']);
     }
 
     // =====================================================================
@@ -625,7 +588,7 @@ final class RequestHandlerTest extends TestCase
             metrics: $metrics,
             config: $config,
             lifecycle: $lifecycle,
-            appHandler: fn(object $req, object $res) => $res->end('ok'),
+            appHandler: static fn (object $req, object $res) => $res->end('ok'),
         );
 
         $request = new FakeRequest('GET', '/healthz');
@@ -634,7 +597,7 @@ final class RequestHandlerTest extends TestCase
         $handler->handle($request, $response);
 
         // shouldExit should be false — healthz doesn't trigger afterRequest
-        $this->assertFalse($lifecycle->shouldExit());
+        self::assertFalse($lifecycle->shouldExit());
 
         fclose($logStream);
     }
@@ -649,18 +612,18 @@ final class RequestHandlerTest extends TestCase
         $request = new FakeRequest('GET', '/api/test');
         $response = new FakeHandlerResponse();
 
-        $this->assertSame(0, $this->lifecycle->getInflightScopes());
+        self::assertSame(0, $this->lifecycle->getInflightScopes());
 
         $handler->handle($request, $response);
 
         // After handle completes, endRequest should have been called
-        $this->assertSame(0, $this->lifecycle->getInflightScopes());
+        self::assertSame(0, $this->lifecycle->getInflightScopes());
     }
 
     public function testEndRequestCalledEvenOnException(): void
     {
-        $handler = $this->createHandler(function (object $req, object $res): void {
-            throw new \RuntimeException('boom');
+        $handler = $this->createHandler(static function (object $req, object $res): void {
+            throw new RuntimeException('boom');
         });
 
         $request = new FakeRequest('GET', '/api/fail');
@@ -669,7 +632,7 @@ final class RequestHandlerTest extends TestCase
         $handler->handle($request, $response);
 
         // endRequest must be called in finally — inflightScopes back to 0
-        $this->assertSame(0, $this->lifecycle->getInflightScopes());
+        self::assertSame(0, $this->lifecycle->getInflightScopes());
     }
 
     // =====================================================================
@@ -687,9 +650,53 @@ final class RequestHandlerTest extends TestCase
         $entries = $this->getLogEntries();
         $accessLog = $this->findAccessLog($entries, '/api/test');
 
-        $this->assertNotNull($accessLog);
-        $this->assertSame('http', $accessLog['component']);
-        $this->assertSame('trace-abc', $accessLog['request_id']);
+        self::assertNotNull($accessLog);
+        self::assertSame('http', $accessLog['component']);
+        self::assertSame('trace-abc', $accessLog['request_id']);
+    }
+
+    private function createHandler(?callable $appHandler = null): RequestHandler
+    {
+        return new RequestHandler(
+            health: $this->healthController,
+            requestId: $this->requestIdMiddleware,
+            logger: $this->logger,
+            metrics: $this->metrics,
+            config: $this->config,
+            lifecycle: $this->lifecycle,
+            appHandler: $appHandler ?? static function (object $req, object $res): void {
+                $res->status(200);
+                $res->header('Content-Type', 'application/json');
+                $res->end('{"ok":true}');
+            },
+        );
+    }
+
+    private function getLogOutput(): string
+    {
+        rewind($this->logStream);
+
+        return stream_get_contents($this->logStream);
+    }
+
+    /**
+     * Parse all NDJSON log lines from the log stream.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function getLogEntries(): array
+    {
+        $output = $this->getLogOutput();
+        $lines = array_filter(explode("\n", $output));
+        $entries = [];
+        foreach ($lines as $line) {
+            $decoded = json_decode($line, true);
+            if (is_array($decoded)) {
+                $entries[] = $decoded;
+            }
+        }
+
+        return $entries;
     }
 
     // =====================================================================
@@ -700,7 +707,8 @@ final class RequestHandlerTest extends TestCase
      * Find the access log entry for a given path (the one with empty message and path in extra).
      *
      * @param list<array<string, mixed>> $entries
-     * @return array<string, mixed>|null
+     *
+     * @return null|array<string, mixed>
      */
     private function findAccessLog(array $entries, string $path): ?array
     {

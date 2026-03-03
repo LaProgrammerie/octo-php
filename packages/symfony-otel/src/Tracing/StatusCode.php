@@ -13,7 +13,5 @@ final class StatusCode
     public const STATUS_OK = 1;
     public const STATUS_ERROR = 2;
 
-    private function __construct()
-    {
-    }
+    private function __construct() {}
 }

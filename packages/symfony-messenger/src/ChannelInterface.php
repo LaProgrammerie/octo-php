@@ -16,7 +16,8 @@ interface ChannelInterface
      * Push a value into the channel.
      *
      * @param float $timeout Timeout in seconds. -1 means no timeout.
-     * @return bool True if pushed successfully, false on timeout/full.
+     *
+     * @return bool true if pushed successfully, false on timeout/full
      */
     public function push(mixed $value, float $timeout = -1): bool;
 
@@ -24,7 +25,8 @@ interface ChannelInterface
      * Pop a value from the channel.
      *
      * @param float $timeout Timeout in seconds. -1 means no timeout.
-     * @return mixed The value, or false on timeout/empty.
+     *
+     * @return mixed the value, or false on timeout/empty
      */
     public function pop(float $timeout = -1): mixed;
 

@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyBridge\Tests\Property;
 
-use Octo\SymfonyBridge\RequestIdProcessor;
 use Eris\Generators;
 use Eris\TestTrait;
+use Octo\SymfonyBridge\RequestIdProcessor;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * Property 16: RequestIdProcessor adds request_id to log records
+ * Property 16: RequestIdProcessor adds request_id to log records.
  *
  * **Validates: Requirements 6.6**
  *
@@ -25,18 +25,18 @@ final class RequestIdProcessorTest extends TestCase
     use TestTrait;
 
     #[Test]
-    public function request_id_is_added_to_all_log_records(): void
+    public function requestIdIsAddedToAllLogRecords(): void
     {
         $this->limitTo(100);
 
         $this->forAll(
             Generators::suchThat(
-                fn(string $s): bool => \strlen($s) > 0 && \mb_check_encoding($s, 'UTF-8'),
+                static fn (string $s): bool => mb_strlen($s) > 0 && mb_check_encoding($s, 'UTF-8'),
                 Generators::string(),
             ),
             Generators::elements(['debug', 'info', 'warning', 'error', 'critical']),
             Generators::elements(['User logged in', 'Query executed', 'Cache miss', 'Request processed']),
-        )->then(function (string $requestId, string $level, string $message): void {
+        )->then(static function (string $requestId, string $level, string $message): void {
             $processor = new RequestIdProcessor();
 
             // Create a request with _request_id attribute
@@ -58,24 +58,24 @@ final class RequestIdProcessorTest extends TestCase
             self::assertArrayHasKey(
                 'request_id',
                 $result['extra'],
-                'extra.request_id must be present'
+                'extra.request_id must be present',
             );
             self::assertSame(
                 $requestId,
                 $result['extra']['request_id'],
-                'extra.request_id must match the request attribute'
+                'extra.request_id must match the request attribute',
             );
         });
     }
 
     #[Test]
-    public function no_request_id_when_no_current_request(): void
+    public function noRequestIdWhenNoCurrentRequest(): void
     {
         $this->limitTo(50);
 
         $this->forAll(
             Generators::elements(['debug', 'info', 'warning', 'error']),
-        )->then(function (string $level): void {
+        )->then(static function (string $level): void {
             $processor = new RequestIdProcessor();
             // No current request set
 
@@ -92,7 +92,7 @@ final class RequestIdProcessorTest extends TestCase
             self::assertArrayNotHasKey(
                 'request_id',
                 $result['extra'],
-                'extra.request_id must not be present when no request is set'
+                'extra.request_id must not be present when no request is set',
             );
         });
     }

@@ -6,20 +6,23 @@ namespace Octo\SymfonyBridge\Tests\Property;
 
 require_once __DIR__ . '/../Unit/TestDoubles.php';
 
+use const PHP_INT_MAX;
+
+use Eris\Generators;
+use Eris\TestTrait;
 use Octo\RuntimePack\MetricsCollector;
 use Octo\SymfonyBridge\HttpKernelAdapter;
 use Octo\SymfonyBridge\Tests\Unit\FakeSwooleRequest;
 use Octo\SymfonyBridge\Tests\Unit\FakeSwooleResponse;
 use Octo\SymfonyBridge\Tests\Unit\LifecycleTrackingKernel;
 use Octo\SymfonyBridge\Tests\Unit\SpyLogger;
-use Eris\Generators;
-use Eris\TestTrait;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Property 5: Lifecycle ordering invariant
+ * Property 5: Lifecycle ordering invariant.
  *
  * **Validates: Requirements 4.1, 4.2, 4.3, 9.4**
  *
@@ -43,16 +46,16 @@ final class LifecycleOrderingTest extends TestCase
     private const SCENARIO_VARIOUS_STATUS = 2;
 
     #[Test]
-    public function lifecycle_order_is_invariant_for_any_scenario(): void
+    public function lifecycleOrderIsInvariantForAnyScenario(): void
     {
         $this->limitTo(100);
 
         $this->forAll(
             Generators::choose(0, 2),
             Generators::choose(200, 599),
-        )->then(function (int $scenario, int $statusCode): void {
+        )->then(static function (int $scenario, int $statusCode): void {
             $exception = $scenario === self::SCENARIO_EXCEPTION
-                ? new \RuntimeException('PBT exception')
+                ? new RuntimeException('PBT exception')
                 : null;
 
             $response = $scenario === self::SCENARIO_VARIOUS_STATUS
@@ -65,7 +68,7 @@ final class LifecycleOrderingTest extends TestCase
                 kernel: $kernel,
                 logger: $logger,
                 metricsCollector: new MetricsCollector(),
-                memoryWarningThreshold: \PHP_INT_MAX,
+                memoryWarningThreshold: PHP_INT_MAX,
             );
 
             $request = FakeSwooleRequest::withRequestId('pbt-lifecycle-' . $scenario);
@@ -82,9 +85,9 @@ final class LifecycleOrderingTest extends TestCase
             self::assertSame('handle', $calls[0], 'handle() must be the first call');
 
             // terminate must come after handle (if present)
-            $handleIdx = \array_search('handle', $calls, true);
-            $terminateIdx = \array_search('terminate', $calls, true);
-            $resetIdx = \array_search('reset', $calls, true);
+            $handleIdx = array_search('handle', $calls, true);
+            $terminateIdx = array_search('terminate', $calls, true);
+            $resetIdx = array_search('reset', $calls, true);
 
             if ($scenario !== self::SCENARIO_EXCEPTION) {
                 // Normal flow: handle → terminate → reset

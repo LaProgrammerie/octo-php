@@ -6,6 +6,8 @@ namespace Octo\SymfonyBridge\Tests\Property;
 
 require_once __DIR__ . '/../Unit/TestDoubles.php';
 
+use Eris\Generators;
+use Eris\TestTrait;
 use Octo\SymfonyBridge\ResetManager;
 use Octo\SymfonyBridge\Tests\Unit\BareKernel;
 use Octo\SymfonyBridge\Tests\Unit\FakeContainer;
@@ -15,13 +17,11 @@ use Octo\SymfonyBridge\Tests\Unit\ResettableKernel;
 use Octo\SymfonyBridge\Tests\Unit\SpyLogger;
 use Octo\SymfonyBridge\Tests\Unit\SpyResetHook;
 use Octo\SymfonyBridge\Tests\Unit\ThrowingResettableKernel;
-use Eris\Generators;
-use Eris\TestTrait;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Property 6: Reset always executes with correct strategy
+ * Property 6: Reset always executes with correct strategy.
  *
  * **Validates: Requirements 4.4, 4.5, 4.6**
  *
@@ -40,7 +40,7 @@ final class ResetStrategySelectionTest extends TestCase
      * 0 = ResetInterface kernel
      * 1 = kernel with services_resetter in container
      * 2 = bare kernel (best-effort)
-     * 3 = throwing ResetInterface kernel (tests finally semantics)
+     * 3 = throwing ResetInterface kernel (tests finally semantics).
      */
     private const STRATEGY_RESET_INTERFACE = 0;
     private const STRATEGY_SERVICES_RESETTER = 1;
@@ -48,14 +48,14 @@ final class ResetStrategySelectionTest extends TestCase
     private const STRATEGY_THROWING = 3;
 
     #[Test]
-    public function correct_strategy_is_selected_for_any_kernel_capability(): void
+    public function correctStrategyIsSelectedForAnyKernelCapability(): void
     {
         $this->limitTo(100);
 
         $this->forAll(
             Generators::choose(0, 3),
             Generators::choose(0, 5),
-        )->then(function (int $strategyType, int $hookCount): void {
+        )->then(static function (int $strategyType, int $hookCount): void {
             $logger = new SpyLogger();
             $kernel = match ($strategyType) {
                 self::STRATEGY_RESET_INTERFACE => new ResettableKernel(),
@@ -67,7 +67,7 @@ final class ResetStrategySelectionTest extends TestCase
             };
 
             $hooks = [];
-            for ($i = 0; $i < $hookCount; $i++) {
+            for ($i = 0; $i < $hookCount; ++$i) {
                 $hooks[] = new SpyResetHook();
             }
 
@@ -109,7 +109,7 @@ final class ResetStrategySelectionTest extends TestCase
             // Debug log with duration must always be present
             $debugLogs = array_filter(
                 $logger->logs,
-                fn(array $log) => $log['level'] === 'debug'
+                static fn (array $log) => $log['level'] === 'debug'
                 && str_contains($log['message'], 'Reset completed'),
             );
             self::assertNotEmpty(

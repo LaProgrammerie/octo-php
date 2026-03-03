@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack\Tests\Unit;
 
+use InvalidArgumentException;
 use Octo\RuntimePack\BlockingPool;
-use Octo\RuntimePack\Exception\BlockingPoolFullException;
-use Octo\RuntimePack\Exception\BlockingPoolHttpException;
 use Octo\RuntimePack\Exception\BlockingPoolSendException;
-use Octo\RuntimePack\Exception\BlockingPoolTimeoutException;
 use Octo\RuntimePack\JobRegistry;
 use Octo\RuntimePack\JsonLogger;
 use Octo\RuntimePack\MetricsCollector;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+
+use function is_resource;
 
 /**
  * Unit tests for BlockingPool — pure logic parts.
@@ -43,7 +43,7 @@ final class BlockingPoolTest extends TestCase
         $this->logger = new JsonLogger(false, $this->logStream);
         $this->metrics = new MetricsCollector();
         $this->registry = new JobRegistry();
-        $this->registry->register('test.job', fn(array $p) => $p);
+        $this->registry->register('test.job', static fn (array $p) => $p);
     }
 
     protected function tearDown(): void
@@ -51,24 +51,6 @@ final class BlockingPoolTest extends TestCase
         if (is_resource($this->logStream)) {
             fclose($this->logStream);
         }
-    }
-
-    private function getLogOutput(): string
-    {
-        rewind($this->logStream);
-        return stream_get_contents($this->logStream);
-    }
-
-    private function createPool(): BlockingPool
-    {
-        return new BlockingPool(
-            registry: $this->registry,
-            maxWorkers: 4,
-            maxQueueSize: 64,
-            defaultTimeoutSeconds: 30.0,
-            metrics: $this->metrics,
-            logger: $this->logger,
-        );
     }
 
     // =========================================================================
@@ -151,7 +133,7 @@ final class BlockingPoolTest extends TestCase
     {
         $pool = $this->createPool();
 
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage("Unknown job: 'nonexistent'");
 
         $pool->run('nonexistent', []);
@@ -205,5 +187,24 @@ final class BlockingPoolTest extends TestCase
         $snapshot = $this->metrics->snapshot();
         self::assertSame(0, $snapshot['blocking_pool_busy_workers']);
         self::assertSame(0, $snapshot['blocking_queue_depth']);
+    }
+
+    private function getLogOutput(): string
+    {
+        rewind($this->logStream);
+
+        return stream_get_contents($this->logStream);
+    }
+
+    private function createPool(): BlockingPool
+    {
+        return new BlockingPool(
+            registry: $this->registry,
+            maxWorkers: 4,
+            maxQueueSize: 64,
+            defaultTimeoutSeconds: 30.0,
+            metrics: $this->metrics,
+            logger: $this->logger,
+        );
     }
 }

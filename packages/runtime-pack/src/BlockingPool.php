@@ -4,10 +4,21 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack;
 
+use InvalidArgumentException;
 use Octo\RuntimePack\Exception\BlockingPoolFullException;
 use Octo\RuntimePack\Exception\BlockingPoolHttpException;
 use Octo\RuntimePack\Exception\BlockingPoolSendException;
 use Octo\RuntimePack\Exception\BlockingPoolTimeoutException;
+use OpenSwoole\Coroutine;
+use OpenSwoole\Coroutine\Channel;
+use OpenSwoole\Http\Response;
+use OpenSwoole\Process;
+use OpenSwoole\Process\Pool;
+use Override;
+use RuntimeException;
+use Throwable;
+
+use function count;
 
 /**
  * Pool of isolated processes for executing blocking/CPU-bound operations.
@@ -36,17 +47,32 @@ use Octo\RuntimePack\Exception\BlockingPoolTimeoutException;
  */
 final class BlockingPool implements BlockingPoolInterface
 {
-    /** @var array<string, \OpenSwoole\Coroutine\Channel> Map job_id => response Channel */
+    // =========================================================================
+    // 17.4 — Orphaned jobs cleanup
+    // =========================================================================
+
+    /** Cleanup interval in seconds. */
+    public const CLEANUP_INTERVAL_SECONDS = 60;
+
+    // =========================================================================
+    // 17.3 — Automatic reconnection with exponential backoff
+    // =========================================================================
+
+    /** Backoff delays in milliseconds: 100, 200, 400, 800, 1600. */
+    private const RECONNECT_BACKOFF_MS = [100, 200, 400, 800, 1600];
+    private const MAX_RECONNECT_RETRIES = 5;
+
+    /** @var array<string, Channel> Map job_id => response Channel */
     private array $pendingJobs = [];
 
     /** Bounded outbound channel — real backpressure queue. Initialized in initWorker(). */
-    private ?\OpenSwoole\Coroutine\Channel $outboundQueue = null;
+    private ?Channel $outboundQueue = null;
 
     /** Busy workers counter (incremented on send, decremented on response). */
     private int $busyWorkersCount = 0;
 
-    /** @var \OpenSwoole\Process\Pool|null The process pool (master-level, set externally). */
-    private ?\OpenSwoole\Process\Pool $pool = null;
+    /** @var null|Pool The process pool (master-level, set externally). */
+    private ?Pool $pool = null;
 
     /** Reader coroutine reconnection state. */
     private bool $readerRunning = false;
@@ -58,13 +84,20 @@ final class BlockingPool implements BlockingPoolInterface
         private readonly int $maxWorkers = 4,
         private readonly int $maxQueueSize = 64,
         private readonly float $defaultTimeoutSeconds = 30.0,
-    ) {
+    ) {}
+
+    /**
+     * Returns the configured max workers count.
+     */
+    public function getMaxWorkers(): int
+    {
+        return $this->maxWorkers;
     }
 
     /**
      * Set the process pool reference (called from master boot).
      */
-    public function setPool(\OpenSwoole\Process\Pool $pool): void
+    public function setPool(Pool $pool): void
     {
         $this->pool = $pool;
     }
@@ -80,13 +113,14 @@ final class BlockingPool implements BlockingPoolInterface
     public function initWorker(): void
     {
         // Bounded channel = real backpressure queue
-        $this->outboundQueue = new \OpenSwoole\Coroutine\Channel($this->maxQueueSize);
+        $this->outboundQueue = new Channel($this->maxQueueSize);
 
         // Dispatcher coroutine: consumes outbound channel and sends to pool
-        \OpenSwoole\Coroutine::create(function (): void {
+        Coroutine::create(function (): void {
             while (true) {
-                $item = $this->outboundQueue->pop();
-                if ($item === false) {
+                /** @var null|array{job_id: string, message: string}|false $item */
+                $item = $this->outboundQueue?->pop();
+                if ($item === false || $item === null) {
                     break; // Channel closed (shutdown)
                 }
 
@@ -94,13 +128,13 @@ final class BlockingPool implements BlockingPoolInterface
                 $message = $item['message'];
 
                 // Update metrics: queue depth decreased, busy workers increased
-                $this->metrics->setBlockingQueueDepth($this->outboundQueue->length());
-                $this->busyWorkersCount++;
+                $this->metrics->setBlockingQueueDepth($this->outboundQueue !== null ? $this->outboundQueue->length() : 0);
+                ++$this->busyWorkersCount;
                 $this->metrics->setBlockingPoolBusyWorkers($this->busyWorkersCount);
 
                 try {
                     $this->sendToPool($message);
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     // Send failed → push error into the pending job channel, increment metric
                     if (isset($this->pendingJobs[$jobId])) {
                         $this->pendingJobs[$jobId]->push([
@@ -131,103 +165,16 @@ final class BlockingPool implements BlockingPoolInterface
      * Listens for IPC messages from the pool with uint32 length-prefix framing.
      * Called in onWorkerStart of each HTTP worker.
      *
-     * @param \OpenSwoole\Process $workerProcess The worker's process handle for IPC
+     * @param Process $workerProcess The worker's process handle for IPC
      */
-    public function startReaderCoroutine(\OpenSwoole\Process $workerProcess): void
+    public function startReaderCoroutine(Process $workerProcess): void
     {
         $this->readerRunning = true;
 
-        \OpenSwoole\Coroutine::create(function () use ($workerProcess): void {
+        Coroutine::create(function () use ($workerProcess): void {
             $this->readerLoop($workerProcess);
         });
     }
-
-    /**
-     * Reader loop with reconnection support.
-     * Reads framed IPC messages and routes responses to pending jobs.
-     */
-    private function readerLoop(\OpenSwoole\Process $workerProcess, int $retryCount = 0): void
-    {
-        $buffer = '';
-
-        while ($this->readerRunning) {
-            try {
-                // Read from the Unix socket
-                $data = $workerProcess->read();
-
-                if ($data === false || $data === '') {
-                    // Connection lost or closed
-                    throw new \RuntimeException('IPC read returned empty/false — connection lost');
-                }
-
-                // Reset retry count on successful read
-                $retryCount = 0;
-                $buffer .= $data;
-
-                // Extract complete frames from buffer
-                while (($payload = IpcFraming::extractFromBuffer($buffer)) !== null) {
-                    $this->routeResponse($payload);
-                }
-            } catch (\Throwable $e) {
-                if (!$this->readerRunning) {
-                    break; // Shutdown — exit cleanly
-                }
-
-                $this->logger->error('BlockingPool reader: IPC error', [
-                    'error' => $e->getMessage(),
-                    'retry' => $retryCount,
-                ]);
-
-                // 17.3 — Reconnection with exponential backoff
-                if (!$this->reconnectReader($workerProcess, $retryCount)) {
-                    break; // Max retries exceeded
-                }
-                $retryCount++;
-                $buffer = ''; // Reset buffer on reconnection
-            }
-        }
-    }
-
-    // =========================================================================
-    // 17.3 — Automatic reconnection with exponential backoff
-    // =========================================================================
-
-    /** Backoff delays in milliseconds: 100, 200, 400, 800, 1600. */
-    private const RECONNECT_BACKOFF_MS = [100, 200, 400, 800, 1600];
-    private const MAX_RECONNECT_RETRIES = 5;
-
-    /**
-     * Attempt reconnection with exponential backoff.
-     *
-     * @return bool true if reconnection should be attempted, false if max retries exceeded
-     */
-    private function reconnectReader(\OpenSwoole\Process $workerProcess, int $retryCount): bool
-    {
-        if ($retryCount >= self::MAX_RECONNECT_RETRIES) {
-            $this->logger->critical('BlockingPool reader: max reconnection retries exceeded — pool degraded', [
-                'max_retries' => self::MAX_RECONNECT_RETRIES,
-            ]);
-            return false;
-        }
-
-        $delayMs = self::RECONNECT_BACKOFF_MS[$retryCount] ?? 1600;
-        $this->logger->warning('BlockingPool reader: reconnecting', [
-            'retry' => $retryCount + 1,
-            'backoff_ms' => $delayMs,
-        ]);
-
-        // Sleep with coroutine-friendly usleep (yields to event loop)
-        \OpenSwoole\Coroutine::usleep($delayMs * 1000);
-
-        return true;
-    }
-
-    // =========================================================================
-    // 17.4 — Orphaned jobs cleanup
-    // =========================================================================
-
-    /** Cleanup interval in seconds. */
-    public const CLEANUP_INTERVAL_SECONDS = 60;
 
     /**
      * Clean up orphaned pending jobs (safety net).
@@ -258,7 +205,7 @@ final class BlockingPool implements BlockingPoolInterface
      * If the job_id is not found (expired/timed out), logs a warning
      * for late response and ignores it (no memory leak).
      *
-     * @param array $response Decoded IPC response: {job_id, ok, result, error}
+     * @param array{job_id?: null|string, ok?: bool, result?: mixed, error?: string} $response Decoded IPC response
      */
     public function routeResponse(array $response): void
     {
@@ -299,15 +246,16 @@ final class BlockingPool implements BlockingPoolInterface
      * @throws BlockingPoolFullException If outbound queue is full
      * @throws BlockingPoolTimeoutException If job exceeds timeout
      * @throws BlockingPoolSendException If pool send fails (propagated via dispatcher)
-     * @throws \InvalidArgumentException If jobName is not registered
-     * @throws \RuntimeException If job execution fails
+     * @throws InvalidArgumentException If jobName is not registered
+     * @throws RuntimeException If job execution fails
      */
+    #[Override]
     public function run(string $jobName, array $payload = [], ?float $timeout = null): mixed
     {
         // Fail-fast: verify job exists in registry
         if (!$this->registry->has($jobName)) {
-            throw new \InvalidArgumentException(
-                "Unknown job: '{$jobName}'. Registered jobs: " . implode(', ', $this->registry->names())
+            throw new InvalidArgumentException(
+                "Unknown job: '{$jobName}'. Registered jobs: " . implode(', ', $this->registry->names()),
             );
         }
 
@@ -323,7 +271,7 @@ final class BlockingPool implements BlockingPoolInterface
         $jobId = uniqid('job_', true) . '_' . bin2hex(random_bytes(4));
 
         // Create per-job response channel
-        $responseChannel = new \OpenSwoole\Coroutine\Channel(1);
+        $responseChannel = new Channel(1);
         $this->pendingJobs[$jobId] = $responseChannel;
 
         try {
@@ -337,8 +285,9 @@ final class BlockingPool implements BlockingPoolInterface
             $pushed = $this->outboundQueue->push(['job_id' => $jobId, 'message' => $message], 0.0);
             if ($pushed === false) {
                 $this->metrics->incrementBlockingPoolRejected();
+
                 throw new BlockingPoolFullException(
-                    "BlockingPool queue full ({$this->maxQueueSize})"
+                    "BlockingPool queue full ({$this->maxQueueSize})",
                 );
             }
 
@@ -350,7 +299,7 @@ final class BlockingPool implements BlockingPoolInterface
 
             if ($result === false) {
                 throw new BlockingPoolTimeoutException(
-                    "BlockingPool job '{$jobName}' (id: {$jobId}) timed out after {$timeoutSeconds}s"
+                    "BlockingPool job '{$jobName}' (id: {$jobId}) timed out after {$timeoutSeconds}s",
                 );
             }
 
@@ -361,8 +310,9 @@ final class BlockingPool implements BlockingPoolInterface
                 if (str_starts_with($errorMsg, 'Pool send failed:')) {
                     throw new BlockingPoolSendException($errorMsg);
                 }
-                throw new \RuntimeException(
-                    "BlockingPool job '{$jobName}' failed: {$errorMsg}"
+
+                throw new RuntimeException(
+                    "BlockingPool job '{$jobName}' failed: {$errorMsg}",
                 );
             }
 
@@ -384,10 +334,12 @@ final class BlockingPool implements BlockingPoolInterface
      * This keeps the mapping logic testable independently (BlockingPool is final).
      *
      * @param string $jobName Job name
-     * @param array $payload Job data
-     * @param object $response Response object with status(), header(), end() methods
-     * @param float|null $timeout Timeout in seconds
+     * @param array<string, mixed> $payload Job data
+     * @param object&Response $response Response object with status(), header(), end() methods
+     * @param null|float $timeout Timeout in seconds
+     *
      * @return mixed Job result on success
+     *
      * @throws BlockingPoolHttpException Always thrown on error (after sending HTTP response)
      */
     public function runOrRespondError(
@@ -445,44 +397,6 @@ final class BlockingPool implements BlockingPoolInterface
         $this->metrics->setBlockingInflightCount($this->inflightCount());
     }
 
-    // =========================================================================
-    // Internal: sendToPool, stop, shutdown
-    // =========================================================================
-
-    /**
-     * Send a framed message to the pool via Unix socket.
-     *
-     * @param string $message Framed binary message (uint32 length prefix + JSON)
-     * @throws BlockingPoolSendException If the write fails
-     */
-    private function sendToPool(string $message): void
-    {
-        if ($this->pool === null) {
-            throw new BlockingPoolSendException('BlockingPool: pool not initialized');
-        }
-
-        // Write to a pool worker via the pool's IPC mechanism
-        // In OpenSwoole Process\Pool, we write to the worker process socket
-        try {
-            $workers = $this->pool->getProcess();
-            if ($workers === false) {
-                throw new BlockingPoolSendException('BlockingPool: no pool process available');
-            }
-            $written = $workers->write($message);
-            if ($written === false) {
-                throw new BlockingPoolSendException('BlockingPool: IPC write failed');
-            }
-        } catch (BlockingPoolSendException $e) {
-            throw $e;
-        } catch (\Throwable $e) {
-            throw new BlockingPoolSendException(
-                'BlockingPool: sendToPool failed — ' . $e->getMessage(),
-                0,
-                $e,
-            );
-        }
-    }
-
     /**
      * Stop the reader coroutine.
      */
@@ -522,5 +436,117 @@ final class BlockingPool implements BlockingPoolInterface
     public function getRegistry(): JobRegistry
     {
         return $this->registry;
+    }
+
+    /**
+     * Reader loop with reconnection support.
+     * Reads framed IPC messages and routes responses to pending jobs.
+     */
+    private function readerLoop(Process $workerProcess, int $retryCount = 0): void
+    {
+        $buffer = '';
+
+        while ($this->readerRunning) {
+            try {
+                // Read from the Unix socket
+                $data = $workerProcess->read();
+
+                if ($data === false || $data === '') {
+                    // Connection lost or closed
+                    throw new RuntimeException('IPC read returned empty/false — connection lost');
+                }
+
+                // Reset retry count on successful read
+                $retryCount = 0;
+                $buffer .= $data;
+
+                // Extract complete frames from buffer
+                while (($payload = IpcFraming::extractFromBuffer($buffer)) !== null) {
+                    $this->routeResponse($payload);
+                }
+            } catch (Throwable $e) {
+                if (!$this->readerRunning) {
+                    break; // Shutdown — exit cleanly
+                }
+
+                $this->logger->error('BlockingPool reader: IPC error', [
+                    'error' => $e->getMessage(),
+                    'retry' => $retryCount,
+                ]);
+
+                // 17.3 — Reconnection with exponential backoff
+                if (!$this->reconnectReader($workerProcess, $retryCount)) {
+                    break; // Max retries exceeded
+                }
+                ++$retryCount;
+                $buffer = ''; // Reset buffer on reconnection
+            }
+        }
+    }
+
+    /**
+     * Attempt reconnection with exponential backoff.
+     *
+     * @return bool true if reconnection should be attempted, false if max retries exceeded
+     */
+    private function reconnectReader(Process $workerProcess, int $retryCount): bool
+    {
+        if ($retryCount >= self::MAX_RECONNECT_RETRIES) {
+            $this->logger->critical('BlockingPool reader: max reconnection retries exceeded — pool degraded', [
+                'max_retries' => self::MAX_RECONNECT_RETRIES,
+            ]);
+
+            return false;
+        }
+
+        $delayMs = self::RECONNECT_BACKOFF_MS[$retryCount] ?? 1600;
+        $this->logger->warning('BlockingPool reader: reconnecting', [
+            'retry' => $retryCount + 1,
+            'backoff_ms' => $delayMs,
+        ]);
+
+        // Sleep with coroutine-friendly usleep (yields to event loop)
+        Coroutine::usleep($delayMs * 1000);
+
+        return true;
+    }
+
+    // =========================================================================
+    // Internal: sendToPool, stop, shutdown
+    // =========================================================================
+
+    /**
+     * Send a framed message to the pool via Unix socket.
+     *
+     * @param string $message Framed binary message (uint32 length prefix + JSON)
+     *
+     * @throws BlockingPoolSendException If the write fails
+     */
+    private function sendToPool(string $message): void
+    {
+        if ($this->pool === null) {
+            throw new BlockingPoolSendException('BlockingPool: pool not initialized');
+        }
+
+        // Write to a pool worker via the pool's IPC mechanism
+        // In OpenSwoole Process\Pool, we write to the worker process socket
+        try {
+            $workers = $this->pool->getProcess();
+            if ($workers === false) {
+                throw new BlockingPoolSendException('BlockingPool: no pool process available');
+            }
+            $written = $workers->write($message);
+            if ($written === false) {
+                throw new BlockingPoolSendException('BlockingPool: IPC write failed');
+            }
+        } catch (BlockingPoolSendException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            throw new BlockingPoolSendException(
+                'BlockingPool: sendToPool failed — ' . $e->getMessage(),
+                0,
+                $e,
+            );
+        }
     }
 }

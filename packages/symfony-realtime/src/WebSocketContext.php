@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyRealtime;
 
+use Closure;
+
 /**
  * Immutable DTO containing WebSocket connection information.
  *
@@ -13,20 +15,19 @@ namespace Octo\SymfonyRealtime;
 final readonly class WebSocketContext
 {
     /**
-     * @param int                $connectionId Unique connection identifier
-     * @param string             $requestId    Request ID for tracing
-     * @param array<string, string> $headers   Original request headers
-     * @param \Closure(string): void $sendFn   Sends data to the client
-     * @param \Closure(): void       $closeFn  Closes the connection
+     * @param int $connectionId Unique connection identifier
+     * @param string $requestId Request ID for tracing
+     * @param array<string, string> $headers Original request headers
+     * @param Closure(string): void $sendFn Sends data to the client
+     * @param Closure(): void $closeFn Closes the connection
      */
     public function __construct(
         public int $connectionId,
         public string $requestId,
         public array $headers,
-        private \Closure $sendFn,
-        private \Closure $closeFn,
-    ) {
-    }
+        private Closure $sendFn,
+        private Closure $closeFn,
+    ) {}
 
     public function send(string $data): void
     {

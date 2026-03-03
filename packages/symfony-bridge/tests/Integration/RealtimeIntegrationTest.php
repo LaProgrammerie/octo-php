@@ -27,14 +27,14 @@ final class RealtimeIntegrationTest extends TestCase
     public function testHttpRequestRoutedToHttpAdapter(): void
     {
         $httpCalled = false;
-        $httpAdapter = function (object $request, object $response) use (&$httpCalled): void {
+        $httpAdapter = static function (object $request, object $response) use (&$httpCalled): void {
             $httpCalled = true;
             $response->status(200);
             $response->end('HTTP OK');
         };
 
         $wsHandler = $this->createMock(WebSocketHandler::class);
-        $wsHandler->expects($this->never())->method('onOpen');
+        $wsHandler->expects(self::never())->method('onOpen');
 
         $logger = new IntegrationSpyLogger();
         $adapter = new RealtimeServerAdapter(
@@ -48,29 +48,33 @@ final class RealtimeIntegrationTest extends TestCase
 
         $adapter($request, $response);
 
-        $this->assertTrue($httpCalled, 'HTTP request should be routed to httpAdapter');
+        self::assertTrue($httpCalled, 'HTTP request should be routed to httpAdapter');
     }
 
     public function testWebSocketUpgradeRoutedToWsHandler(): void
     {
         $httpCalled = false;
-        $httpAdapter = function (object $request, object $response) use (&$httpCalled): void {
+        $httpAdapter = static function (object $request, object $response) use (&$httpCalled): void {
             $httpCalled = true;
         };
 
         $openedCtx = null;
-        $wsHandler = new class ($openedCtx) implements WebSocketHandler {
+        $wsHandler = new class($openedCtx) implements WebSocketHandler {
             private ?WebSocketContext $ctx;
+
             public function __construct(?WebSocketContext &$ctx)
             {
-                $this->ctx = &$ctx; }
+                $this->ctx = &$ctx;
+            }
+
             public function onOpen(WebSocketContext $ctx): void
             {
-                $this->ctx = $ctx; }
-            public function onMessage(WebSocketContext $ctx, string $data): void
-            {}
-            public function onClose(WebSocketContext $ctx): void
-            {}
+                $this->ctx = $ctx;
+            }
+
+            public function onMessage(WebSocketContext $ctx, string $data): void {}
+
+            public function onClose(WebSocketContext $ctx): void {}
         };
 
         $logger = new IntegrationSpyLogger();
@@ -86,10 +90,10 @@ final class RealtimeIntegrationTest extends TestCase
 
         $adapter($request, $response);
 
-        $this->assertFalse($httpCalled, 'WS upgrade should NOT be routed to httpAdapter');
-        $this->assertNotNull($openedCtx, 'WS handler onOpen should have been called');
-        $this->assertSame(42, $openedCtx->connectionId);
-        $this->assertNotEmpty($openedCtx->requestId);
+        self::assertFalse($httpCalled, 'WS upgrade should NOT be routed to httpAdapter');
+        self::assertNotNull($openedCtx, 'WS handler onOpen should have been called');
+        self::assertSame(42, $openedCtx->connectionId);
+        self::assertNotEmpty($openedCtx->requestId);
     }
 
     public function testWebSocketContextSendAndClose(): void
@@ -97,29 +101,31 @@ final class RealtimeIntegrationTest extends TestCase
         $sentData = [];
         $closed = false;
 
-        $wsHandler = new class ($sentData, $closed) implements WebSocketHandler {
+        $wsHandler = new class($sentData, $closed) implements WebSocketHandler {
             private array $sentData;
             private bool $closed;
+
             public function __construct(array &$sentData, bool &$closed)
             {
                 $this->sentData = &$sentData;
                 $this->closed = &$closed;
             }
+
             public function onOpen(WebSocketContext $ctx): void
             {
                 $ctx->send('welcome');
                 $ctx->send('hello');
                 $ctx->close();
             }
-            public function onMessage(WebSocketContext $ctx, string $data): void
-            {}
-            public function onClose(WebSocketContext $ctx): void
-            {}
+
+            public function onMessage(WebSocketContext $ctx, string $data): void {}
+
+            public function onClose(WebSocketContext $ctx): void {}
         };
 
         $logger = new IntegrationSpyLogger();
         $adapter = new RealtimeServerAdapter(
-            httpAdapter: fn($req, $res) => null,
+            httpAdapter: static fn ($req, $res) => null,
             wsHandler: $wsHandler,
             logger: $logger,
         );
@@ -130,16 +136,16 @@ final class RealtimeIntegrationTest extends TestCase
         $adapter($request, $response);
 
         // send() delegates to response->push()
-        $this->assertSame(['welcome', 'hello'], $response->pushes);
+        self::assertSame(['welcome', 'hello'], $response->pushes);
         // close() delegates to response->close()
-        $this->assertTrue($response->closed);
+        self::assertTrue($response->closed);
     }
 
     public function testWebSocketUpgradeDetectionCaseInsensitive(): void
     {
-        $httpAdapter = fn($req, $res) => null;
+        $httpAdapter = static fn ($req, $res) => null;
         $wsHandler = $this->createMock(WebSocketHandler::class);
-        $wsHandler->expects($this->once())->method('onOpen');
+        $wsHandler->expects(self::once())->method('onOpen');
 
         $logger = new IntegrationSpyLogger();
         $adapter = new RealtimeServerAdapter(
@@ -162,12 +168,12 @@ final class RealtimeIntegrationTest extends TestCase
     public function testNonUpgradeRequestWithUpgradeHeaderNotRouted(): void
     {
         $httpCalled = false;
-        $httpAdapter = function ($req, $res) use (&$httpCalled): void {
+        $httpAdapter = static function ($req, $res) use (&$httpCalled): void {
             $httpCalled = true;
         };
 
         $wsHandler = $this->createMock(WebSocketHandler::class);
-        $wsHandler->expects($this->never())->method('onOpen');
+        $wsHandler->expects(self::never())->method('onOpen');
 
         $logger = new IntegrationSpyLogger();
         $adapter = new RealtimeServerAdapter(
@@ -184,20 +190,20 @@ final class RealtimeIntegrationTest extends TestCase
 
         $adapter($request, new IntegrationFakeSwooleResponse());
 
-        $this->assertTrue($httpCalled, 'Request without proper Connection header should go to HTTP');
+        self::assertTrue($httpCalled, 'Request without proper Connection header should go to HTTP');
     }
 
     public function testMaxLifetimeConfigurable(): void
     {
         $logger = new IntegrationSpyLogger();
         $adapter = new RealtimeServerAdapter(
-            httpAdapter: fn($req, $res) => null,
+            httpAdapter: static fn ($req, $res) => null,
             wsHandler: null,
             logger: $logger,
             wsMaxLifetimeSeconds: 7200,
         );
 
-        $this->assertSame(7200, $adapter->getWsMaxLifetimeSeconds());
+        self::assertSame(7200, $adapter->getWsMaxLifetimeSeconds());
     }
 
     public function testMetricsTrackedOnWsConnection(): void
@@ -209,17 +215,15 @@ final class RealtimeIntegrationTest extends TestCase
             {
                 $ctx->send('hi');
             }
-            public function onMessage(WebSocketContext $ctx, string $data): void
-            {
-            }
-            public function onClose(WebSocketContext $ctx): void
-            {
-            }
+
+            public function onMessage(WebSocketContext $ctx, string $data): void {}
+
+            public function onClose(WebSocketContext $ctx): void {}
         };
 
         $logger = new IntegrationSpyLogger();
         $adapter = new RealtimeServerAdapter(
-            httpAdapter: fn($req, $res) => null,
+            httpAdapter: static fn ($req, $res) => null,
             wsHandler: $wsHandler,
             logger: $logger,
             metrics: $metrics,
@@ -230,14 +234,14 @@ final class RealtimeIntegrationTest extends TestCase
         $adapter($request, new IntegrationFakeSwooleResponse());
 
         $snapshot = $metrics->snapshot();
-        $this->assertSame(1, $snapshot['ws_connections_active']);
-        $this->assertSame(1, $snapshot['ws_messages_sent_total']);
+        self::assertSame(1, $snapshot['ws_connections_active']);
+        self::assertSame(1, $snapshot['ws_messages_sent_total']);
     }
 
     public function testNoWsHandlerRoutesEverythingToHttp(): void
     {
         $httpCalled = false;
-        $httpAdapter = function ($req, $res) use (&$httpCalled): void {
+        $httpAdapter = static function ($req, $res) use (&$httpCalled): void {
             $httpCalled = true;
         };
 
@@ -252,6 +256,6 @@ final class RealtimeIntegrationTest extends TestCase
         $request = IntegrationFakeSwooleRequest::wsUpgrade('/ws');
         $adapter($request, new IntegrationFakeSwooleResponse());
 
-        $this->assertTrue($httpCalled);
+        self::assertTrue($httpCalled);
     }
 }

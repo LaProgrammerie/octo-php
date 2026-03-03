@@ -8,6 +8,8 @@ use Octo\RuntimePack\Exception\BlockingPoolFullException;
 use Octo\RuntimePack\Exception\BlockingPoolHttpException;
 use Octo\RuntimePack\Exception\BlockingPoolSendException;
 use Octo\RuntimePack\Exception\BlockingPoolTimeoutException;
+use OpenSwoole\Http\Response;
+use RuntimeException;
 
 /**
  * Standardized error mapping from BlockingPool exceptions to HTTP responses.
@@ -29,10 +31,12 @@ final class BlockingPoolErrorHandler
      *
      * @param BlockingPoolInterface $pool The pool to run the job on
      * @param string $jobName Job name
-     * @param array $payload Job data
-     * @param object $response Response object with status(), header(), end()
-     * @param float|null $timeout Timeout in seconds
+     * @param array<string, mixed> $payload Job data
+     * @param object&Response $response Response object with status(), header(), end()
+     * @param null|float $timeout Timeout in seconds
+     *
      * @return mixed Job result on success
+     *
      * @throws BlockingPoolHttpException On any pool error (after HTTP response is sent)
      */
     public static function runOrRespondError(
@@ -45,26 +49,35 @@ final class BlockingPoolErrorHandler
         try {
             return $pool->run($jobName, $payload, $timeout);
         } catch (BlockingPoolFullException $e) {
-            $response->status(503);
-            $response->header('Content-Type', 'application/json');
-            $response->header('Retry-After', '5');
-            $response->end('{"error":"Service temporarily unavailable (pool saturated)"}');
+            self::sendErrorResponse($response, 503, '{"error":"Service temporarily unavailable (pool saturated)"}', ['Retry-After' => '5']);
+
             throw new BlockingPoolHttpException(503, $e->getMessage(), $e);
         } catch (BlockingPoolTimeoutException $e) {
-            $response->status(504);
-            $response->header('Content-Type', 'application/json');
-            $response->end('{"error":"Gateway Timeout (blocking job too slow)"}');
+            self::sendErrorResponse($response, 504, '{"error":"Gateway Timeout (blocking job too slow)"}');
+
             throw new BlockingPoolHttpException(504, $e->getMessage(), $e);
         } catch (BlockingPoolSendException $e) {
-            $response->status(502);
-            $response->header('Content-Type', 'application/json');
-            $response->end('{"error":"Bad Gateway (blocking pool unavailable)"}');
+            self::sendErrorResponse($response, 502, '{"error":"Bad Gateway (blocking pool unavailable)"}');
+
             throw new BlockingPoolHttpException(502, $e->getMessage(), $e);
-        } catch (\RuntimeException $e) {
-            $response->status(500);
-            $response->header('Content-Type', 'application/json');
-            $response->end('{"error":"Internal Server Error (blocking job failed)"}');
+        } catch (RuntimeException $e) {
+            self::sendErrorResponse($response, 500, '{"error":"Internal Server Error (blocking job failed)"}');
+
             throw new BlockingPoolHttpException(500, $e->getMessage(), $e);
         }
+    }
+
+    /**
+     * @param object&Response $response
+     * @param array<string, string> $extraHeaders
+     */
+    private static function sendErrorResponse(object $response, int $status, string $body, array $extraHeaders = []): void
+    {
+        $response->status($status);
+        $response->header('Content-Type', 'application/json');
+        foreach ($extraHeaders as $key => $value) {
+            $response->header($key, $value);
+        }
+        $response->end($body);
     }
 }

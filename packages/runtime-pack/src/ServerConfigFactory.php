@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack;
 
+use const FILTER_VALIDATE_INT;
+
 use Octo\RuntimePack\Exception\ConfigValidationException;
+
+use function is_int;
 
 /**
  * Creates and validates ServerConfig from environment variables.
@@ -49,12 +53,12 @@ final class ServerConfigFactory
      *
      * Collects ALL validation errors before throwing.
      *
-     * @param bool          $production   Production mode flag.
-     * @param callable|null $cpuCountResolver Returns CPU count (default: swoole_cpu_num). Signature: (): int
+     * @param bool $production production mode flag
+     * @param null|callable(): int $cpuCountResolver Returns CPU count (default: swoole_cpu_num)
      *
-     * @return array{config: ServerConfig, warnings: string[]}
+     * @return array{config: ServerConfig, warnings: list<string>}
      *
-     * @throws ConfigValidationException If any environment variable is invalid.
+     * @throws ConfigValidationException if any environment variable is invalid
      */
     public static function fromEnvironment(
         bool $production = false,
@@ -70,8 +74,8 @@ final class ServerConfigFactory
             $raw = self::readEnv($envVar) ?? $default;
 
             match ($type) {
-                'int' => self::validateInt($envVar, $raw, $min, $max, $errors, $values, $field),
-                'float' => self::validateFloat($envVar, $raw, $min, $max, $errors, $values, $field),
+                'int' => self::validateInt($envVar, $raw, is_int($min) ? $min : null, is_int($max) ? $max : null, $errors, $values, $field),
+                'float' => self::validateFloat($envVar, $raw, $min !== null ? (float) $min : null, $max !== null ? (float) $max : null, $errors, $values, $field),
                 'string' => self::validateString($envVar, $raw, $errors, $values, $field),
             };
         }
@@ -81,9 +85,11 @@ final class ServerConfigFactory
         }
 
         // Resolve workers after validation
+        /** @var int $workersValue */
+        $workersValue = $values['workers'] ?? 0;
         $values['workers'] = self::resolveWorkers(
             $production,
-            $values['workers'],
+            $workersValue,
             $cpuCountResolver,
         );
 
@@ -106,6 +112,8 @@ final class ServerConfigFactory
      *
      * - If $configured > 0: use that value (explicit override).
      * - If $configured === 0 (auto): prod → CPU count, dev → 2.
+     *
+     * @param null|callable(): int $cpuCountResolver
      */
     private static function resolveWorkers(
         bool $production,
@@ -117,7 +125,8 @@ final class ServerConfigFactory
         }
 
         if ($production) {
-            $resolver = $cpuCountResolver ?? static fn(): int => \swoole_cpu_num();
+            $resolver = $cpuCountResolver ?? static fn (): int => swoole_cpu_num();
+
             return $resolver();
         }
 
@@ -142,7 +151,7 @@ final class ServerConfigFactory
      * Validates and stores an integer environment variable.
      *
      * @param array<string, string> $errors
-     * @param array<string, mixed>  $values
+     * @param array<string, mixed> $values
      */
     private static function validateInt(
         string $envVar,
@@ -157,6 +166,7 @@ final class ServerConfigFactory
 
         if ($filtered === false) {
             $errors[$envVar] = "must be an integer, got '{$raw}'";
+
             return;
         }
 
@@ -166,11 +176,13 @@ final class ServerConfigFactory
             $errors[$envVar] = $max !== null
                 ? "must be between {$min} and {$max}, got {$value}"
                 : "must be >= {$min}, got {$value}";
+
             return;
         }
 
         if ($max !== null && $value > $max) {
             $errors[$envVar] = "must be between {$min} and {$max}, got {$value}";
+
             return;
         }
 
@@ -181,7 +193,7 @@ final class ServerConfigFactory
      * Validates and stores a float environment variable.
      *
      * @param array<string, string> $errors
-     * @param array<string, mixed>  $values
+     * @param array<string, mixed> $values
      */
     private static function validateFloat(
         string $envVar,
@@ -194,6 +206,7 @@ final class ServerConfigFactory
     ): void {
         if (!is_numeric($raw)) {
             $errors[$envVar] = "must be a number, got '{$raw}'";
+
             return;
         }
 
@@ -203,11 +216,13 @@ final class ServerConfigFactory
             $errors[$envVar] = $max !== null
                 ? "must be between {$min} and {$max}, got {$value}"
                 : "must be >= {$min}, got {$value}";
+
             return;
         }
 
         if ($max !== null && $value > $max) {
             $errors[$envVar] = "must be between {$min} and {$max}, got {$value}";
+
             return;
         }
 
@@ -218,7 +233,7 @@ final class ServerConfigFactory
      * Validates and stores a string environment variable.
      *
      * @param array<string, string> $errors
-     * @param array<string, mixed>  $values
+     * @param array<string, mixed> $values
      */
     private static function validateString(
         string $envVar,
@@ -229,6 +244,7 @@ final class ServerConfigFactory
     ): void {
         if ($raw === '') {
             $errors[$envVar] = 'must not be empty';
+
             return;
         }
 

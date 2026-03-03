@@ -23,8 +23,6 @@ final class SseStream
 
     /**
      * @param callable(string): bool $writeFn
-     * @param int $keepAliveSeconds
-     * @param string|null $lastEventId
      */
     public function __construct(
         callable $writeFn,

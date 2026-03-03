@@ -6,6 +6,7 @@ namespace Octo\SymfonyBundle\DependencyInjection\Compiler;
 
 use Octo\SymfonyBridge\ResetHookInterface;
 use Octo\SymfonyBridge\ResetManager;
+use Override;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Reference;
@@ -24,6 +25,7 @@ final class ResetHookCompilerPass implements CompilerPassInterface
 {
     public const TAG = 'octo.reset_hook';
 
+    #[Override]
     public function process(ContainerBuilder $container): void
     {
         if (!$container->hasDefinition(ResetManager::class)) {
@@ -53,10 +55,10 @@ final class ResetHookCompilerPass implements CompilerPassInterface
 
     private function implementsResetHook(string $class): bool
     {
-        if (!\class_exists($class)) {
+        if (!class_exists($class)) {
             return false;
         }
 
-        return \is_subclass_of($class, ResetHookInterface::class);
+        return is_subclass_of($class, ResetHookInterface::class);
     }
 }

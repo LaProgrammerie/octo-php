@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyMessenger\Tests\Unit;
 
+use InvalidArgumentException;
 use Octo\SymfonyMessenger\FakeChannel;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -81,7 +82,7 @@ final class FakeChannelTest extends TestCase
     #[Test]
     public function invalidCapacityThrows(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         new FakeChannel(0);
     }
 }

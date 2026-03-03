@@ -29,8 +29,7 @@ final class OtelMetricsExporter
     public function __construct(
         private readonly MetricsBridge $metricsBridge,
         private readonly MeterInterface $meter,
-    ) {
-    }
+    ) {}
 
     /**
      * Export delta metrics since last export to the OTEL meter.
@@ -43,45 +42,53 @@ final class OtelMetricsExporter
         $snapshot = $this->metricsBridge->snapshot();
 
         // Counter deltas
-        $requestsDelta = $snapshot['symfony_requests_total'] - $this->lastRequestsTotal;
+        /** @var int $requestsTotal */
+        $requestsTotal = $snapshot['symfony_requests_total'] ?? 0;
+        $requestsDelta = $requestsTotal - $this->lastRequestsTotal;
         if ($requestsDelta > 0) {
             $this->meter->counter(
                 'symfony_requests_total',
                 $requestsDelta,
                 'Total HTTP requests processed by the Symfony bridge',
             );
-            $this->lastRequestsTotal = $snapshot['symfony_requests_total'];
+            $this->lastRequestsTotal = $requestsTotal;
         }
 
-        $exceptionsDelta = $snapshot['symfony_exceptions_total'] - $this->lastExceptionsTotal;
+        /** @var int $exceptionsTotal */
+        $exceptionsTotal = $snapshot['symfony_exceptions_total'] ?? 0;
+        $exceptionsDelta = $exceptionsTotal - $this->lastExceptionsTotal;
         if ($exceptionsDelta > 0) {
             $this->meter->counter(
                 'symfony_exceptions_total',
                 $exceptionsDelta,
                 'Total exceptions raised by HttpKernel',
             );
-            $this->lastExceptionsTotal = $snapshot['symfony_exceptions_total'];
+            $this->lastExceptionsTotal = $exceptionsTotal;
         }
 
         // Histogram deltas (sum-based — we export the delta as a single observation)
-        $requestDurationDelta = $snapshot['symfony_request_duration_sum_ms'] - $this->lastRequestDurationSumMs;
+        /** @var float $requestDurationSum */
+        $requestDurationSum = $snapshot['symfony_request_duration_sum_ms'] ?? 0.0;
+        $requestDurationDelta = $requestDurationSum - $this->lastRequestDurationSumMs;
         if ($requestDurationDelta > 0.0) {
             $this->meter->histogram(
                 'symfony_request_duration_ms',
                 $requestDurationDelta,
                 'Duration of HttpKernel::handle() in milliseconds',
             );
-            $this->lastRequestDurationSumMs = $snapshot['symfony_request_duration_sum_ms'];
+            $this->lastRequestDurationSumMs = $requestDurationSum;
         }
 
-        $resetDurationDelta = $snapshot['symfony_reset_duration_sum_ms'] - $this->lastResetDurationSumMs;
+        /** @var float $resetDurationSum */
+        $resetDurationSum = $snapshot['symfony_reset_duration_sum_ms'] ?? 0.0;
+        $resetDurationDelta = $resetDurationSum - $this->lastResetDurationSumMs;
         if ($resetDurationDelta > 0.0) {
             $this->meter->histogram(
                 'symfony_reset_duration_ms',
                 $resetDurationDelta,
                 'Duration of reset between requests in milliseconds',
             );
-            $this->lastResetDurationSumMs = $snapshot['symfony_reset_duration_sum_ms'];
+            $this->lastResetDurationSumMs = $resetDurationSum;
         }
     }
 }

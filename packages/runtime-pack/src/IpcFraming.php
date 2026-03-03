@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack;
 
+use const JSON_THROW_ON_ERROR;
+use const JSON_UNESCAPED_UNICODE;
+
+use JsonException;
+use RuntimeException;
+
 /**
  * IPC framing protocol: uint32 length prefix (big-endian) + JSON payload.
  *
@@ -27,14 +33,16 @@ final class IpcFraming
     /**
      * Encode a payload array into a framed binary message.
      *
-     * @param array $payload Data to serialize as JSON
+     * @param array<string, mixed> $payload Data to serialize as JSON
+     *
      * @return string Binary frame: uint32 BE length prefix + JSON bytes
-     * @throws \JsonException If JSON encoding fails
+     *
+     * @throws JsonException If JSON encoding fails
      */
     public static function encode(array $payload): string
     {
         $json = json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
-        $length = strlen($json);
+        $length = mb_strlen($json);
 
         return pack('N', $length) . $json;
     }
@@ -46,35 +54,40 @@ final class IpcFraming
      * for incremental parsing from a stream buffer.
      *
      * @param string $frame Complete binary frame
-     * @return array Decoded payload
-     * @throws \RuntimeException If frame is too short or payload is truncated
-     * @throws \JsonException If JSON decoding fails
+     *
+     * @return array<string, mixed> Decoded payload
+     *
+     * @throws RuntimeException If frame is too short or payload is truncated
+     * @throws JsonException If JSON decoding fails
      */
     public static function decode(string $frame): array
     {
-        if (strlen($frame) < self::HEADER_SIZE) {
-            throw new \RuntimeException(
-                'IPC frame too short: expected at least ' . self::HEADER_SIZE . ' bytes, got ' . strlen($frame)
+        if (mb_strlen($frame) < self::HEADER_SIZE) {
+            throw new RuntimeException(
+                'IPC frame too short: expected at least ' . self::HEADER_SIZE . ' bytes, got ' . mb_strlen($frame),
             );
         }
 
         $unpacked = unpack('Nlength', $frame);
+        if ($unpacked === false || !isset($unpacked['length'])) {
+            throw new RuntimeException('IPC frame header unpack failed');
+        }
         $length = $unpacked['length'];
 
         if ($length > self::MAX_PAYLOAD_SIZE) {
-            throw new \RuntimeException(
-                "IPC frame payload too large: {$length} bytes (max " . self::MAX_PAYLOAD_SIZE . ')'
+            throw new RuntimeException(
+                "IPC frame payload too large: {$length} bytes (max " . self::MAX_PAYLOAD_SIZE . ')',
             );
         }
 
         $expectedTotal = self::HEADER_SIZE + $length;
-        if (strlen($frame) < $expectedTotal) {
-            throw new \RuntimeException(
-                "IPC frame incomplete: expected {$expectedTotal} bytes, got " . strlen($frame)
+        if (mb_strlen($frame) < $expectedTotal) {
+            throw new RuntimeException(
+                "IPC frame incomplete: expected {$expectedTotal} bytes, got " . mb_strlen($frame),
             );
         }
 
-        $json = substr($frame, self::HEADER_SIZE, $length);
+        $json = mb_substr($frame, self::HEADER_SIZE, $length);
 
         return json_decode($json, true, 512, JSON_THROW_ON_ERROR);
     }
@@ -87,32 +100,37 @@ final class IpcFraming
      * and advances the buffer offset.
      *
      * @param string $buffer The accumulated read buffer (passed by reference)
-     * @return array|null Decoded payload, or null if buffer doesn't contain a complete frame
-     * @throws \RuntimeException If payload size exceeds MAX_PAYLOAD_SIZE
-     * @throws \JsonException If JSON decoding fails
+     *
+     * @return null|array<string, mixed> Decoded payload, or null if buffer doesn't contain a complete frame
+     *
+     * @throws RuntimeException If payload size exceeds MAX_PAYLOAD_SIZE
+     * @throws JsonException If JSON decoding fails
      */
     public static function extractFromBuffer(string &$buffer): ?array
     {
-        if (strlen($buffer) < self::HEADER_SIZE) {
+        if (mb_strlen($buffer) < self::HEADER_SIZE) {
             return null;
         }
 
         $unpacked = unpack('Nlength', $buffer);
+        if ($unpacked === false || !isset($unpacked['length'])) {
+            throw new RuntimeException('IPC frame header unpack failed');
+        }
         $length = $unpacked['length'];
 
         if ($length > self::MAX_PAYLOAD_SIZE) {
-            throw new \RuntimeException(
-                "IPC frame payload too large: {$length} bytes (max " . self::MAX_PAYLOAD_SIZE . ')'
+            throw new RuntimeException(
+                "IPC frame payload too large: {$length} bytes (max " . self::MAX_PAYLOAD_SIZE . ')',
             );
         }
 
         $expectedTotal = self::HEADER_SIZE + $length;
-        if (strlen($buffer) < $expectedTotal) {
+        if (mb_strlen($buffer) < $expectedTotal) {
             return null; // Not enough data yet — wait for more
         }
 
-        $json = substr($buffer, self::HEADER_SIZE, $length);
-        $buffer = substr($buffer, $expectedTotal); // Consume the frame
+        $json = mb_substr($buffer, self::HEADER_SIZE, $length);
+        $buffer = mb_substr($buffer, (int) $expectedTotal); // Consume the frame
 
         return json_decode($json, true, 512, JSON_THROW_ON_ERROR);
     }
@@ -121,7 +139,8 @@ final class IpcFraming
      * Encode binary data with base64 for safe JSON transport.
      *
      * @param string $binaryData Raw binary data
-     * @return array Payload with encoding metadata
+     *
+     * @return array{type: string, encoding: string, data: string} Payload with encoding metadata
      */
     public static function encodeBinaryPayload(string $binaryData): array
     {
@@ -135,19 +154,21 @@ final class IpcFraming
     /**
      * Decode a binary payload that was encoded with encodeBinaryPayload().
      *
-     * @param array $payload Payload with encoding metadata
+     * @param array{type?: string, encoding?: string, data?: string} $payload Payload with encoding metadata
+     *
      * @return string Raw binary data
-     * @throws \RuntimeException If payload format is invalid
+     *
+     * @throws RuntimeException If payload format is invalid
      */
     public static function decodeBinaryPayload(array $payload): string
     {
         if (($payload['type'] ?? '') !== 'binary' || ($payload['encoding'] ?? '') !== 'base64') {
-            throw new \RuntimeException('Invalid binary payload: expected type=binary, encoding=base64');
+            throw new RuntimeException('Invalid binary payload: expected type=binary, encoding=base64');
         }
 
         $decoded = base64_decode($payload['data'] ?? '', true);
         if ($decoded === false) {
-            throw new \RuntimeException('Invalid base64 data in binary payload');
+            throw new RuntimeException('Invalid base64 data in binary payload');
         }
 
         return $decoded;

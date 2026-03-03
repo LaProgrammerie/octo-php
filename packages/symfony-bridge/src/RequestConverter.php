@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyBridge;
 
+use const UPLOAD_ERR_OK;
+
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
+
+use function is_array;
+use function is_string;
 
 /**
  * Converts an OpenSwoole\Http\Request into a Symfony HttpFoundation\Request.
@@ -21,18 +26,18 @@ use Symfony\Component\HttpFoundation\Request;
 final class RequestConverter
 {
     /**
-     * @param object $swooleRequest OpenSwoole\Http\Request (typed as object for testability with fakes)
+     * @param object&\OpenSwoole\Http\Request $swooleRequest OpenSwoole\Http\Request (typed as object for testability with fakes)
      */
     public function convert(object $swooleRequest): Request
     {
         $server = $this->buildServerVars($swooleRequest);
-        $headers = $swooleRequest->header ?? [];
+        $headers = $swooleRequest->header;
         $query = $swooleRequest->get ?? [];
         $post = $swooleRequest->post ?? [];
         $cookies = $swooleRequest->cookie ?? [];
         $files = $this->buildFiles($swooleRequest->files ?? []);
         $rawContent = $swooleRequest->rawContent();
-        $content = ($rawContent === '' || $rawContent === false) ? null : $rawContent;
+        $content = is_string($rawContent) && $rawContent !== '' ? $rawContent : null;
 
         $request = new Request(
             query: $query,
@@ -59,15 +64,17 @@ final class RequestConverter
      * Maps: REQUEST_METHOD, REQUEST_URI, QUERY_STRING, CONTENT_TYPE, CONTENT_LENGTH,
      * SERVER_PROTOCOL, SERVER_NAME, SERVER_PORT, REMOTE_ADDR, REMOTE_PORT, HTTP_*
      *
+     * @param object&\OpenSwoole\Http\Request $swooleRequest
+     *
      * @return array<string, mixed>
      */
     private function buildServerVars(object $swooleRequest): array
     {
-        $server = $swooleRequest->server ?? [];
-        $headers = $swooleRequest->header ?? [];
+        $server = $swooleRequest->server;
+        $headers = $swooleRequest->header;
 
         $result = [
-            'REQUEST_METHOD' => strtoupper($server['request_method'] ?? 'GET'),
+            'REQUEST_METHOD' => mb_strtoupper((string) ($server['request_method'] ?? 'GET')),
             'REQUEST_URI' => $server['request_uri'] ?? '/',
             'QUERY_STRING' => $server['query_string'] ?? '',
             'SERVER_PROTOCOL' => $server['server_protocol'] ?? 'HTTP/1.1',
@@ -89,7 +96,7 @@ final class RequestConverter
 
         // Map HTTP headers to HTTP_* (CGI convention)
         foreach ($headers as $name => $value) {
-            $key = 'HTTP_' . strtoupper(str_replace('-', '_', $name));
+            $key = 'HTTP_' . mb_strtoupper(str_replace('-', '_', $name));
             $result[$key] = $value;
         }
 
@@ -101,7 +108,8 @@ final class RequestConverter
      * Supports multiple files (input name="files[]") via recursive mapping.
      *
      * @param array<string, mixed> $swooleFiles
-     * @return array<string, UploadedFile|array<string, UploadedFile>>
+     *
+     * @return array<string, mixed>
      */
     private function buildFiles(array $swooleFiles): array
     {
@@ -127,7 +135,7 @@ final class RequestConverter
             path: $fileData['tmp_name'],
             originalName: $fileData['name'] ?? '',
             mimeType: $fileData['type'] ?? null,
-            error: $fileData['error'] ?? \UPLOAD_ERR_OK,
+            error: $fileData['error'] ?? UPLOAD_ERR_OK,
             test: true,
         );
     }

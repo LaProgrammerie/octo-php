@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyBridge\Tests\Property;
 
-use Octo\SymfonyBridge\RequestConverter;
+use Eris\Generator;
 use Eris\Generators;
 use Eris\TestTrait;
+use Octo\SymfonyBridge\RequestConverter;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+use function chr;
+
 /**
- * Property 1: Request conversion round-trip
+ * Property 1: Request conversion round-trip.
  *
  * **Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.9, 6.1**
  *
@@ -24,120 +27,14 @@ final class RequestConversionRoundTripTest extends TestCase
 {
     use TestTrait;
 
+    /** @var list<string> */
+    private const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
+
     private RequestConverter $converter;
 
     protected function setUp(): void
     {
         $this->converter = new RequestConverter();
-    }
-
-    /**
-     * Builds a fake OpenSwoole-like request object.
-     */
-    private function makeSwooleRequest(
-        string $method,
-        string $uri,
-        string $queryString,
-        array $headers,
-        array $query,
-        array $post,
-        array $cookies,
-        string $body,
-    ): object {
-        $server = [
-            'request_method' => $method,
-            'request_uri' => $uri,
-            'query_string' => $queryString,
-            'server_protocol' => 'HTTP/1.1',
-            'server_port' => 8080,
-            'remote_addr' => '127.0.0.1',
-            'remote_port' => 12345,
-            'request_time' => 1700000000,
-            'request_time_float' => 1700000000.0,
-        ];
-
-        return new class ($server, $headers, $query, $post, $cookies, [], $body) {
-            public function __construct(
-            public array $server,
-            public array $header,
-            public array $get,
-            public array $post,
-            public array $cookie,
-            public array $files,
-            private string $content,
-            ) {}
-
-            public function rawContent(): string
-            {
-                return $this->content;
-            }
-        };
-    }
-
-    /** @var string[] */
-    private const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
-
-    /**
-     * Generates a safe ASCII string suitable for header values and cookie values.
-     * Avoids control characters that would break HTTP semantics.
-     */
-    private static function safeAsciiString(): \Eris\Generator
-    {
-        return Generators::map(
-            fn(int $len): string => self::randomPrintableAscii($len),
-            Generators::choose(1, 50),
-        );
-    }
-
-    private static function randomPrintableAscii(int $length): string
-    {
-        $result = '';
-        for ($i = 0; $i < $length; $i++) {
-            $result .= chr(random_int(33, 126)); // printable ASCII, no space
-        }
-        return $result;
-    }
-
-    /**
-     * Generates a safe header name (lowercase alpha + hyphens, like OpenSwoole normalizes).
-     */
-    private static function headerNameGenerator(): \Eris\Generator
-    {
-        return Generators::map(
-            fn(int $len): string => self::randomHeaderName($len),
-            Generators::choose(1, 20),
-        );
-    }
-
-    private static function randomHeaderName(int $length): string
-    {
-        $chars = 'abcdefghijklmnopqrstuvwxyz';
-        $result = '';
-        for ($i = 0; $i < $length; $i++) {
-            $result .= $chars[random_int(0, strlen($chars) - 1)];
-        }
-        return 'x-' . $result; // prefix to avoid collisions with standard headers
-    }
-
-    /**
-     * Generates a safe cookie name (alphanumeric + underscore).
-     */
-    private static function cookieNameGenerator(): \Eris\Generator
-    {
-        return Generators::map(
-            fn(int $len): string => self::randomCookieName($len),
-            Generators::choose(1, 20),
-        );
-    }
-
-    private static function randomCookieName(int $length): string
-    {
-        $chars = 'abcdefghijklmnopqrstuvwxyz0123456789_';
-        $result = 'c'; // prefix to avoid purely numeric names (PHP casts to int keys)
-        for ($i = 0; $i < $length; $i++) {
-            $result .= $chars[random_int(0, strlen($chars) - 1)];
-        }
-        return $result;
     }
 
     #[Test]
@@ -149,7 +46,7 @@ final class RequestConversionRoundTripTest extends TestCase
             Generators::elements(self::HTTP_METHODS),
         )->then(function (string $method): void {
             $swoole = $this->makeSwooleRequest(
-                method: strtolower($method),
+                method: mb_strtolower($method),
                 uri: '/test',
                 queryString: '',
                 headers: [],
@@ -174,7 +71,7 @@ final class RequestConversionRoundTripTest extends TestCase
             Generators::choose(1, 5),
         )->then(function (int $paramCount): void {
             $query = [];
-            for ($i = 0; $i < $paramCount; $i++) {
+            for ($i = 0; $i < $paramCount; ++$i) {
                 $query['param' . $i] = self::randomPrintableAscii(random_int(1, 20));
             }
 
@@ -206,7 +103,7 @@ final class RequestConversionRoundTripTest extends TestCase
             Generators::choose(1, 5),
         )->then(function (int $headerCount): void {
             $headers = [];
-            for ($i = 0; $i < $headerCount; $i++) {
+            for ($i = 0; $i < $headerCount; ++$i) {
                 $headers[self::randomHeaderName(random_int(3, 10))] = self::randomPrintableAscii(random_int(1, 30));
             }
 
@@ -224,7 +121,7 @@ final class RequestConversionRoundTripTest extends TestCase
             $request = $this->converter->convert($swoole);
 
             foreach ($headers as $name => $value) {
-                $serverKey = 'HTTP_' . strtoupper(str_replace('-', '_', $name));
+                $serverKey = 'HTTP_' . mb_strtoupper(str_replace('-', '_', $name));
                 self::assertSame($value, $request->server->get($serverKey), "Header '{$name}' not in server vars");
             }
         });
@@ -239,7 +136,7 @@ final class RequestConversionRoundTripTest extends TestCase
             Generators::choose(1, 5),
         )->then(function (int $cookieCount): void {
             $cookies = [];
-            for ($i = 0; $i < $cookieCount; $i++) {
+            for ($i = 0; $i < $cookieCount; ++$i) {
                 $cookies[self::randomCookieName(random_int(3, 10))] = self::randomPrintableAscii(random_int(1, 30));
             }
 
@@ -329,7 +226,7 @@ final class RequestConversionRoundTripTest extends TestCase
             Generators::elements(['', 'a=1', 'x=y&z=w']),
         )->then(function (string $method, string $uri, string $qs): void {
             $swoole = $this->makeSwooleRequest(
-                method: strtolower($method),
+                method: mb_strtolower($method),
                 uri: $uri,
                 queryString: $qs,
                 headers: [],
@@ -348,5 +245,114 @@ final class RequestConversionRoundTripTest extends TestCase
             self::assertSame(8080, $request->server->get('SERVER_PORT'));
             self::assertSame('127.0.0.1', $request->server->get('REMOTE_ADDR'));
         });
+    }
+
+    /**
+     * Builds a fake OpenSwoole-like request object.
+     */
+    private function makeSwooleRequest(
+        string $method,
+        string $uri,
+        string $queryString,
+        array $headers,
+        array $query,
+        array $post,
+        array $cookies,
+        string $body,
+    ): object {
+        $server = [
+            'request_method' => $method,
+            'request_uri' => $uri,
+            'query_string' => $queryString,
+            'server_protocol' => 'HTTP/1.1',
+            'server_port' => 8080,
+            'remote_addr' => '127.0.0.1',
+            'remote_port' => 12345,
+            'request_time' => 1700000000,
+            'request_time_float' => 1700000000.0,
+        ];
+
+        return new class($server, $headers, $query, $post, $cookies, [], $body) {
+            public function __construct(
+                public array $server,
+                public array $header,
+                public array $get,
+                public array $post,
+                public array $cookie,
+                public array $files,
+                private string $content,
+            ) {}
+
+            public function rawContent(): string
+            {
+                return $this->content;
+            }
+        };
+    }
+
+    /**
+     * Generates a safe ASCII string suitable for header values and cookie values.
+     * Avoids control characters that would break HTTP semantics.
+     */
+    private static function safeAsciiString(): Generator
+    {
+        return Generators::map(
+            static fn (int $len): string => self::randomPrintableAscii($len),
+            Generators::choose(1, 50),
+        );
+    }
+
+    private static function randomPrintableAscii(int $length): string
+    {
+        $result = '';
+        for ($i = 0; $i < $length; ++$i) {
+            $result .= chr(random_int(33, 126)); // printable ASCII, no space
+        }
+
+        return $result;
+    }
+
+    /**
+     * Generates a safe header name (lowercase alpha + hyphens, like OpenSwoole normalizes).
+     */
+    private static function headerNameGenerator(): Generator
+    {
+        return Generators::map(
+            static fn (int $len): string => self::randomHeaderName($len),
+            Generators::choose(1, 20),
+        );
+    }
+
+    private static function randomHeaderName(int $length): string
+    {
+        $chars = 'abcdefghijklmnopqrstuvwxyz';
+        $result = '';
+        for ($i = 0; $i < $length; ++$i) {
+            $result .= $chars[random_int(0, mb_strlen($chars) - 1)];
+        }
+
+        return 'x-' . $result; // prefix to avoid collisions with standard headers
+    }
+
+    /**
+     * Generates a safe cookie name (alphanumeric + underscore).
+     */
+    private static function cookieNameGenerator(): Generator
+    {
+        return Generators::map(
+            static fn (int $len): string => self::randomCookieName($len),
+            Generators::choose(1, 20),
+        );
+    }
+
+    private static function randomCookieName(int $length): string
+    {
+        $chars = 'abcdefghijklmnopqrstuvwxyz0123456789_';
+        $result = 'c'; // prefix to avoid purely numeric names (PHP casts to int keys)
+        for ($i = 0; $i < $length; ++$i) {
+            $result .= $chars[random_int(0, mb_strlen($chars) - 1)];
+        }
+
+        return $result;
     }
 }

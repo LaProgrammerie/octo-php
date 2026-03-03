@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack;
 
+use const SIGINT;
+use const SIGTERM;
+
+use OpenSwoole\Http\Server;
+use OpenSwoole\Process;
+use OpenSwoole\Timer;
+
 /**
  * Graceful shutdown manager for the OpenSwoole HTTP server.
  *
@@ -49,7 +56,7 @@ final class GracefulShutdown
     /**
      * @param ServerConfig $config Server configuration
      * @param JsonLogger $logger Logger instance
-     * @param SignalAdapter|null $signalAdapter Adapter for signal/timer operations (null = OpenSwoole defaults)
+     * @param null|SignalAdapter $signalAdapter Adapter for signal/timer operations (null = OpenSwoole defaults)
      */
     public function __construct(
         private readonly ServerConfig $config,
@@ -68,7 +75,7 @@ final class GracefulShutdown
      *
      * Master-side SIGINT (dev only): immediate clean stop.
      *
-     * @param object $server OpenSwoole HTTP Server (typed as object for testability)
+     * @param object&Server $server OpenSwoole HTTP Server (typed as object for testability)
      */
     public function registerMaster(object $server): void
     {
@@ -88,6 +95,7 @@ final class GracefulShutdown
                 }
 
                 $server->shutdown();
+
                 return;
             }
 
@@ -128,7 +136,7 @@ final class GracefulShutdown
      *
      * Worker-side SIGINT (dev only): immediate clean stop via exit(0).
      *
-     * @param object $server OpenSwoole HTTP Server (typed as object for testability)
+     * @param object&Server $server OpenSwoole HTTP Server (typed as object for testability)
      * @param WorkerLifecycle $lifecycle Per-worker lifecycle instance
      */
     public function registerWorker(object $server, WorkerLifecycle $lifecycle): void
@@ -158,6 +166,7 @@ final class GracefulShutdown
                 $this->runtimeLogger->info('SIGINT received (dev mode), worker immediate stop', [
                     'worker_id' => $lifecycle->getWorkerId(),
                 ]);
+
                 exit(0);
             });
         }
@@ -192,29 +201,34 @@ final class GracefulShutdown
 
     // --- Private helpers delegating to SignalAdapter or OpenSwoole ---
 
+    /** @param callable(): void $handler */
     private function installSignal(int $signal, callable $handler): void
     {
         if ($this->signalAdapter !== null) {
             $this->signalAdapter->installSignal($signal, $handler);
+
             return;
         }
-        \OpenSwoole\Process::signal($signal, $handler);
+        Process::signal($signal, $handler);
     }
 
+    /** @param callable(): void $callback */
     private function scheduleTimer(int $ms, callable $callback): int
     {
         if ($this->signalAdapter !== null) {
             return $this->signalAdapter->scheduleTimer($ms, $callback);
         }
-        return \OpenSwoole\Timer::after($ms, $callback);
+
+        return (int) Timer::after($ms, $callback);
     }
 
     private function clearTimer(int $timerId): void
     {
         if ($this->signalAdapter !== null) {
             $this->signalAdapter->clearTimer($timerId);
+
             return;
         }
-        \OpenSwoole\Timer::clear($timerId);
+        Timer::clear($timerId); // @phpstan-ignore arguments.count (extension reflection is wrong — clear() requires timerId)
     }
 }

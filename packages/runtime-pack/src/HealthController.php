@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack;
 
+use const JSON_PRESERVE_ZERO_FRACTION;
+use const JSON_THROW_ON_ERROR;
+use const JSON_UNESCAPED_SLASHES;
+use const JSON_UNESCAPED_UNICODE;
+
+use OpenSwoole\Http\Response;
+
 /**
  * Health check controller for /healthz and /readyz endpoints.
  *
@@ -17,15 +24,14 @@ final class HealthController
 {
     private const CONTENT_TYPE = 'application/json';
     private const CACHE_CONTROL = 'no-store';
-    private const JSON_FLAGS = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR;
+    private const JSON_FLAGS = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR | JSON_PRESERVE_ZERO_FRACTION;
 
     /** Stale tick threshold in seconds. */
     private const TICK_STALE_THRESHOLD = 2.0;
 
     public function __construct(
         private readonly WorkerLifecycle $lifecycle,
-    ) {
-    }
+    ) {}
 
     /**
      * GET /healthz — always 200 while process is active.
@@ -33,7 +39,7 @@ final class HealthController
      * Headers: Content-Type: application/json, Cache-Control: no-store.
      * Body: {"status":"alive"}
      *
-     * @param object $response OpenSwoole HTTP Response (typed as object for testability)
+     * @param object&Response $response OpenSwoole HTTP Response (typed as object for testability)
      */
     public function healthz(object $response): void
     {
@@ -54,7 +60,7 @@ final class HealthController
      *
      * Headers: Content-Type: application/json, Cache-Control: no-store.
      *
-     * @param object $response OpenSwoole HTTP Response (typed as object for testability)
+     * @param object&Response $response OpenSwoole HTTP Response (typed as object for testability)
      */
     public function readyz(object $response): void
     {
@@ -65,6 +71,7 @@ final class HealthController
         if ($this->lifecycle->isShuttingDown()) {
             $response->status(503);
             $response->end(json_encode(['status' => 'shutting_down'], self::JSON_FLAGS));
+
             return;
         }
 
@@ -73,6 +80,7 @@ final class HealthController
         if ($tickAge > self::TICK_STALE_THRESHOLD) {
             $response->status(503);
             $response->end(json_encode(['status' => 'event_loop_stale'], self::JSON_FLAGS));
+
             return;
         }
 
@@ -82,8 +90,9 @@ final class HealthController
             $response->status(503);
             $response->end(json_encode([
                 'status' => 'event_loop_lagging',
-                'lag_ms' => round($lagMs, 2),
+                'lag_ms' => (float) round($lagMs, 2),
             ], self::JSON_FLAGS));
+
             return;
         }
 
@@ -91,7 +100,7 @@ final class HealthController
         $response->status(200);
         $response->end(json_encode([
             'status' => 'ready',
-            'event_loop_lag_ms' => round($lagMs, 2),
+            'event_loop_lag_ms' => (float) round($lagMs, 2),
         ], self::JSON_FLAGS));
     }
 }

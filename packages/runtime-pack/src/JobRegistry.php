@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack;
 
+use InvalidArgumentException;
+use LogicException;
+
 /**
  * Registry of named jobs for the BlockingPool.
  *
@@ -18,20 +21,21 @@ namespace Octo\RuntimePack;
  */
 final class JobRegistry
 {
-    /** @var array<string, callable(array): mixed> */
+    /** @var array<string, callable(array<string, mixed>): mixed> */
     private array $jobs = [];
 
     /**
      * Register a job handler.
      *
      * @param string $name Unique job name (e.g. 'pdf.generate', 'legacy.doctrine_query')
-     * @param callable(array): mixed $handler Callable receiving payload, returning result
-     * @throws \LogicException If the name is already registered
+     * @param callable(array<string, mixed>): mixed $handler Callable receiving payload, returning result
+     *
+     * @throws LogicException If the name is already registered
      */
     public function register(string $name, callable $handler): void
     {
         if (isset($this->jobs[$name])) {
-            throw new \LogicException("Job '{$name}' already registered");
+            throw new LogicException("Job '{$name}' already registered");
         }
         $this->jobs[$name] = $handler;
     }
@@ -39,13 +43,16 @@ final class JobRegistry
     /**
      * Resolve a job by name.
      *
-     * @throws \InvalidArgumentException If the job doesn't exist
+     * @return callable(array<string, mixed>): mixed
+     *
+     * @throws InvalidArgumentException If the job doesn't exist
      */
     public function resolve(string $name): callable
     {
         if (!isset($this->jobs[$name])) {
-            throw new \InvalidArgumentException("Unknown job: '{$name}'");
+            throw new InvalidArgumentException("Unknown job: '{$name}'");
         }
+
         return $this->jobs[$name];
     }
 
@@ -55,7 +62,7 @@ final class JobRegistry
         return isset($this->jobs[$name]);
     }
 
-    /** List of registered job names. */
+    /** @return list<string> List of registered job names. */
     public function names(): array
     {
         return array_keys($this->jobs);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyOtel\Tests\Unit;
 
+use LogicException;
 use Octo\SymfonyOtel\OtelRequestListener;
 use Octo\SymfonyOtel\OtelSpanFactory;
 use Octo\SymfonyOtel\Tracing\FakeTracer;
@@ -12,29 +13,11 @@ use Octo\SymfonyOtel\Tracing\StatusCode;
 use Octo\SymfonyOtel\Tracing\W3CTraceContextPropagator;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
+use stdClass;
 
 final class OtelRequestListenerTest extends TestCase
 {
-    private function createListener(): OtelRequestListener
-    {
-        $tracer = new FakeTracer();
-        $factory = new OtelSpanFactory($tracer);
-        $propagator = new W3CTraceContextPropagator();
-
-        return new OtelRequestListener($factory, $propagator);
-    }
-
-    private function makeSwooleRequest(array $headers = [], array $server = []): object
-    {
-        $req = new \stdClass();
-        $req->header = $headers;
-        $req->server = array_merge([
-            'request_method' => 'GET',
-            'request_uri' => '/',
-        ], $server);
-        return $req;
-    }
-
     #[Test]
     public function beforeHandleCreatesRootSpanWithHttpAttributes(): void
     {
@@ -139,11 +122,11 @@ final class OtelRequestListenerTest extends TestCase
         $req = $this->makeSwooleRequest(headers: ['x-request-id' => 'req-2']);
         $span = $listener->beforeHandle($req);
 
-        $listener->afterHandle($span, 200, 'app_user_list', 'App\\Controller\\UserController::list');
+        $listener->afterHandle($span, 200, 'app_user_list', 'App\Controller\UserController::list');
 
         $attrs = $span->getAttributes();
         self::assertSame('app_user_list', $attrs['symfony.route']);
-        self::assertSame('App\\Controller\\UserController::list', $attrs['symfony.controller']);
+        self::assertSame('App\Controller\UserController::list', $attrs['symfony.controller']);
     }
 
     #[Test]
@@ -167,7 +150,7 @@ final class OtelRequestListenerTest extends TestCase
         $req = $this->makeSwooleRequest(headers: ['x-request-id' => 'req-err']);
         $span = $listener->beforeHandle($req);
 
-        $exception = new \RuntimeException('Something went wrong');
+        $exception = new RuntimeException('Something went wrong');
         $listener->onException($span, $exception);
 
         self::assertSame(StatusCode::STATUS_ERROR, $span->getStatusCode());
@@ -184,7 +167,7 @@ final class OtelRequestListenerTest extends TestCase
         $span = $listener->beforeHandle($req);
 
         // Exception occurs before any child spans are created
-        $exception = new \LogicException('Early failure');
+        $exception = new LogicException('Early failure');
         $listener->onException($span, $exception);
 
         // Root span can still be ended via afterHandle
@@ -194,5 +177,26 @@ final class OtelRequestListenerTest extends TestCase
         self::assertSame(StatusCode::STATUS_ERROR, $span->getStatusCode());
         self::assertSame(500, $span->getAttributes()['http.status_code']);
         self::assertCount(1, $span->getRecordedExceptions());
+    }
+
+    private function createListener(): OtelRequestListener
+    {
+        $tracer = new FakeTracer();
+        $factory = new OtelSpanFactory($tracer);
+        $propagator = new W3CTraceContextPropagator();
+
+        return new OtelRequestListener($factory, $propagator);
+    }
+
+    private function makeSwooleRequest(array $headers = [], array $server = []): object
+    {
+        $req = new stdClass();
+        $req->header = $headers;
+        $req->server = array_merge([
+            'request_method' => 'GET',
+            'request_uri' => '/',
+        ], $server);
+
+        return $req;
     }
 }

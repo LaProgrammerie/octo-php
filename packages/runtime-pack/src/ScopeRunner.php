@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack;
 
+use OpenSwoole\Coroutine\Channel;
+use OpenSwoole\Http\Request;
+use OpenSwoole\Http\Response;
+use OpenSwoole\Timer;
+use Throwable;
+
 /**
  * Orchestrates request handler execution within a managed scope.
  *
@@ -44,7 +50,7 @@ final class ScopeRunner
      * If the Channel is empty (all tokens acquired), pop() returns false → immediate 503.
      * null if maxConcurrentScopes = 0 (unlimited).
      */
-    private ?\OpenSwoole\Coroutine\Channel $concurrencySemaphore = null;
+    private ?Channel $concurrencySemaphore = null;
 
     public function __construct(
         private readonly MetricsCollector $metrics,
@@ -56,8 +62,8 @@ final class ScopeRunner
             // Pre-fill the channel with N tokens.
             // pop() = acquire a token (non-blocking with timeout 0).
             // push() = release a token.
-            $this->concurrencySemaphore = new \OpenSwoole\Coroutine\Channel($maxConcurrentScopes);
-            for ($i = 0; $i < $maxConcurrentScopes; $i++) {
+            $this->concurrencySemaphore = new Channel($maxConcurrentScopes);
+            for ($i = 0; $i < $maxConcurrentScopes; ++$i) {
                 $this->concurrencySemaphore->push(true);
             }
         }
@@ -67,11 +73,13 @@ final class ScopeRunner
      * Execute a request handler within a managed scope.
      * SYNCHRONOUS (yield-ok) — runs in the OpenSwoole request coroutine.
      * Returns after handler completion or deadline expiration.
+     *
+     * @param callable(Request, Response, ResponseState): void $handler
      */
     public function runRequest(
         callable $handler,
-        \OpenSwoole\Http\Request $request,
-        \OpenSwoole\Http\Response $rawResponse,
+        Request $request,
+        Response $rawResponse,
         string $requestId,
         float $timeoutSeconds,
     ): ResponseState {
@@ -90,7 +98,7 @@ final class ScopeRunner
                         $rawResponse->header('Content-Type', 'application/json');
                         $rawResponse->header('Retry-After', '1');
                         $rawResponse->end('{"error":"Too many concurrent requests (scope limit reached)"}');
-                    } catch (\Throwable) {
+                    } catch (Throwable) {
                     }
                 }
                 $this->metrics->incrementScopeRejected();
@@ -113,9 +121,9 @@ final class ScopeRunner
         $logger = $this->logger->withRequestId($requestId);
 
         // Timer deadline — runs in the same worker event loop
-        $timerId = \OpenSwoole\Timer::after(
+        $timerId = Timer::after(
             (int) ($timeoutSeconds * 1000),
-            function () use ($rawResponse, $responseState, $logger, $metrics, $timeoutSeconds) {
+            static function () use ($rawResponse, $responseState, $logger, $metrics, $timeoutSeconds): void {
                 // Set statusCode BEFORE trySend() for log/metrics consistency
                 // (avoids a transient state where trySend=true but statusCode not yet set)
                 $responseState->setStatusCode(408);
@@ -125,7 +133,7 @@ final class ScopeRunner
                         $rawResponse->status(408);
                         $rawResponse->header('Content-Type', 'application/json');
                         $rawResponse->end('{"error":"Request Timeout"}');
-                    } catch (\Throwable) {
+                    } catch (Throwable) {
                         // Connection already closed
                     }
                     $metrics->incrementCancelledRequests();
@@ -139,7 +147,7 @@ final class ScopeRunner
         try {
             // The handler runs IN the request coroutine (no Coroutine::create)
             $handler($request, $rawResponse, $responseState);
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             // Uncaught exception in handler → 500
             // Set statusCode BEFORE trySend() for log/metrics consistency
             $responseState->setStatusCode(500);
@@ -148,7 +156,7 @@ final class ScopeRunner
                     $rawResponse->status(500);
                     $rawResponse->header('Content-Type', 'application/json');
                     $rawResponse->end('{"error":"Internal Server Error"}');
-                } catch (\Throwable) {
+                } catch (Throwable) {
                 }
             }
             $logger->error('Handler exception', [
@@ -156,12 +164,12 @@ final class ScopeRunner
             ]);
         } finally {
             try {
-                \OpenSwoole\Timer::clear($timerId);
-            } catch (\Throwable) {
+                Timer::clear($timerId); // @phpstan-ignore arguments.count (extension reflection is wrong — clear() requires timerId)
+            } catch (Throwable) {
             }
             $this->metrics->decrementInflightScopes();
             // Release semaphore if acquired
-            if ($semaphoreAcquired && $this->concurrencySemaphore !== null) {
+            if ($semaphoreAcquired) {
                 $this->concurrencySemaphore->push(true);
             }
         }

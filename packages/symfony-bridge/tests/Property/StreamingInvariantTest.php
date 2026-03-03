@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyBridge\Tests\Property;
 
-use Octo\SymfonyBridge\ResponseConverter;
 use Eris\Generators;
 use Eris\TestTrait;
+use Octo\SymfonyBridge\ResponseConverter;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Property 4: Streaming invariant
+ * Property 4: Streaming invariant.
  *
  * **Validates: Requirements 3.9, 3.10, 3.12, 3.13, 3.14**
  *
@@ -41,11 +41,11 @@ final class StreamingInvariantTest extends TestCase
             Generators::choose(1, 10),
         )->then(function (int $chunkCount): void {
             $chunks = [];
-            for ($i = 0; $i < $chunkCount; $i++) {
+            for ($i = 0; $i < $chunkCount; ++$i) {
                 $chunks[] = 'chunk_' . $i . '_' . bin2hex(random_bytes(4));
             }
 
-            $response = new StreamedResponse(function () use ($chunks): void {
+            $response = new StreamedResponse(static function () use ($chunks): void {
                 foreach ($chunks as $chunk) {
                     echo $chunk;
                 }
@@ -94,11 +94,11 @@ final class StreamingInvariantTest extends TestCase
             Generators::choose(1, 5),
         )->then(function (int $eventCount): void {
             $events = [];
-            for ($i = 0; $i < $eventCount; $i++) {
+            for ($i = 0; $i < $eventCount; ++$i) {
                 $events[] = "data: event_{$i}\n\n";
             }
 
-            $response = new StreamedResponse(function () use ($events): void {
+            $response = new StreamedResponse(static function () use ($events): void {
                 foreach ($events as $event) {
                     echo $event;
                 }
@@ -127,9 +127,9 @@ final class StreamingInvariantTest extends TestCase
             $allWritten = implode('', $facade->writes);
             foreach ($events as $event) {
                 self::assertStringContainsString(
-                    trim($event),
+                    mb_trim($event),
                     $allWritten,
-                    "SSE event not found in writes",
+                    'SSE event not found in writes',
                 );
             }
         });
@@ -139,11 +139,13 @@ final class StreamingInvariantTest extends TestCase
 /**
  * Recording facade with operation ordering for streaming verification.
  */
-class StreamingRecordingFacade
+final class StreamingRecordingFacade
 {
     public ?int $statusCode = null;
+
     /** @var list<array{string, string}> */
     public array $headers = [];
+
     /** @var list<string> */
     public array $writes = [];
     public bool $endCalled = false;
@@ -156,6 +158,7 @@ class StreamingRecordingFacade
     {
         $this->statusCode = $code;
         $this->operationLog[] = 'status';
+
         return $this;
     }
 
@@ -163,6 +166,7 @@ class StreamingRecordingFacade
     {
         $this->headers[] = [$key, $value];
         $this->operationLog[] = 'header';
+
         return $this;
     }
 
@@ -170,6 +174,7 @@ class StreamingRecordingFacade
     {
         $this->writes[] = $content;
         $this->operationLog[] = 'write';
+
         return true;
     }
 
@@ -178,6 +183,7 @@ class StreamingRecordingFacade
         $this->endCalled = true;
         $this->endContent = $content;
         $this->operationLog[] = 'end';
+
         return true;
     }
 
@@ -220,11 +226,12 @@ class StreamingRecordingFacade
 /**
  * Recording raw response for streaming PBT.
  */
-class StreamingRecordingRawResponse
+final class StreamingRecordingRawResponse
 {
     /** @var list<array{name: string, value: string, expires: int, path: string, domain: string, secure: bool, httpOnly: bool, sameSite: string}> */
     public array $cookies = [];
     public ?string $sentFile = null;
+
     /** @var list<array{string, string}> */
     public array $headers = [];
 

@@ -7,7 +7,13 @@ namespace Octo\RuntimePack\Tests\Unit;
 use Octo\RuntimePack\JsonLogger;
 use Octo\RuntimePack\MetricsCollector;
 use Octo\RuntimePack\ScopeRunner;
+use OpenSwoole\Coroutine;
+use OpenSwoole\Coroutine\Channel;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
+
+use function extension_loaded;
+use function is_resource;
 
 /**
  * Unit tests for ScopeRunner semaphore logic.
@@ -23,32 +29,26 @@ final class ScopeRunnerTest extends TestCase
 {
     private MetricsCollector $metrics;
     private JsonLogger $logger;
+
     /** @var resource */
     private $logStream;
 
     protected function setUp(): void
     {
-        if (!\extension_loaded('openswoole')) {
-            $this->markTestSkipped('OpenSwoole extension required');
+        if (!extension_loaded('openswoole')) {
+            self::markTestSkipped('OpenSwoole extension required');
         }
 
         $this->metrics = new MetricsCollector();
-        $this->logStream = \fopen('php://memory', 'r+');
+        $this->logStream = fopen('php://memory', 'r+');
         $this->logger = new JsonLogger(production: false, stream: $this->logStream);
     }
 
     protected function tearDown(): void
     {
-        if (isset($this->logStream) && \is_resource($this->logStream)) {
-            \fclose($this->logStream);
+        if (isset($this->logStream) && is_resource($this->logStream)) {
+            fclose($this->logStream);
         }
-    }
-
-    private function getLogOutput(): string
-    {
-        \rewind($this->logStream);
-
-        return \stream_get_contents($this->logStream) ?: '';
     }
 
     // --- 18.4: maxConcurrentScopes=0 → no semaphore (unlimited behavior preserved) ---
@@ -59,9 +59,9 @@ final class ScopeRunnerTest extends TestCase
         $runner = new ScopeRunner($this->metrics, $this->logger, 0);
 
         // Use reflection to verify no semaphore was created
-        $ref = new \ReflectionClass($runner);
+        $ref = new ReflectionClass($runner);
         $prop = $ref->getProperty('concurrencySemaphore');
-        $this->assertNull($prop->getValue($runner));
+        self::assertNull($prop->getValue($runner));
     }
 
     // --- 18.1: maxConcurrentScopes > 0 → semaphore created with N tokens ---
@@ -70,16 +70,16 @@ final class ScopeRunnerTest extends TestCase
     {
         $channel = null;
 
-        \OpenSwoole\Coroutine::run(function () use (&$channel) {
+        Coroutine::run(function () use (&$channel): void {
             $runner = new ScopeRunner($this->metrics, $this->logger, 5);
 
-            $ref = new \ReflectionClass($runner);
+            $ref = new ReflectionClass($runner);
             $prop = $ref->getProperty('concurrencySemaphore');
             $channel = $prop->getValue($runner);
         });
 
-        $this->assertNotNull($channel);
-        $this->assertInstanceOf(\OpenSwoole\Coroutine\Channel::class, $channel);
+        self::assertNotNull($channel);
+        self::assertInstanceOf(Channel::class, $channel);
     }
 
     // --- 18.5: scope_rejected_total metric integration ---
@@ -87,7 +87,7 @@ final class ScopeRunnerTest extends TestCase
     public function testScopeRejectedMetricInitiallyZero(): void
     {
         $snapshot = $this->metrics->snapshot();
-        $this->assertSame(0, $snapshot['scope_rejected_total']);
+        self::assertSame(0, $snapshot['scope_rejected_total']);
     }
 
     public function testIncrementScopeRejectedUpdatesMetric(): void
@@ -95,7 +95,7 @@ final class ScopeRunnerTest extends TestCase
         $this->metrics->incrementScopeRejected();
         $this->metrics->incrementScopeRejected();
         $snapshot = $this->metrics->snapshot();
-        $this->assertSame(2, $snapshot['scope_rejected_total']);
+        self::assertSame(2, $snapshot['scope_rejected_total']);
     }
 
     // --- 18.2: Log warning uses maxConcurrentScopes (stored property, not channel.capacity) ---
@@ -104,14 +104,21 @@ final class ScopeRunnerTest extends TestCase
     {
         $value = null;
 
-        \OpenSwoole\Coroutine::run(function () use (&$value) {
+        Coroutine::run(function () use (&$value): void {
             $runner = new ScopeRunner($this->metrics, $this->logger, 3);
 
-            $ref = new \ReflectionClass($runner);
+            $ref = new ReflectionClass($runner);
             $prop = $ref->getProperty('maxConcurrentScopes');
             $value = $prop->getValue($runner);
         });
 
-        $this->assertSame(3, $value);
+        self::assertSame(3, $value);
+    }
+
+    private function getLogOutput(): string
+    {
+        rewind($this->logStream);
+
+        return stream_get_contents($this->logStream) ?: '';
     }
 }

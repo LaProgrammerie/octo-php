@@ -29,17 +29,17 @@ final class IoExecutor
         private readonly ExecutionPolicy $policy,
         private readonly BlockingPoolInterface $blockingPool,
         private readonly JsonLogger $logger,
-    ) {
-    }
+    ) {}
 
     /**
      * Execute an I/O operation according to the dependency's policy.
      *
      * @param string $dependency Dependency name (e.g. 'pdo_mysql', 'redis', 'guzzle')
      * @param string $jobName BlockingPool job name (used if offloading)
-     * @param array $payload Data for the job
-     * @param callable|null $directCallable Callable for direct coroutine execution (null = always offload)
-     * @param float|null $timeout Timeout in seconds (null = BlockingPool default)
+     * @param array<string, mixed> $payload Data for the job
+     * @param null|callable(array<string, mixed>): mixed $directCallable Callable for direct coroutine execution (null = always offload)
+     * @param null|float $timeout Timeout in seconds (null = BlockingPool default)
+     *
      * @return mixed Operation result
      */
     public function run(

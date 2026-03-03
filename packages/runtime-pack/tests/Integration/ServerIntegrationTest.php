@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack\Tests\Integration;
 
+use const SIGINT;
+use const SIGTERM;
+
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use PHPUnit\Framework\TestCase;
+use Throwable;
 
 /**
  * Integration tests for the OpenSwoole HTTP server.
@@ -36,9 +40,9 @@ final class ServerIntegrationTest extends TestCase
 
         $response = $this->httpGet('/healthz');
 
-        $this->assertSame(200, $response['status']);
+        self::assertSame(200, $response['status']);
         $body = json_decode($response['body'], true);
-        $this->assertSame('alive', $body['status']);
+        self::assertSame('alive', $body['status']);
     }
 
     // =========================================================================
@@ -56,18 +60,18 @@ final class ServerIntegrationTest extends TestCase
 
         // Make a request to confirm server is operational
         $response = $this->httpGet('/healthz');
-        $this->assertSame(200, $response['status']);
+        self::assertSame(200, $response['status']);
 
         // Check startup logs for production mode
         $stderr = $this->collectStderr();
         $logs = $this->parseLogLines($stderr);
 
         // Find the "Server starting" log entry
-        $startupLogs = array_filter($logs, fn(array $log) => ($log['message'] ?? '') === 'Server starting');
-        $this->assertNotEmpty($startupLogs, 'Expected "Server starting" log entry');
+        $startupLogs = array_filter($logs, static fn (array $log) => ($log['message'] ?? '') === 'Server starting');
+        self::assertNotEmpty($startupLogs, 'Expected "Server starting" log entry');
 
         $startupLog = reset($startupLogs);
-        $this->assertSame('production', $startupLog['extra']['mode'] ?? null);
+        self::assertSame('production', $startupLog['extra']['mode'] ?? null);
     }
 
     // =========================================================================
@@ -81,7 +85,7 @@ final class ServerIntegrationTest extends TestCase
 
         // Confirm server is running
         $response = $this->httpGet('/healthz');
-        $this->assertSame(200, $response['status']);
+        self::assertSame(200, $response['status']);
 
         // Send SIGTERM
         $this->sendSignal(SIGTERM);
@@ -94,20 +98,22 @@ final class ServerIntegrationTest extends TestCase
         $logs = $this->parseLogLines($stderr);
 
         // Should have shutdown-related log entries
-        $shutdownLogs = array_filter($logs, function (array $log) {
+        $shutdownLogs = array_filter($logs, static function (array $log) {
             $msg = $log['message'] ?? '';
+
             return str_contains($msg, 'shutdown') || str_contains($msg, 'Shutdown');
         });
 
-        $this->assertNotEmpty($shutdownLogs, 'Expected shutdown log entries');
+        self::assertNotEmpty($shutdownLogs, 'Expected shutdown log entries');
 
         // Look for clean shutdown log
-        $cleanShutdownLogs = array_filter($logs, function (array $log) {
+        $cleanShutdownLogs = array_filter($logs, static function (array $log) {
             $msg = $log['message'] ?? '';
+
             return str_contains($msg, 'clean') || str_contains($msg, 'Shutdown complete');
         });
 
-        $this->assertNotEmpty($cleanShutdownLogs, 'Expected clean shutdown log entry');
+        self::assertNotEmpty($cleanShutdownLogs, 'Expected clean shutdown log entry');
     }
 
     // =========================================================================
@@ -137,8 +143,9 @@ final class ServerIntegrationTest extends TestCase
         $logs = $this->parseLogLines($stderr);
 
         // Should have forced shutdown log OR the shutdown-complete-forced log
-        $forcedLogs = array_filter($logs, function (array $log) {
+        $forcedLogs = array_filter($logs, static function (array $log) {
             $msg = $log['message'] ?? '';
+
             return str_contains($msg, 'Double SIGTERM')
                 || str_contains($msg, 'forced')
                 || str_contains($msg, 'Forced')
@@ -152,9 +159,9 @@ final class ServerIntegrationTest extends TestCase
             // The server stopped — that's the essential behavior.
             // The exit code varies (0 or signal-based), but the key invariant
             // is that the server is no longer running.
-            $this->assertTrue(true, 'Server stopped after double SIGTERM (log not captured but behavior correct)');
+            self::assertTrue(true, 'Server stopped after double SIGTERM (log not captured but behavior correct)');
         } else {
-            $this->assertNotEmpty($forcedLogs, 'Expected forced shutdown log entry after double SIGTERM');
+            self::assertNotEmpty($forcedLogs, 'Expected forced shutdown log entry after double SIGTERM');
         }
     }
 
@@ -178,12 +185,13 @@ final class ServerIntegrationTest extends TestCase
         $logs = $this->parseLogLines($stderr);
 
         // Should have SIGINT log
-        $sigintLogs = array_filter($logs, function (array $log) {
+        $sigintLogs = array_filter($logs, static function (array $log) {
             $msg = $log['message'] ?? '';
+
             return str_contains($msg, 'SIGINT');
         });
 
-        $this->assertNotEmpty($sigintLogs, 'Expected SIGINT log entry');
+        self::assertNotEmpty($sigintLogs, 'Expected SIGINT log entry');
     }
 
     // =========================================================================
@@ -204,19 +212,19 @@ final class ServerIntegrationTest extends TestCase
         try {
             $response = $this->httpPost('/', $largeBody, [
                 'Content-Type' => 'application/octet-stream',
-                'Content-Length' => (string) strlen($largeBody),
+                'Content-Length' => (string) mb_strlen($largeBody),
             ]);
             // OpenSwoole may close the connection or return an error
             // The key assertion is that the server doesn't crash
             // and continues to serve requests
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // Connection reset is expected for oversized bodies
         }
 
         // Verify server is still healthy after the oversized request
         usleep(200_000);
         $healthResponse = $this->httpGet('/healthz');
-        $this->assertSame(200, $healthResponse['status']);
+        self::assertSame(200, $healthResponse['status']);
     }
 
     // =========================================================================
@@ -231,9 +239,9 @@ final class ServerIntegrationTest extends TestCase
 
         $response = $this->httpGet('/healthz');
 
-        $this->assertSame(200, $response['status']);
-        $this->assertSame('application/json', $response['headers']['content-type'] ?? '');
-        $this->assertSame('no-store', $response['headers']['cache-control'] ?? '');
+        self::assertSame(200, $response['status']);
+        self::assertSame('application/json', $response['headers']['content-type'] ?? '');
+        self::assertSame('no-store', $response['headers']['cache-control'] ?? '');
     }
 
     public function testReadyzReturnsCorrectContentTypeAndCacheControl(): void
@@ -243,13 +251,13 @@ final class ServerIntegrationTest extends TestCase
 
         $response = $this->httpGet('/readyz');
 
-        $this->assertSame(200, $response['status']);
-        $this->assertSame('application/json', $response['headers']['content-type'] ?? '');
-        $this->assertSame('no-store', $response['headers']['cache-control'] ?? '');
+        self::assertSame(200, $response['status']);
+        self::assertSame('application/json', $response['headers']['content-type'] ?? '');
+        self::assertSame('no-store', $response['headers']['cache-control'] ?? '');
 
         $body = json_decode($response['body'], true);
-        $this->assertSame('ready', $body['status']);
-        $this->assertArrayHasKey('event_loop_lag_ms', $body);
+        self::assertSame('ready', $body['status']);
+        self::assertArrayHasKey('event_loop_lag_ms', $body);
     }
 
     // =========================================================================
@@ -265,14 +273,14 @@ final class ServerIntegrationTest extends TestCase
 
         // Server header should be absent or empty
         $serverHeader = $response['headers']['server'] ?? '';
-        $this->assertTrue(
+        self::assertTrue(
             $serverHeader === '' || !isset($response['headers']['server']),
             "Server header should be absent or empty, got: '{$serverHeader}'",
         );
 
         // X-Powered-By header should be absent or empty
         $poweredByHeader = $response['headers']['x-powered-by'] ?? '';
-        $this->assertTrue(
+        self::assertTrue(
             $poweredByHeader === '' || !isset($response['headers']['x-powered-by']),
             "X-Powered-By header should be absent or empty, got: '{$poweredByHeader}'",
         );
@@ -287,14 +295,14 @@ final class ServerIntegrationTest extends TestCase
 
         // Server header should be absent or empty
         $serverHeader = $response['headers']['server'] ?? '';
-        $this->assertTrue(
+        self::assertTrue(
             $serverHeader === '' || !isset($response['headers']['server']),
             "Server header should be absent or empty on app routes, got: '{$serverHeader}'",
         );
 
         // X-Powered-By header should be absent or empty
         $poweredByHeader = $response['headers']['x-powered-by'] ?? '';
-        $this->assertTrue(
+        self::assertTrue(
             $poweredByHeader === '' || !isset($response['headers']['x-powered-by']),
             "X-Powered-By header should be absent or empty on app routes, got: '{$poweredByHeader}'",
         );

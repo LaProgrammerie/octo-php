@@ -4,17 +4,18 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyRealtime\Tests\Property;
 
+use Eris\Generators;
+use Eris\TestTrait;
 use Octo\SymfonyRealtime\RealtimeServerAdapter;
 use Octo\SymfonyRealtime\WebSocketContext;
 use Octo\SymfonyRealtime\WebSocketHandler;
-use Eris\Generators;
-use Eris\TestTrait;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
+use stdClass;
 
 /**
- * Property 12: WebSocket upgrade detection
+ * Property 12: WebSocket upgrade detection.
  *
  * **Validates: Requirements 12.3**
  *
@@ -44,7 +45,7 @@ final class WebSocketUpgradeDetectionTest extends TestCase
             ->then(function (string $upgradeVal, string $connectionVal): void {
                 $adapter = $this->createAdapter();
 
-                $request = new \stdClass();
+                $request = new stdClass();
                 $request->header = [
                     'upgrade' => $upgradeVal,
                     'connection' => $connectionVal,
@@ -55,7 +56,8 @@ final class WebSocketUpgradeDetectionTest extends TestCase
                     $adapter->isWebSocketUpgrade($request),
                     "Expected WS upgrade for Upgrade: {$upgradeVal}, Connection: {$connectionVal}",
                 );
-            });
+            })
+        ;
     }
 
     #[Test]
@@ -70,7 +72,7 @@ final class WebSocketUpgradeDetectionTest extends TestCase
             $adapter = $this->createAdapter();
 
             // No 'upgrade' header at all
-            $request = new \stdClass();
+            $request = new stdClass();
             $request->header = [
                 'connection' => $connectionVal,
                 'x-custom' => $randomHeader,
@@ -96,7 +98,7 @@ final class WebSocketUpgradeDetectionTest extends TestCase
             $adapter = $this->createAdapter();
 
             // No 'connection' header at all
-            $request = new \stdClass();
+            $request = new stdClass();
             $request->header = [
                 'upgrade' => $upgradeVal,
                 'x-custom' => $randomHeader,
@@ -122,7 +124,7 @@ final class WebSocketUpgradeDetectionTest extends TestCase
         $this->forAll($nonWsUpgrades)->then(function (string $upgradeVal): void {
             $adapter = $this->createAdapter();
 
-            $request = new \stdClass();
+            $request = new stdClass();
             $request->header = [
                 'upgrade' => $upgradeVal,
                 'connection' => 'Upgrade',
@@ -143,15 +145,21 @@ final class WebSocketUpgradeDetectionTest extends TestCase
 
         $this->forAll(
             Generators::elements([true, false]),
-        )->then(function (bool $isWs): void {
+        )->then(static function (bool $isWs): void {
             $httpCalled = false;
             $wsCalled = false;
 
-            $httpAdapter = function () use (&$httpCalled): void { $httpCalled = true; };
-            $wsHandler = new class ($wsCalled) implements WebSocketHandler {
+            $httpAdapter = static function () use (&$httpCalled): void { $httpCalled = true; };
+            $wsHandler = new class($wsCalled) implements WebSocketHandler {
                 public function __construct(private bool &$called) {}
-                public function onOpen(WebSocketContext $ctx): void { $this->called = true; }
+
+                public function onOpen(WebSocketContext $ctx): void
+                {
+                    $this->called = true;
+                }
+
                 public function onMessage(WebSocketContext $ctx, string $data): void {}
+
                 public function onClose(WebSocketContext $ctx): void {}
             };
 
@@ -161,7 +169,7 @@ final class WebSocketUpgradeDetectionTest extends TestCase
                 logger: new NullLogger(),
             );
 
-            $request = new \stdClass();
+            $request = new stdClass();
             $request->server = [];
             $request->fd = 1;
 
@@ -171,7 +179,7 @@ final class WebSocketUpgradeDetectionTest extends TestCase
                 $request->header = ['content-type' => 'text/html'];
             }
 
-            $response = new \stdClass();
+            $response = new stdClass();
             $adapter($request, $response);
 
             if ($isWs) {
@@ -187,7 +195,7 @@ final class WebSocketUpgradeDetectionTest extends TestCase
     private function createAdapter(): RealtimeServerAdapter
     {
         return new RealtimeServerAdapter(
-            httpAdapter: fn() => null,
+            httpAdapter: static fn () => null,
             wsHandler: $this->createMock(WebSocketHandler::class),
             logger: new NullLogger(),
         );

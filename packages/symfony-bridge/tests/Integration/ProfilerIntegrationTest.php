@@ -32,7 +32,7 @@ final class ProfilerIntegrationTest extends TestCase
     {
         $callOrder = [];
 
-        $kernel = new class ($callOrder) implements HttpKernelInterface, ResetInterface {
+        $kernel = new class($callOrder) implements HttpKernelInterface, ResetInterface {
             /** @var list<string> */
             private array $callOrder;
 
@@ -44,6 +44,7 @@ final class ProfilerIntegrationTest extends TestCase
             public function handle(Request $request, int $type = self::MAIN_REQUEST, bool $catch = true): Response
             {
                 $this->callOrder[] = 'handle';
+
                 return new Response('<html><body>Page</body></html>', 200, ['Content-Type' => 'text/html']);
             }
 
@@ -68,14 +69,14 @@ final class ProfilerIntegrationTest extends TestCase
         $adapter(IntegrationFakeSwooleRequest::get('/', 'prof-1'), new IntegrationFakeSwooleResponse());
 
         // The invariant: handle → terminate → reset
-        $this->assertSame(['handle', 'terminate', 'reset'], $callOrder);
+        self::assertSame(['handle', 'terminate', 'reset'], $callOrder);
     }
 
     public function testResetCalledBetweenRequests(): void
     {
         $resetCounts = [];
 
-        $kernel = new class ($resetCounts) implements HttpKernelInterface, ResetInterface {
+        $kernel = new class($resetCounts) implements HttpKernelInterface, ResetInterface {
             private array $resetCounts;
             private int $requestNum = 0;
 
@@ -86,12 +87,12 @@ final class ProfilerIntegrationTest extends TestCase
 
             public function handle(Request $request, int $type = self::MAIN_REQUEST, bool $catch = true): Response
             {
-                $this->requestNum++;
+                ++$this->requestNum;
+
                 return new Response("Request {$this->requestNum}");
             }
 
-            public function terminate(Request $request, Response $response): void
-            {}
+            public function terminate(Request $request, Response $response): void {}
 
             public function reset(): void
             {
@@ -107,12 +108,12 @@ final class ProfilerIntegrationTest extends TestCase
         );
 
         // Send 3 requests
-        for ($i = 0; $i < 3; $i++) {
-            $adapter(IntegrationFakeSwooleRequest::get('/', "prof-multi-$i"), new IntegrationFakeSwooleResponse());
+        for ($i = 0; $i < 3; ++$i) {
+            $adapter(IntegrationFakeSwooleRequest::get('/', "prof-multi-{$i}"), new IntegrationFakeSwooleResponse());
         }
 
         // Reset called after each request (at request 1, 2, 3)
-        $this->assertSame([1, 2, 3], $resetCounts);
+        self::assertSame([1, 2, 3], $resetCounts);
     }
 
     public function testHtmlResponsePreservedForProfilerToolbar(): void
@@ -132,7 +133,7 @@ final class ProfilerIntegrationTest extends TestCase
         // The HTML body is preserved intact — Profiler toolbar injection
         // happens inside Symfony's terminate() via WebDebugToolbarListener,
         // which modifies the Response before our ResponseConverter sees it.
-        $this->assertSame(200, $response->statusCode);
-        $this->assertStringContainsString('<body>', $response->endContent);
+        self::assertSame(200, $response->statusCode);
+        self::assertStringContainsString('<body>', $response->endContent);
     }
 }

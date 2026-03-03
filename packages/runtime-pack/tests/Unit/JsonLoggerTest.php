@@ -4,10 +4,19 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack\Tests\Unit;
 
+use const JSON_THROW_ON_ERROR;
+
+use DateTimeImmutable;
+use DateTimeZone;
 use Octo\RuntimePack\JsonLogger;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
+use Stringable;
+
+use function is_resource;
 
 /**
  * Unit tests for JsonLogger — PSR-3 NDJSON logger.
@@ -21,33 +30,14 @@ final class JsonLoggerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->stream = \fopen('php://memory', 'r+');
+        $this->stream = fopen('php://memory', 'r+');
     }
 
     protected function tearDown(): void
     {
-        if (\is_resource($this->stream)) {
-            \fclose($this->stream);
+        if (is_resource($this->stream)) {
+            fclose($this->stream);
         }
-    }
-
-    private function createLogger(bool $production = false): JsonLogger
-    {
-        return new JsonLogger($production, $this->stream);
-    }
-
-    private function readOutput(): string
-    {
-        \rewind($this->stream);
-        return \stream_get_contents($this->stream);
-    }
-
-    private function readJsonLine(): array
-    {
-        $output = \trim($this->readOutput());
-        $this->assertNotEmpty($output, 'Expected log output but got empty string');
-
-        return \json_decode($output, true, 512, \JSON_THROW_ON_ERROR);
     }
 
     // ── PSR-3 interface compliance ──
@@ -55,7 +45,7 @@ final class JsonLoggerTest extends TestCase
     public function testImplementsLoggerInterface(): void
     {
         $logger = $this->createLogger();
-        $this->assertInstanceOf(LoggerInterface::class, $logger);
+        self::assertInstanceOf(LoggerInterface::class, $logger);
     }
 
     // ── NDJSON format (Requirement 7.1) ──
@@ -66,12 +56,12 @@ final class JsonLoggerTest extends TestCase
         $logger->info('test message');
 
         $output = $this->readOutput();
-        $lines = \explode("\n", \rtrim($output, "\n"));
-        $this->assertCount(1, $lines, 'Each log must be exactly one line (NDJSON)');
+        $lines = explode("\n", mb_rtrim($output, "\n"));
+        self::assertCount(1, $lines, 'Each log must be exactly one line (NDJSON)');
 
         // Must be valid JSON
-        $decoded = \json_decode($lines[0], true, 512, \JSON_THROW_ON_ERROR);
-        $this->assertIsArray($decoded);
+        $decoded = json_decode($lines[0], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($decoded);
     }
 
     public function testContainsAllRequiredFields(): void
@@ -81,12 +71,12 @@ final class JsonLoggerTest extends TestCase
 
         $entry = $this->readJsonLine();
 
-        $this->assertArrayHasKey('timestamp', $entry);
-        $this->assertArrayHasKey('level', $entry);
-        $this->assertArrayHasKey('message', $entry);
-        $this->assertArrayHasKey('component', $entry);
-        $this->assertArrayHasKey('request_id', $entry);
-        $this->assertArrayHasKey('extra', $entry);
+        self::assertArrayHasKey('timestamp', $entry);
+        self::assertArrayHasKey('level', $entry);
+        self::assertArrayHasKey('message', $entry);
+        self::assertArrayHasKey('component', $entry);
+        self::assertArrayHasKey('request_id', $entry);
+        self::assertArrayHasKey('extra', $entry);
     }
 
     // ── Timestamp format (RFC3339 UTC) ──
@@ -100,31 +90,31 @@ final class JsonLoggerTest extends TestCase
         $ts = $entry['timestamp'];
 
         // Must match RFC3339 UTC pattern: YYYY-MM-DDTHH:MM:SSZ
-        $this->assertMatchesRegularExpression(
+        self::assertMatchesRegularExpression(
             '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/',
             $ts,
             'Timestamp must be RFC3339 UTC format',
         );
 
         // Must parse as valid date
-        $dt = \DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s\Z', $ts, new \DateTimeZone('UTC'));
-        $this->assertInstanceOf(\DateTimeImmutable::class, $dt);
+        $dt = DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s\Z', $ts, new DateTimeZone('UTC'));
+        self::assertInstanceOf(DateTimeImmutable::class, $dt);
     }
 
     // ── Level field ──
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('allPsr3LevelsProvider')]
+    #[DataProvider('provideAllPsr3LevelsDelegateToLogCases')]
     public function testAllPsr3LevelsDelegateToLog(string $level): void
     {
         $logger = $this->createLogger();
         $logger->{$level}('test message');
 
         $entry = $this->readJsonLine();
-        $this->assertSame($level, $entry['level']);
-        $this->assertSame('test message', $entry['message']);
+        self::assertSame($level, $entry['level']);
+        self::assertSame('test message', $entry['message']);
     }
 
-    public static function allPsr3LevelsProvider(): array
+    public static function provideAllPsr3LevelsDelegateToLogCases(): iterable
     {
         return [
             'emergency' => [LogLevel::EMERGENCY],
@@ -142,7 +132,7 @@ final class JsonLoggerTest extends TestCase
     {
         $logger = $this->createLogger();
 
-        $this->expectException(\Psr\Log\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $logger->log('invalid_level', 'test');
     }
 
@@ -154,7 +144,7 @@ final class JsonLoggerTest extends TestCase
         $logger->info('test');
 
         $entry = $this->readJsonLine();
-        $this->assertSame('runtime', $entry['component']);
+        self::assertSame('runtime', $entry['component']);
     }
 
     public function testWithComponentReturnsNewInstance(): void
@@ -162,7 +152,7 @@ final class JsonLoggerTest extends TestCase
         $logger = $this->createLogger();
         $scoped = $logger->withComponent('http');
 
-        $this->assertNotSame($logger, $scoped);
+        self::assertNotSame($logger, $scoped);
     }
 
     public function testWithComponentSetsComponent(): void
@@ -171,7 +161,7 @@ final class JsonLoggerTest extends TestCase
         $logger->info('test');
 
         $entry = $this->readJsonLine();
-        $this->assertSame('http', $entry['component']);
+        self::assertSame('http', $entry['component']);
     }
 
     public function testOriginalLoggerUnchangedAfterWithComponent(): void
@@ -181,7 +171,7 @@ final class JsonLoggerTest extends TestCase
         $original->info('test');
 
         $entry = $this->readJsonLine();
-        $this->assertSame('runtime', $entry['component'], 'Original logger must not be mutated');
+        self::assertSame('runtime', $entry['component'], 'Original logger must not be mutated');
     }
 
     // ── Request ID field ──
@@ -192,7 +182,7 @@ final class JsonLoggerTest extends TestCase
         $logger->info('test');
 
         $entry = $this->readJsonLine();
-        $this->assertNull($entry['request_id']);
+        self::assertNull($entry['request_id']);
     }
 
     public function testWithRequestIdReturnsNewInstance(): void
@@ -200,7 +190,7 @@ final class JsonLoggerTest extends TestCase
         $logger = $this->createLogger();
         $scoped = $logger->withRequestId('abc-123');
 
-        $this->assertNotSame($logger, $scoped);
+        self::assertNotSame($logger, $scoped);
     }
 
     public function testWithRequestIdSetsRequestId(): void
@@ -209,7 +199,7 @@ final class JsonLoggerTest extends TestCase
         $logger->info('test');
 
         $entry = $this->readJsonLine();
-        $this->assertSame('req-42', $entry['request_id']);
+        self::assertSame('req-42', $entry['request_id']);
     }
 
     public function testOriginalLoggerUnchangedAfterWithRequestId(): void
@@ -219,7 +209,7 @@ final class JsonLoggerTest extends TestCase
         $original->info('test');
 
         $entry = $this->readJsonLine();
-        $this->assertNull($entry['request_id'], 'Original logger must not be mutated');
+        self::assertNull($entry['request_id'], 'Original logger must not be mutated');
     }
 
     public function testWithRequestIdNullResetsToNull(): void
@@ -228,7 +218,7 @@ final class JsonLoggerTest extends TestCase
         $logger->info('test');
 
         $entry = $this->readJsonLine();
-        $this->assertNull($entry['request_id']);
+        self::assertNull($entry['request_id']);
     }
 
     // ── Extra field ──
@@ -238,9 +228,9 @@ final class JsonLoggerTest extends TestCase
         $logger = $this->createLogger();
         $logger->info('test');
 
-        $output = \trim($this->readOutput());
+        $output = mb_trim($this->readOutput());
         // Verify it's {} not [] — important for ingestion stability
-        $this->assertStringContainsString('"extra":{}', $output);
+        self::assertStringContainsString('"extra":{}', $output);
     }
 
     public function testExtraContainsContextKeys(): void
@@ -249,8 +239,8 @@ final class JsonLoggerTest extends TestCase
         $logger->info('test', ['foo' => 'bar', 'count' => 42]);
 
         $entry = $this->readJsonLine();
-        $this->assertSame('bar', $entry['extra']['foo']);
-        $this->assertSame(42, $entry['extra']['count']);
+        self::assertSame('bar', $entry['extra']['foo']);
+        self::assertSame(42, $entry['extra']['count']);
     }
 
     // ── Reserved keys guard (component, request_id in context) ──
@@ -262,11 +252,11 @@ final class JsonLoggerTest extends TestCase
 
         $entry = $this->readJsonLine();
         // component top-level should be 'runtime' (default), not overridden by context
-        $this->assertSame('runtime', $entry['component']);
+        self::assertSame('runtime', $entry['component']);
         // 'component' should NOT appear in extra
-        $this->assertArrayNotHasKey('component', (array) $entry['extra']);
+        self::assertArrayNotHasKey('component', (array) $entry['extra']);
         // other keys should be preserved
-        $this->assertSame('kept', $entry['extra']['other']);
+        self::assertSame('kept', $entry['extra']['other']);
     }
 
     public function testContextRequestIdKeyIsIgnored(): void
@@ -275,8 +265,8 @@ final class JsonLoggerTest extends TestCase
         $logger->info('test', ['request_id' => 'should-be-ignored']);
 
         $entry = $this->readJsonLine();
-        $this->assertNull($entry['request_id']);
-        $this->assertArrayNotHasKey('request_id', (array) $entry['extra']);
+        self::assertNull($entry['request_id']);
+        self::assertArrayNotHasKey('request_id', (array) $entry['extra']);
     }
 
     // ── Special characters in message (Requirement 7.1, Task 3.4) ──
@@ -286,14 +276,14 @@ final class JsonLoggerTest extends TestCase
         $logger = $this->createLogger();
         $logger->info("Line1\nLine2\tTabbed \"quoted\" and \\backslash");
 
-        $output = \trim($this->readOutput());
+        $output = mb_trim($this->readOutput());
         // Must be single line (no literal newlines breaking NDJSON)
-        $lines = \explode("\n", $output);
-        $this->assertCount(1, $lines, 'Newlines in message must be JSON-escaped, not literal');
+        $lines = explode("\n", $output);
+        self::assertCount(1, $lines, 'Newlines in message must be JSON-escaped, not literal');
 
         // Must be valid JSON
-        $entry = \json_decode($lines[0], true, 512, \JSON_THROW_ON_ERROR);
-        $this->assertSame("Line1\nLine2\tTabbed \"quoted\" and \\backslash", $entry['message']);
+        $entry = json_decode($lines[0], true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame("Line1\nLine2\tTabbed \"quoted\" and \\backslash", $entry['message']);
     }
 
     public function testUnicodeCharactersInMessage(): void
@@ -302,11 +292,11 @@ final class JsonLoggerTest extends TestCase
         $logger->info('Héllo wörld 日本語 🚀');
 
         $entry = $this->readJsonLine();
-        $this->assertSame('Héllo wörld 日本語 🚀', $entry['message']);
+        self::assertSame('Héllo wörld 日本語 🚀', $entry['message']);
 
         // With JSON_UNESCAPED_UNICODE, the raw output should contain the actual characters
-        $output = \trim($this->readOutput());
-        $this->assertStringContainsString('Héllo wörld 日本語 🚀', $output);
+        $output = mb_trim($this->readOutput());
+        self::assertStringContainsString('Héllo wörld 日本語 🚀', $output);
     }
 
     public function testSlashesAreNotEscaped(): void
@@ -314,10 +304,10 @@ final class JsonLoggerTest extends TestCase
         $logger = $this->createLogger();
         $logger->info('path/to/file');
 
-        $output = \trim($this->readOutput());
+        $output = mb_trim($this->readOutput());
         // JSON_UNESCAPED_SLASHES means / should appear as-is
-        $this->assertStringContainsString('path/to/file', $output);
-        $this->assertStringNotContainsString('path\\/to\\/file', $output);
+        self::assertStringContainsString('path/to/file', $output);
+        self::assertStringNotContainsString('path\/to\/file', $output);
     }
 
     public function testNullBytesInMessage(): void
@@ -325,12 +315,12 @@ final class JsonLoggerTest extends TestCase
         $logger = $this->createLogger();
         $logger->info("before\x00after");
 
-        $output = \trim($this->readOutput());
+        $output = mb_trim($this->readOutput());
         // Must still be valid JSON (single line)
-        $lines = \explode("\n", $output);
-        $this->assertCount(1, $lines);
-        $entry = \json_decode($lines[0], true, 512, \JSON_THROW_ON_ERROR);
-        $this->assertIsString($entry['message']);
+        $lines = explode("\n", $output);
+        self::assertCount(1, $lines);
+        $entry = json_decode($lines[0], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsString($entry['message']);
     }
 
     // ── Stringable message support ──
@@ -338,7 +328,7 @@ final class JsonLoggerTest extends TestCase
     public function testStringableMessage(): void
     {
         $logger = $this->createLogger();
-        $stringable = new class implements \Stringable {
+        $stringable = new class implements Stringable {
             public function __toString(): string
             {
                 return 'stringable message';
@@ -348,7 +338,7 @@ final class JsonLoggerTest extends TestCase
         $logger->info($stringable);
 
         $entry = $this->readJsonLine();
-        $this->assertSame('stringable message', $entry['message']);
+        self::assertSame('stringable message', $entry['message']);
     }
 
     // ── Chaining with*() methods ──
@@ -357,12 +347,33 @@ final class JsonLoggerTest extends TestCase
     {
         $logger = $this->createLogger()
             ->withComponent('http')
-            ->withRequestId('req-99');
+            ->withRequestId('req-99')
+        ;
 
         $logger->info('chained');
 
         $entry = $this->readJsonLine();
-        $this->assertSame('http', $entry['component']);
-        $this->assertSame('req-99', $entry['request_id']);
+        self::assertSame('http', $entry['component']);
+        self::assertSame('req-99', $entry['request_id']);
+    }
+
+    private function createLogger(bool $production = false): JsonLogger
+    {
+        return new JsonLogger($production, $this->stream);
+    }
+
+    private function readOutput(): string
+    {
+        rewind($this->stream);
+
+        return stream_get_contents($this->stream);
+    }
+
+    private function readJsonLine(): array
+    {
+        $output = mb_trim($this->readOutput());
+        self::assertNotEmpty($output, 'Expected log output but got empty string');
+
+        return json_decode($output, true, 512, JSON_THROW_ON_ERROR);
     }
 }

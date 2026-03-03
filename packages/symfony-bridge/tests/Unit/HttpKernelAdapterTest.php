@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyBridge\Tests\Unit;
 
+use const PHP_INT_MAX;
+
+use Error;
+use LogicException;
 use Octo\RuntimePack\MetricsCollector;
 use Octo\SymfonyBridge\HttpKernelAdapter;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -19,29 +24,6 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class HttpKernelAdapterTest extends TestCase
 {
-    private function createAdapter(
-        LifecycleTrackingKernel $kernel,
-        SpyLogger $logger,
-        ?MetricsCollector $metrics = null,
-        int $kernelRebootEvery = 0,
-        bool $debug = false,
-        int $memoryWarningThreshold = 500_000_000, // 500MB to avoid false positives in tests
-    ): HttpKernelAdapter {
-        return new HttpKernelAdapter(
-            kernel: $kernel,
-            logger: $logger,
-            metricsCollector: $metrics ?? new MetricsCollector(),
-            kernelRebootEvery: $kernelRebootEvery,
-            debug: $debug,
-            memoryWarningThreshold: $memoryWarningThreshold,
-        );
-    }
-
-    private function createRequest(string $requestId = 'test-req-1'): FakeSwooleRequest
-    {
-        return FakeSwooleRequest::withRequestId($requestId);
-    }
-
     // ---------------------------------------------------------------
     // Lifecycle sequence
     // ---------------------------------------------------------------
@@ -58,11 +40,11 @@ final class HttpKernelAdapterTest extends TestCase
         $adapter($request, $response);
 
         // Verify the invariant sequence: handle → terminate → reset
-        $this->assertSame(['handle', 'terminate', 'reset'], $kernel->calls);
+        self::assertSame(['handle', 'terminate', 'reset'], $kernel->calls);
 
         // Verify response was sent
-        $this->assertTrue($response->endCalled);
-        $this->assertSame(200, $response->statusCode);
+        self::assertTrue($response->endCalled);
+        self::assertSame(200, $response->statusCode);
     }
 
     public function testResponseBodyIsWritten(): void
@@ -76,7 +58,7 @@ final class HttpKernelAdapterTest extends TestCase
 
         $adapter($request, $response);
 
-        $this->assertSame('Hello World', $response->endContent);
+        self::assertSame('Hello World', $response->endContent);
     }
 
     public function testRequestCountIncrements(): void
@@ -86,10 +68,10 @@ final class HttpKernelAdapterTest extends TestCase
         $adapter = $this->createAdapter($kernel, $logger);
 
         $adapter($this->createRequest('r1'), new FakeSwooleResponse());
-        $this->assertSame(1, $adapter->getRequestCount());
+        self::assertSame(1, $adapter->getRequestCount());
 
         $adapter($this->createRequest('r2'), new FakeSwooleResponse());
-        $this->assertSame(2, $adapter->getRequestCount());
+        self::assertSame(2, $adapter->getRequestCount());
     }
 
     // ---------------------------------------------------------------
@@ -112,8 +94,8 @@ final class HttpKernelAdapterTest extends TestCase
         $adapter($request, $response);
 
         // terminate and reset are always called
-        $this->assertContains('terminate', $kernel->calls);
-        $this->assertContains('reset', $kernel->calls);
+        self::assertContains('terminate', $kernel->calls);
+        self::assertContains('reset', $kernel->calls);
     }
 
     // ---------------------------------------------------------------
@@ -123,7 +105,7 @@ final class HttpKernelAdapterTest extends TestCase
     public function testExceptionProdReturns500JsonGeneric(): void
     {
         $kernel = new LifecycleTrackingKernel(
-            exceptionToThrow: new \RuntimeException('Secret error details'),
+            exceptionToThrow: new RuntimeException('Secret error details'),
         );
         $logger = new SpyLogger();
         $adapter = $this->createAdapter($kernel, $logger, debug: false);
@@ -133,18 +115,18 @@ final class HttpKernelAdapterTest extends TestCase
 
         $adapter($request, $response);
 
-        $this->assertSame(500, $response->statusCode);
+        self::assertSame(500, $response->statusCode);
         $body = $response->endContent;
-        $decoded = \json_decode($body, true);
-        $this->assertSame('Internal Server Error', $decoded['error']);
+        $decoded = json_decode($body, true);
+        self::assertSame('Internal Server Error', $decoded['error']);
         // Must NOT contain the actual error message
-        $this->assertStringNotContainsString('Secret error details', $body);
+        self::assertStringNotContainsString('Secret error details', $body);
     }
 
     public function testExceptionProdTerminateAndResetStillExecuted(): void
     {
         $kernel = new LifecycleTrackingKernel(
-            exceptionToThrow: new \RuntimeException('boom'),
+            exceptionToThrow: new RuntimeException('boom'),
         );
         $logger = new SpyLogger();
         $adapter = $this->createAdapter($kernel, $logger, debug: false);
@@ -153,8 +135,8 @@ final class HttpKernelAdapterTest extends TestCase
 
         // handle throws, but terminate should NOT be called (exception before response)
         // reset MUST always be called
-        $this->assertContains('handle', $kernel->calls);
-        $this->assertContains('reset', $kernel->calls);
+        self::assertContains('handle', $kernel->calls);
+        self::assertContains('reset', $kernel->calls);
     }
 
     // ---------------------------------------------------------------
@@ -164,7 +146,7 @@ final class HttpKernelAdapterTest extends TestCase
     public function testExceptionDevReturnsSymfonyErrorPage(): void
     {
         $kernel = new LifecycleTrackingKernel(
-            exceptionToThrow: new \RuntimeException('Dev error details'),
+            exceptionToThrow: new RuntimeException('Dev error details'),
         );
         $logger = new SpyLogger();
         $adapter = $this->createAdapter($kernel, $logger, debug: true);
@@ -174,10 +156,10 @@ final class HttpKernelAdapterTest extends TestCase
 
         $adapter($request, $response);
 
-        $this->assertSame(500, $response->statusCode);
+        self::assertSame(500, $response->statusCode);
         // Dev mode should contain HTML with error details
         $body = $response->endContent;
-        $this->assertStringContainsString('Dev error details', $body);
+        self::assertStringContainsString('Dev error details', $body);
     }
 
     // ---------------------------------------------------------------
@@ -187,14 +169,14 @@ final class HttpKernelAdapterTest extends TestCase
     public function testExceptionLogsError(): void
     {
         $kernel = new LifecycleTrackingKernel(
-            exceptionToThrow: new \RuntimeException('Something broke'),
+            exceptionToThrow: new RuntimeException('Something broke'),
         );
         $logger = new SpyLogger();
         $adapter = $this->createAdapter($kernel, $logger);
 
         $adapter($this->createRequest(), new FakeSwooleResponse());
 
-        $this->assertTrue($logger->hasErrorContaining('Something broke'));
+        self::assertTrue($logger->hasErrorContaining('Something broke'));
     }
 
     // ---------------------------------------------------------------
@@ -204,7 +186,7 @@ final class HttpKernelAdapterTest extends TestCase
     public function testExceptionCounterIncremented(): void
     {
         $kernel = new LifecycleTrackingKernel(
-            exceptionToThrow: new \RuntimeException('boom'),
+            exceptionToThrow: new RuntimeException('boom'),
         );
         $logger = new SpyLogger();
         $metrics = new MetricsCollector();
@@ -213,7 +195,7 @@ final class HttpKernelAdapterTest extends TestCase
         $adapter($this->createRequest(), new FakeSwooleResponse());
 
         $snapshot = $adapter->getMetricsBridge()->snapshot();
-        $this->assertSame(1, $snapshot['symfony_exceptions_total']);
+        self::assertSame(1, $snapshot['symfony_exceptions_total']);
     }
 
     // ---------------------------------------------------------------
@@ -227,14 +209,14 @@ final class HttpKernelAdapterTest extends TestCase
         $adapter = $this->createAdapter($kernel, $logger, kernelRebootEvery: 3);
 
         // Send 3 requests — reboot should happen after the 3rd
-        for ($i = 0; $i < 3; $i++) {
+        for ($i = 0; $i < 3; ++$i) {
             $kernel->calls = []; // reset tracking
-            $adapter(FakeSwooleRequest::withRequestId("req-$i"), new FakeSwooleResponse());
+            $adapter(FakeSwooleRequest::withRequestId("req-{$i}"), new FakeSwooleResponse());
         }
 
         // After 3rd request, shutdown + boot should have been called
-        $this->assertContains('shutdown', $kernel->calls);
-        $this->assertContains('boot', $kernel->calls);
+        self::assertContains('shutdown', $kernel->calls);
+        self::assertContains('boot', $kernel->calls);
     }
 
     public function testKernelRebootNotTriggeredBeforeThreshold(): void
@@ -244,13 +226,13 @@ final class HttpKernelAdapterTest extends TestCase
         $adapter = $this->createAdapter($kernel, $logger, kernelRebootEvery: 5);
 
         // Send 4 requests — no reboot yet
-        for ($i = 0; $i < 4; $i++) {
-            $adapter(FakeSwooleRequest::withRequestId("req-$i"), new FakeSwooleResponse());
+        for ($i = 0; $i < 4; ++$i) {
+            $adapter(FakeSwooleRequest::withRequestId("req-{$i}"), new FakeSwooleResponse());
         }
 
         $allCalls = $kernel->calls;
-        $this->assertNotContains('shutdown', $allCalls);
-        $this->assertNotContains('boot', $allCalls);
+        self::assertNotContains('shutdown', $allCalls);
+        self::assertNotContains('boot', $allCalls);
     }
 
     public function testKernelRebootRebuildsReferences(): void
@@ -265,8 +247,8 @@ final class HttpKernelAdapterTest extends TestCase
         $adapter($this->createRequest(), new FakeSwooleResponse());
 
         // After reboot, references should be new instances
-        $this->assertNotSame($resetManagerBefore, $adapter->getResetManager());
-        $this->assertNotSame($processorBefore, $adapter->getRequestIdProcessor());
+        self::assertNotSame($resetManagerBefore, $adapter->getResetManager());
+        self::assertNotSame($processorBefore, $adapter->getRequestIdProcessor());
     }
 
     public function testKernelRebootLogsInfo(): void
@@ -277,9 +259,8 @@ final class HttpKernelAdapterTest extends TestCase
 
         $adapter($this->createRequest(), new FakeSwooleResponse());
 
-        $rebootLogs = array_filter($logger->logs, fn(array $log) =>
-            $log['level'] === 'info' && str_contains($log['message'], 'Kernel reboot'));
-        $this->assertNotEmpty($rebootLogs);
+        $rebootLogs = array_filter($logger->logs, static fn (array $log) => $log['level'] === 'info' && str_contains($log['message'], 'Kernel reboot'));
+        self::assertNotEmpty($rebootLogs);
     }
 
     // ---------------------------------------------------------------
@@ -295,7 +276,7 @@ final class HttpKernelAdapterTest extends TestCase
 
         $adapter($this->createRequest(), new FakeSwooleResponse());
 
-        $this->assertTrue($logger->hasWarningContaining('Memory RSS exceeds threshold'));
+        self::assertTrue($logger->hasWarningContaining('Memory RSS exceeds threshold'));
     }
 
     public function testMemoryWarningNotLoggedWhenBelowThreshold(): void
@@ -303,11 +284,11 @@ final class HttpKernelAdapterTest extends TestCase
         $kernel = new LifecycleTrackingKernel();
         $logger = new SpyLogger();
         // Set threshold very high
-        $adapter = $this->createAdapter($kernel, $logger, memoryWarningThreshold: \PHP_INT_MAX);
+        $adapter = $this->createAdapter($kernel, $logger, memoryWarningThreshold: PHP_INT_MAX);
 
         $adapter($this->createRequest(), new FakeSwooleResponse());
 
-        $this->assertFalse($logger->hasWarningContaining('Memory RSS exceeds threshold'));
+        self::assertFalse($logger->hasWarningContaining('Memory RSS exceeds threshold'));
     }
 
     // ---------------------------------------------------------------
@@ -322,33 +303,31 @@ final class HttpKernelAdapterTest extends TestCase
 
         $adapter(FakeSwooleRequest::withRequestId('req-abc'), new FakeSwooleResponse());
 
-        $completedLogs = array_filter($logger->logs, fn(array $log) =>
-            $log['level'] === 'info' && str_contains($log['message'], 'Request completed'));
-        $this->assertNotEmpty($completedLogs);
+        $completedLogs = array_filter($logger->logs, static fn (array $log) => $log['level'] === 'info' && str_contains($log['message'], 'Request completed'));
+        self::assertNotEmpty($completedLogs);
 
         $log = array_values($completedLogs)[0];
-        $this->assertSame('req-abc', $log['context']['request_id']);
-        $this->assertSame(201, $log['context']['status_code']);
-        $this->assertArrayHasKey('duration_ms', $log['context']);
-        $this->assertSame('symfony_bridge', $log['context']['component']);
+        self::assertSame('req-abc', $log['context']['request_id']);
+        self::assertSame(201, $log['context']['status_code']);
+        self::assertArrayHasKey('duration_ms', $log['context']);
+        self::assertSame('symfony_bridge', $log['context']['component']);
     }
 
     public function testEndOfRequestLogContainsExceptionClassOnError(): void
     {
         $kernel = new LifecycleTrackingKernel(
-            exceptionToThrow: new \LogicException('test'),
+            exceptionToThrow: new LogicException('test'),
         );
         $logger = new SpyLogger();
         $adapter = $this->createAdapter($kernel, $logger);
 
         $adapter($this->createRequest(), new FakeSwooleResponse());
 
-        $completedLogs = array_filter($logger->logs, fn(array $log) =>
-            $log['level'] === 'info' && str_contains($log['message'], 'Request completed'));
-        $this->assertNotEmpty($completedLogs);
+        $completedLogs = array_filter($logger->logs, static fn (array $log) => $log['level'] === 'info' && str_contains($log['message'], 'Request completed'));
+        self::assertNotEmpty($completedLogs);
 
         $log = array_values($completedLogs)[0];
-        $this->assertSame(\LogicException::class, $log['context']['exception_class']);
+        self::assertSame(LogicException::class, $log['context']['exception_class']);
     }
 
     // ---------------------------------------------------------------
@@ -366,9 +345,9 @@ final class HttpKernelAdapterTest extends TestCase
         $adapter(FakeSwooleRequest::withRequestId('r2'), new FakeSwooleResponse());
 
         $snapshot = $adapter->getMetricsBridge()->snapshot();
-        $this->assertSame(2, $snapshot['symfony_requests_total']);
-        $this->assertGreaterThan(0.0, $snapshot['symfony_request_duration_sum_ms']);
-        $this->assertGreaterThan(0, $snapshot['memory_rss_after_reset_bytes']);
+        self::assertSame(2, $snapshot['symfony_requests_total']);
+        self::assertGreaterThan(0.0, $snapshot['symfony_request_duration_sum_ms']);
+        self::assertGreaterThan(0, $snapshot['memory_rss_after_reset_bytes']);
     }
 
     // ---------------------------------------------------------------
@@ -384,7 +363,7 @@ final class HttpKernelAdapterTest extends TestCase
         $adapter(FakeSwooleRequest::withRequestId('proc-test'), new FakeSwooleResponse());
 
         // After request, processor should have been cleared
-        $this->assertNull($adapter->getRequestIdProcessor()->getCurrentRequest());
+        self::assertNull($adapter->getRequestIdProcessor()->getCurrentRequest());
     }
 
     // ---------------------------------------------------------------
@@ -394,7 +373,7 @@ final class HttpKernelAdapterTest extends TestCase
     public function testNoExceptionBubblesToRuntimePack(): void
     {
         $kernel = new LifecycleTrackingKernel(
-            exceptionToThrow: new \Error('Fatal error'),
+            exceptionToThrow: new Error('Fatal error'),
         );
         $logger = new SpyLogger();
         $adapter = $this->createAdapter($kernel, $logger);
@@ -403,6 +382,29 @@ final class HttpKernelAdapterTest extends TestCase
         $adapter($this->createRequest(), new FakeSwooleResponse());
 
         // Verify we got a 500 response
-        $this->assertTrue(true, 'No exception was thrown');
+        self::assertTrue(true, 'No exception was thrown');
+    }
+
+    private function createAdapter(
+        LifecycleTrackingKernel $kernel,
+        SpyLogger $logger,
+        ?MetricsCollector $metrics = null,
+        int $kernelRebootEvery = 0,
+        bool $debug = false,
+        int $memoryWarningThreshold = 500_000_000, // 500MB to avoid false positives in tests
+    ): HttpKernelAdapter {
+        return new HttpKernelAdapter(
+            kernel: $kernel,
+            logger: $logger,
+            metricsCollector: $metrics ?? new MetricsCollector(),
+            kernelRebootEvery: $kernelRebootEvery,
+            debug: $debug,
+            memoryWarningThreshold: $memoryWarningThreshold,
+        );
+    }
+
+    private function createRequest(string $requestId = 'test-req-1'): FakeSwooleRequest
+    {
+        return FakeSwooleRequest::withRequestId($requestId);
     }
 }

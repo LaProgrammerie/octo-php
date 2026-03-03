@@ -6,22 +6,25 @@ namespace Octo\SymfonyBridge\Tests\Unit;
 
 use Octo\SymfonyBridge\ResetHookInterface;
 use Psr\Log\NullLogger;
+use RuntimeException;
+use Stringable;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Contracts\Service\ResetInterface;
+use Throwable;
 
 // --- Shared test doubles ---
 
 /**
  * Spy logger that records log entries for assertion.
  */
-class SpyLogger extends NullLogger
+final class SpyLogger extends NullLogger
 {
     /** @var list<array{level: string, message: string, context: array}> */
     public array $logs = [];
 
-    public function log(mixed $level, string|\Stringable $message, array $context = []): void
+    public function log(mixed $level, string|Stringable $message, array $context = []): void
     {
         $this->logs[] = [
             'level' => (string) $level,
@@ -37,6 +40,7 @@ class SpyLogger extends NullLogger
                 return true;
             }
         }
+
         return false;
     }
 
@@ -47,6 +51,7 @@ class SpyLogger extends NullLogger
                 return true;
             }
         }
+
         return false;
     }
 }
@@ -54,11 +59,13 @@ class SpyLogger extends NullLogger
 /**
  * Fake ResponseFacade that records all method calls for verification.
  */
-class FakeResponseFacade
+final class FakeResponseFacade
 {
     public ?int $statusCode = null;
+
     /** @var list<array{string, string}> */
     public array $headers = [];
+
     /** @var list<string> */
     public array $writes = [];
     public bool $endCalled = false;
@@ -71,6 +78,7 @@ class FakeResponseFacade
     {
         $this->statusCode = $code;
         $this->operationLog[] = 'status';
+
         return $this;
     }
 
@@ -78,6 +86,7 @@ class FakeResponseFacade
     {
         $this->headers[] = [$key, $value];
         $this->operationLog[] = 'header';
+
         return $this;
     }
 
@@ -85,6 +94,7 @@ class FakeResponseFacade
     {
         $this->writes[] = $content;
         $this->operationLog[] = 'write';
+
         return true;
     }
 
@@ -93,6 +103,7 @@ class FakeResponseFacade
         $this->endCalled = true;
         $this->endContent = $content;
         $this->operationLog[] = 'end';
+
         return true;
     }
 
@@ -120,11 +131,12 @@ class FakeResponseFacade
 /**
  * Fake raw OpenSwoole response that records cookie() and sendfile() calls.
  */
-class FakeRawSwooleResponse
+final class FakeRawSwooleResponse
 {
     /** @var list<array{name: string, value: string, expires: int, path: string, domain: string, secure: bool, httpOnly: bool, sameSite: string}> */
     public array $cookies = [];
     public ?string $sentFile = null;
+
     /** @var list<array{string, string}> */
     public array $headers = [];
 
@@ -166,7 +178,7 @@ class FakeRawSwooleResponse
 /**
  * Kernel implementing ResetInterface — strategy 1.
  */
-class ResettableKernel implements HttpKernelInterface, ResetInterface
+final class ResettableKernel implements HttpKernelInterface, ResetInterface
 {
     public bool $resetCalled = false;
 
@@ -184,7 +196,7 @@ class ResettableKernel implements HttpKernelInterface, ResetInterface
 /**
  * Kernel implementing ResetInterface that throws on reset.
  */
-class ThrowingResettableKernel implements HttpKernelInterface, ResetInterface
+final class ThrowingResettableKernel implements HttpKernelInterface, ResetInterface
 {
     public function handle(Request $request, int $type = self::MAIN_REQUEST, bool $catch = true): Response
     {
@@ -193,18 +205,16 @@ class ThrowingResettableKernel implements HttpKernelInterface, ResetInterface
 
     public function reset(): void
     {
-        throw new \RuntimeException('Kernel reset exploded');
+        throw new RuntimeException('Kernel reset exploded');
     }
 }
 
 /**
  * Kernel implementing ResetInterface with a configurable sleep to simulate slow resets.
  */
-class SlowResettableKernel implements HttpKernelInterface, ResetInterface
+final class SlowResettableKernel implements HttpKernelInterface, ResetInterface
 {
-    public function __construct(private readonly int $sleepUs = 60_000)
-    {
-    }
+    public function __construct(private readonly int $sleepUs = 60_000) {}
 
     public function handle(Request $request, int $type = self::MAIN_REQUEST, bool $catch = true): Response
     {
@@ -220,11 +230,9 @@ class SlowResettableKernel implements HttpKernelInterface, ResetInterface
 /**
  * Kernel with getContainer() returning a container that has services_resetter — strategy 2.
  */
-class KernelWithContainer implements HttpKernelInterface
+final class KernelWithContainer implements HttpKernelInterface
 {
-    public function __construct(public readonly FakeContainer $container)
-    {
-    }
+    public function __construct(public readonly FakeContainer $container) {}
 
     public function handle(Request $request, int $type = self::MAIN_REQUEST, bool $catch = true): Response
     {
@@ -241,7 +249,7 @@ class KernelWithContainer implements HttpKernelInterface
  * Kernel implementing ResetInterface AND having a container with services_resetter.
  * Used to verify priority: ResetInterface wins.
  */
-class ResettableKernelWithContainer implements HttpKernelInterface, ResetInterface
+final class ResettableKernelWithContainer implements HttpKernelInterface, ResetInterface
 {
     public bool $resetCalled = false;
     public FakeContainer $container;
@@ -270,7 +278,7 @@ class ResettableKernelWithContainer implements HttpKernelInterface, ResetInterfa
 /**
  * Bare kernel with no reset capability — strategy 3 (best-effort).
  */
-class BareKernel implements HttpKernelInterface
+final class BareKernel implements HttpKernelInterface
 {
     public function handle(Request $request, int $type = self::MAIN_REQUEST, bool $catch = true): Response
     {
@@ -281,11 +289,12 @@ class BareKernel implements HttpKernelInterface
 /**
  * Fake DI container.
  */
-class FakeContainer
+final class FakeContainer
 {
+    public ?FakeServicesResetter $servicesResetter;
+
     /** @var array<string, object> */
     private array $services;
-    public ?FakeServicesResetter $servicesResetter;
 
     /** @param array<string, object> $services */
     public function __construct(array $services = [])
@@ -308,7 +317,7 @@ class FakeContainer
 /**
  * Fake services_resetter.
  */
-class FakeServicesResetter
+final class FakeServicesResetter
 {
     public bool $resetCalled = false;
 
@@ -321,7 +330,7 @@ class FakeServicesResetter
 /**
  * Spy ResetHookInterface implementation.
  */
-class SpyResetHook implements ResetHookInterface
+final class SpyResetHook implements ResetHookInterface
 {
     public bool $called = false;
 
@@ -334,24 +343,22 @@ class SpyResetHook implements ResetHookInterface
 /**
  * ResetHookInterface that throws.
  */
-class FailingResetHook implements ResetHookInterface
+final class FailingResetHook implements ResetHookInterface
 {
     public function reset(): void
     {
-        throw new \RuntimeException('Hook exploded');
+        throw new RuntimeException('Hook exploded');
     }
 }
 
 /**
  * Fake Doctrine Connection.
  */
-class FakeDoctrineConnection
+final class FakeDoctrineConnection
 {
     public bool $rollbackCalled = false;
 
-    public function __construct(private readonly bool $transactionActive = false)
-    {
-    }
+    public function __construct(private readonly bool $transactionActive = false) {}
 
     public function isTransactionActive(): bool
     {
@@ -367,13 +374,11 @@ class FakeDoctrineConnection
 /**
  * Fake Doctrine EntityManager.
  */
-class FakeEntityManager
+final class FakeEntityManager
 {
     public bool $clearCalled = false;
 
-    public function __construct(private readonly FakeDoctrineConnection $connection)
-    {
-    }
+    public function __construct(private readonly FakeDoctrineConnection $connection) {}
 
     public function getConnection(): FakeDoctrineConnection
     {
@@ -392,18 +397,18 @@ class FakeEntityManager
  * Kernel that tracks lifecycle calls: handle, terminate, shutdown, boot.
  * Supports configurable responses and exceptions.
  */
-class LifecycleTrackingKernel implements HttpKernelInterface, ResetInterface
+final class LifecycleTrackingKernel implements HttpKernelInterface, ResetInterface
 {
     /** @var list<string> */
     public array $calls = [];
     public bool $resetCalled = false;
     private ?Response $responseToReturn;
-    private ?\Throwable $exceptionToThrow;
+    private ?Throwable $exceptionToThrow;
     private int $bootCount = 0;
 
     public function __construct(
         ?Response $responseToReturn = null,
-        ?\Throwable $exceptionToThrow = null,
+        ?Throwable $exceptionToThrow = null,
     ) {
         $this->responseToReturn = $responseToReturn ?? new Response('OK', 200);
         $this->exceptionToThrow = $exceptionToThrow;
@@ -415,6 +420,7 @@ class LifecycleTrackingKernel implements HttpKernelInterface, ResetInterface
         if ($this->exceptionToThrow !== null) {
             throw $this->exceptionToThrow;
         }
+
         return $this->responseToReturn;
     }
 
@@ -437,7 +443,7 @@ class LifecycleTrackingKernel implements HttpKernelInterface, ResetInterface
     public function boot(): void
     {
         $this->calls[] = 'boot';
-        $this->bootCount++;
+        ++$this->bootCount;
     }
 
     public function getBootCount(): int
@@ -450,7 +456,7 @@ class LifecycleTrackingKernel implements HttpKernelInterface, ResetInterface
         $this->responseToReturn = $response;
     }
 
-    public function setException(?\Throwable $e): void
+    public function setException(?Throwable $e): void
     {
         $this->exceptionToThrow = $e;
     }
@@ -459,19 +465,24 @@ class LifecycleTrackingKernel implements HttpKernelInterface, ResetInterface
 /**
  * Fake OpenSwoole Request for testing.
  */
-class FakeSwooleRequest
+final class FakeSwooleRequest
 {
     /** @var array<string, string> */
     public array $header = [];
+
     /** @var array<string, mixed> */
     public array $server = [];
-    /** @var array<string, string>|null */
+
+    /** @var null|array<string, string> */
     public ?array $get = null;
-    /** @var array<string, string>|null */
+
+    /** @var null|array<string, string> */
     public ?array $post = null;
-    /** @var array<string, string>|null */
+
+    /** @var null|array<string, string> */
     public ?array $cookie = null;
-    /** @var array<string, mixed>|null */
+
+    /** @var null|array<string, mixed> */
     public ?array $files = null;
     private string $rawBody = '';
 
@@ -482,7 +493,7 @@ class FakeSwooleRequest
         string $body = '',
     ) {
         $this->server = [
-            'request_method' => strtolower($method),
+            'request_method' => mb_strtolower($method),
             'request_uri' => $uri,
             'query_string' => '',
             'server_protocol' => 'HTTP/1.1',
@@ -511,13 +522,16 @@ class FakeSwooleRequest
  * Fake OpenSwoole Response that records all operations.
  * Used as the raw swoole response in HttpKernelAdapter tests.
  */
-class FakeSwooleResponse
+final class FakeSwooleResponse
 {
     public ?int $statusCode = null;
+
     /** @var array<string, string> */
     public array $headers = [];
+
     /** @var list<array{name: string, value: string, expires: int, path: string, domain: string, secure: bool, httpOnly: bool, sameSite: string}> */
     public array $cookies = [];
+
     /** @var list<string> */
     public array $writes = [];
     public bool $endCalled = false;
@@ -536,6 +550,7 @@ class FakeSwooleResponse
     public function write(string $content): bool
     {
         $this->writes[] = $content;
+
         return true;
     }
 

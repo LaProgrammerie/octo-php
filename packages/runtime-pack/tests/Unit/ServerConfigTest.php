@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
 final class ServerConfigTest extends TestCase
 {
     #[Test]
-    public function defaults_are_correct(): void
+    public function defaultsAreCorrect(): void
     {
         $config = new ServerConfig();
 
@@ -35,7 +35,7 @@ final class ServerConfigTest extends TestCase
     }
 
     #[Test]
-    public function custom_values_are_stored(): void
+    public function customValuesAreStored(): void
     {
         $config = new ServerConfig(
             host: '127.0.0.1',

@@ -25,12 +25,12 @@ final class MessengerMetrics
 
     public function incrementSent(): void
     {
-        $this->sentTotal++;
+        ++$this->sentTotal;
     }
 
     public function incrementConsumed(): void
     {
-        $this->consumedTotal++;
+        ++$this->consumedTotal;
     }
 
     public function recordChannelSize(int $size): void

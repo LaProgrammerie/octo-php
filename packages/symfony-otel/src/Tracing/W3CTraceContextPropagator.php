@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyOtel\Tracing;
 
+use Override;
+
 /**
  * Default W3C Trace Context propagator.
  *
@@ -14,6 +16,7 @@ namespace Octo\SymfonyOtel\Tracing;
  */
 final class W3CTraceContextPropagator implements TextMapPropagatorInterface
 {
+    #[Override]
     public function extract(array $carrier): array
     {
         $context = [];

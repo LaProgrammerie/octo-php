@@ -13,11 +13,6 @@ use PHPUnit\Framework\TestCase;
 
 final class CoroutineSafeBatchProcessorTest extends TestCase
 {
-    private function makeSpan(string $name = 'test-span'): FakeSpan
-    {
-        return new FakeSpan($name, SpanKind::KIND_INTERNAL);
-    }
-
     #[Test]
     public function onEndBuffersSpans(): void
     {
@@ -97,8 +92,8 @@ final class CoroutineSafeBatchProcessorTest extends TestCase
     public function shutdownClearsTimer(): void
     {
         $timerCleared = false;
-        $timerStarter = fn(int $ms, callable $cb): int => 42;
-        $timerClearer = function (int $id) use (&$timerCleared): void {
+        $timerStarter = static fn (int $ms, callable $cb): int => 42;
+        $timerClearer = static function (int $id) use (&$timerCleared): void {
             $timerCleared = true;
             self::assertSame(42, $id);
         };
@@ -134,9 +129,10 @@ final class CoroutineSafeBatchProcessorTest extends TestCase
     {
         $timerStarted = false;
         $capturedInterval = 0;
-        $timerStarter = function (int $ms, callable $cb) use (&$timerStarted, &$capturedInterval): int {
+        $timerStarter = static function (int $ms, callable $cb) use (&$timerStarted, &$capturedInterval): int {
             $timerStarted = true;
             $capturedInterval = $ms;
+
             return 1;
         };
 
@@ -157,8 +153,9 @@ final class CoroutineSafeBatchProcessorTest extends TestCase
     public function startPeriodicExportIdempotent(): void
     {
         $callCount = 0;
-        $timerStarter = function (int $ms, callable $cb) use (&$callCount): int {
-            $callCount++;
+        $timerStarter = static function (int $ms, callable $cb) use (&$callCount): int {
+            ++$callCount;
+
             return 1;
         };
 
@@ -178,8 +175,9 @@ final class CoroutineSafeBatchProcessorTest extends TestCase
     public function periodicTimerCallbackFlushesSpans(): void
     {
         $capturedCallback = null;
-        $timerStarter = function (int $ms, callable $cb) use (&$capturedCallback): int {
+        $timerStarter = static function (int $ms, callable $cb) use (&$capturedCallback): int {
             $capturedCallback = $cb;
+
             return 1;
         };
 
@@ -233,5 +231,10 @@ final class CoroutineSafeBatchProcessorTest extends TestCase
 
         self::assertCount(2, $exporter->getExportedBatches());
         self::assertCount(4, $exporter->getAllExportedSpans());
+    }
+
+    private function makeSpan(string $name = 'test-span'): FakeSpan
+    {
+        return new FakeSpan($name, SpanKind::KIND_INTERNAL);
     }
 }

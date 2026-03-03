@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyBundle\Tests\Unit;
 
-use Octo\SymfonyBundle\OctoBundle;
 use Octo\SymfonyBundle\DependencyInjection\Compiler\ResetHookCompilerPass;
+use Octo\SymfonyBundle\OctoBundle;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\HttpKernel\Bundle\Bundle;
 
 final class OctoBundleTest extends TestCase
 {
@@ -25,6 +25,7 @@ final class OctoBundleTest extends TestCase
         foreach ($passes as $pass) {
             if ($pass instanceof ResetHookCompilerPass) {
                 $found = true;
+
                 break;
             }
         }
@@ -36,6 +37,6 @@ final class OctoBundleTest extends TestCase
     {
         $bundle = new OctoBundle();
 
-        self::assertInstanceOf(\Symfony\Component\HttpKernel\Bundle\Bundle::class, $bundle);
+        self::assertInstanceOf(Bundle::class, $bundle);
     }
 }

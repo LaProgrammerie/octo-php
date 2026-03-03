@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyMessenger\Tests\Unit;
 
-use Octo\SymfonyMessenger\FakeChannel;
 use Octo\SymfonyMessenger\MessengerMetrics;
 use Octo\SymfonyMessenger\OpenSwooleTransport;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
+use stdClass;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Exception\TransportException;
 
@@ -19,7 +19,7 @@ final class OpenSwooleTransportTest extends TestCase
     public function sendPushesEnvelopeToChannelAndReturnsIt(): void
     {
         $transport = new OpenSwooleTransport(channelCapacity: 10);
-        $message = new \stdClass();
+        $message = new stdClass();
         $message->text = 'hello';
         $envelope = new Envelope($message);
 
@@ -33,7 +33,7 @@ final class OpenSwooleTransportTest extends TestCase
     public function getReturnsEnvelopeFromChannel(): void
     {
         $transport = new OpenSwooleTransport(channelCapacity: 10);
-        $message = new \stdClass();
+        $message = new stdClass();
         $message->text = 'hello';
         $envelope = new Envelope($message);
 
@@ -59,7 +59,7 @@ final class OpenSwooleTransportTest extends TestCase
     public function ackIsNoOp(): void
     {
         $transport = new OpenSwooleTransport(channelCapacity: 10);
-        $envelope = new Envelope(new \stdClass());
+        $envelope = new Envelope(new stdClass());
 
         // Should not throw
         $transport->ack($envelope);
@@ -72,15 +72,14 @@ final class OpenSwooleTransportTest extends TestCase
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects(self::once())
             ->method('warning')
-            ->with('Message rejected', self::callback(function (array $context): bool {
-                return isset($context['message_class']);
-            }));
+            ->with('Message rejected', self::callback(static fn (array $context): bool => isset($context['message_class'])))
+        ;
 
         $transport = new OpenSwooleTransport(
             channelCapacity: 10,
             logger: $logger,
         );
-        $envelope = new Envelope(new \stdClass());
+        $envelope = new Envelope(new stdClass());
 
         $transport->reject($envelope);
     }
@@ -90,13 +89,13 @@ final class OpenSwooleTransportTest extends TestCase
     {
         $transport = new OpenSwooleTransport(channelCapacity: 2, sendTimeout: 0.1);
 
-        $transport->send(new Envelope(new \stdClass()));
-        $transport->send(new Envelope(new \stdClass()));
+        $transport->send(new Envelope(new stdClass()));
+        $transport->send(new Envelope(new stdClass()));
 
         $this->expectException(TransportException::class);
         $this->expectExceptionMessageMatches('/channel full.*capacity: 2/i');
 
-        $transport->send(new Envelope(new \stdClass()));
+        $transport->send(new Envelope(new stdClass()));
     }
 
     #[Test]
@@ -109,16 +108,17 @@ final class OpenSwooleTransportTest extends TestCase
         );
 
         // Fill the channel
-        for ($i = 0; $i < $capacity; $i++) {
-            $transport->send(new Envelope(new \stdClass()));
+        for ($i = 0; $i < $capacity; ++$i) {
+            $transport->send(new Envelope(new stdClass()));
         }
 
         self::assertSame($capacity, $transport->getChannelSize());
 
         // Next send should throw
         $thrown = false;
+
         try {
-            $transport->send(new Envelope(new \stdClass()));
+            $transport->send(new Envelope(new stdClass()));
         } catch (TransportException) {
             $thrown = true;
         }
@@ -131,15 +131,15 @@ final class OpenSwooleTransportTest extends TestCase
         $transport = new OpenSwooleTransport(channelCapacity: 10);
 
         $messages = [];
-        for ($i = 0; $i < 5; $i++) {
-            $msg = new \stdClass();
+        for ($i = 0; $i < 5; ++$i) {
+            $msg = new stdClass();
             $msg->order = $i;
             $envelope = new Envelope($msg);
             $messages[] = $envelope;
             $transport->send($envelope);
         }
 
-        for ($i = 0; $i < 5; $i++) {
+        for ($i = 0; $i < 5; ++$i) {
             $received = iterator_to_array($transport->get());
             self::assertCount(1, $received);
             self::assertSame($messages[$i], $received[0]);
@@ -155,8 +155,8 @@ final class OpenSwooleTransportTest extends TestCase
             metrics: $metrics,
         );
 
-        $transport->send(new Envelope(new \stdClass()));
-        $transport->send(new Envelope(new \stdClass()));
+        $transport->send(new Envelope(new stdClass()));
+        $transport->send(new Envelope(new stdClass()));
 
         self::assertSame(2, $metrics->getSentTotal());
     }
@@ -170,7 +170,7 @@ final class OpenSwooleTransportTest extends TestCase
             metrics: $metrics,
         );
 
-        $transport->send(new Envelope(new \stdClass()));
+        $transport->send(new Envelope(new stdClass()));
         iterator_to_array($transport->get());
 
         self::assertSame(1, $metrics->getConsumedTotal());
@@ -206,8 +206,8 @@ final class OpenSwooleTransportTest extends TestCase
             metrics: $metrics,
         );
 
-        $transport->send(new Envelope(new \stdClass()));
-        $transport->send(new Envelope(new \stdClass()));
+        $transport->send(new Envelope(new stdClass()));
+        $transport->send(new Envelope(new stdClass()));
         self::assertSame(2, $metrics->getChannelSize());
 
         iterator_to_array($transport->get());

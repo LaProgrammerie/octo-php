@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack\Tests\Property;
 
-use Octo\RuntimePack\RequestIdMiddleware;
 use Eris\Generators;
 use Eris\TestTrait;
+use Octo\RuntimePack\RequestIdMiddleware;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 
+use function chr;
+use function ord;
+
 /**
- * Feature: runtime-pack-openswoole, Property 9: Résolution du Request ID
+ * Feature: runtime-pack-openswoole, Property 9: Résolution du Request ID.
  *
  * **Validates: Requirements 10.1, 10.2, 10.3, 10.5**
  *
@@ -35,41 +38,6 @@ final class RequestIdResolutionTest extends TestCase
     }
 
     /**
-     * Creates a fake request object with the given X-Request-Id header value.
-     */
-    private function fakeRequest(?string $requestId): object
-    {
-        return new class ($requestId) {
-            /** @var array<string, string> */
-            public array $header;
-
-            public function __construct(?string $requestId)
-            {
-                $this->header = $requestId !== null
-                ? ['x-request-id' => $requestId]
-                : [];
-            }
-        };
-    }
-
-    /**
-     * Checks if a string is a valid request ID input (<=128 chars, ASCII 32-126).
-     */
-    private static function isValidRequestId(string $value): bool
-    {
-        if ($value === '' || strlen($value) > 128) {
-            return false;
-        }
-        for ($i = 0, $len = strlen($value); $i < $len; $i++) {
-            $ord = ord($value[$i]);
-            if ($ord < 32 || $ord > 126) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
      * Property 9a: Valid request IDs are returned unchanged.
      *
      * Generate strings of printable ASCII chars (32-126), length 1-128.
@@ -84,7 +52,7 @@ final class RequestIdResolutionTest extends TestCase
         )->then(function (int $length): void {
             // Build a valid ASCII string of the given length
             $chars = '';
-            for ($i = 0; $i < $length; $i++) {
+            for ($i = 0; $i < $length; ++$i) {
                 $chars .= chr(random_int(32, 126));
             }
 
@@ -177,5 +145,41 @@ final class RequestIdResolutionTest extends TestCase
                 "Too-long input ({$length} chars) should produce a UUIDv4",
             );
         });
+    }
+
+    /**
+     * Creates a fake request object with the given X-Request-Id header value.
+     */
+    private function fakeRequest(?string $requestId): object
+    {
+        return new class($requestId) {
+            /** @var array<string, string> */
+            public array $header;
+
+            public function __construct(?string $requestId)
+            {
+                $this->header = $requestId !== null
+                ? ['x-request-id' => $requestId]
+                : [];
+            }
+        };
+    }
+
+    /**
+     * Checks if a string is a valid request ID input (<=128 chars, ASCII 32-126).
+     */
+    private static function isValidRequestId(string $value): bool
+    {
+        if ($value === '' || mb_strlen($value) > 128) {
+            return false;
+        }
+        for ($i = 0, $len = mb_strlen($value); $i < $len; ++$i) {
+            $ord = ord($value[$i]);
+            if ($ord < 32 || $ord > 126) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

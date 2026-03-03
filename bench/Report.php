@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Octo\Bench;
 
+use function assert;
+use function count;
+use function sprintf;
+
 /**
  * Computes statistics on metric series and generates Markdown + CSV reports.
  *
@@ -28,16 +32,17 @@ final class Report
     /**
      * @param array{
      *     mode: string,
-     *     concurrency: int|null,
+     *     concurrency: null|int,
      *     total_ns: int,
-     *     queue_wait_ns: int[],
-     *     exec_ns: int[],
-     *     cpu_ns: int[],
-     *     io_ns: int[],
-     *     e2e_ns: int[],
-     *     rss_kb: int|null
+     *     queue_wait_ns: list<int>,
+     *     exec_ns: list<int>,
+     *     cpu_ns: list<int>,
+     *     io_ns: list<int>,
+     *     e2e_ns: list<int>,
+     *     rss_kb: null|int
      * } $run
-     * @return array<string, mixed>
+     *
+     * @return array{mode: string, jobs: int, concurrency: null|int, total_ms: float, jobs_per_sec: float, queue_wait: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, exec: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, cpu: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, io_wait: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, e2e: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, rss_mb: null|float}
      */
     public static function stats(array $run): array
     {
@@ -69,6 +74,8 @@ final class Report
      * worker_util uses concurrency (logical worker slots).
      *
      * Verdicts: BASELINE | OK | CPU_BOUND | N/A_SMALL_SAMPLE | N/A_MICRO_BENCH
+     *
+     * @param array{mode: string, jobs: int, concurrency: null|int, total_ms: float, jobs_per_sec: float, queue_wait: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, exec: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, cpu: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, io_wait: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, e2e: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, rss_mb: null|float} $s
      *
      * @return array{cpu_util: float, worker_util: float, verdict: string}
      */
@@ -131,7 +138,7 @@ final class Report
     }
 
     /**
-     * @param array<array<string, mixed>> $allStats
+     * @param list<array{mode: string, jobs: int, concurrency: null|int, total_ms: float, jobs_per_sec: float, queue_wait: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, exec: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, cpu: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, io_wait: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, e2e: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, rss_mb: null|float}> $allStats
      */
     public static function generate(array $allStats): void
     {
@@ -149,7 +156,8 @@ final class Report
     }
 
     /**
-     * @param int[] $ns
+     * @param list<int> $ns
+     *
      * @return array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}
      */
     private static function seriesStats(array $ns): array
@@ -159,8 +167,10 @@ final class Report
         }
 
         sort($ns);
+
+        /** @var non-empty-list<int> $ns */
         $count = count($ns);
-        $toMs = static fn(int $v): float => round($v / 1_000_000, 3);
+        $toMs = static fn (int $v): float => round($v / 1_000_000, 3);
 
         $sum = 0;
         foreach ($ns as $v) {
@@ -172,12 +182,15 @@ final class Report
             'p95' => $toMs(self::percentile($ns, 95)),
             'p99' => $toMs(self::percentile($ns, 99)),
             'avg' => round(($sum / $count) / 1_000_000, 3),
-            'min' => $toMs($ns[0]),
-            'max' => $toMs($ns[$count - 1]),
+            'min' => $toMs(reset($ns)),
+            'max' => $toMs(end($ns)),
             'sum' => round($sum / 1_000_000, 2),
         ];
     }
 
+    /**
+     * @param list<array{mode: string, jobs: int, concurrency: null|int, total_ms: float, jobs_per_sec: float, queue_wait: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, exec: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, cpu: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, io_wait: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, e2e: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, rss_mb: null|float}> $allStats
+     */
     private static function buildMarkdown(array $allStats): string
     {
         $md = "# Bench Results\n\n";
@@ -256,8 +269,9 @@ final class Report
 
         // ── Comparatif ──────────────────────────────────────────────────
         if (count($allStats) === 2) {
-            $sync = $allStats[0]['mode'] === 'sync' ? $allStats[0] : $allStats[1];
-            $async = $allStats[0]['mode'] === 'async' ? $allStats[0] : $allStats[1];
+            [$first, $second] = $allStats;
+            $sync = $first['mode'] === 'sync' ? $first : $second;
+            $async = $first['mode'] === 'async' ? $first : $second;
 
             $speedup = $async['total_ms'] > 0
                 ? round($sync['total_ms'] / $async['total_ms'], 2)
@@ -278,6 +292,9 @@ final class Report
         return $md;
     }
 
+    /**
+     * @param list<array{mode: string, jobs: int, concurrency: null|int, total_ms: float, jobs_per_sec: float, queue_wait: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, exec: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, cpu: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, io_wait: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, e2e: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, rss_mb: null|float}> $allStats
+     */
     private static function buildCsv(array $allStats): string
     {
         $columns = [
@@ -363,15 +380,17 @@ final class Report
         return implode("\n", $lines) . "\n";
     }
 
+    /**
+     * @param non-empty-list<int> $sorted
+     */
     private static function percentile(array $sorted, int $p): int
     {
         $count = count($sorted);
-        if ($count === 0) {
-            return 0;
-        }
 
         $index = (int) ceil(($p / 100) * $count) - 1;
         $index = max(0, min($index, $count - 1));
+
+        assert(isset($sorted[$index]));
 
         return $sorted[$index];
     }

@@ -13,16 +13,6 @@ use PHPUnit\Framework\TestCase;
 
 final class OtelMetricsExporterTest extends TestCase
 {
-    private function createExporter(): array
-    {
-        $collector = new MetricsCollector();
-        $bridge = new MetricsBridge($collector);
-        $meter = new FakeMeter();
-        $exporter = new OtelMetricsExporter($bridge, $meter);
-
-        return [$exporter, $bridge, $meter];
-    }
-
     #[Test]
     public function exportRequestsTotal(): void
     {
@@ -128,5 +118,15 @@ final class OtelMetricsExporterTest extends TestCase
         self::assertSame(1, $meter->getCounter('symfony_exceptions_total'));
         self::assertEqualsWithDelta(10.0, $meter->getHistogramValues('symfony_request_duration_ms')[0], 0.01);
         self::assertEqualsWithDelta(1.5, $meter->getHistogramValues('symfony_reset_duration_ms')[0], 0.01);
+    }
+
+    private function createExporter(): array
+    {
+        $collector = new MetricsCollector();
+        $bridge = new MetricsBridge($collector);
+        $meter = new FakeMeter();
+        $exporter = new OtelMetricsExporter($bridge, $meter);
+
+        return [$exporter, $bridge, $meter];
     }
 }

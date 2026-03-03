@@ -11,6 +11,31 @@ use Octo\SymfonyRealtime\WebSocketHandler;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
+use stdClass;
+
+/**
+ * Fake response with push/close for WebSocket tests.
+ */
+final class FakeWsResponse
+{
+    /** @var list<string> */
+    public array $pushed = [];
+    public bool $closed = false;
+
+    public function push(string $data): bool
+    {
+        $this->pushed[] = $data;
+
+        return true;
+    }
+
+    public function close(): bool
+    {
+        $this->closed = true;
+
+        return true;
+    }
+}
 
 final class RealtimeServerAdapterTest extends TestCase
 {
@@ -19,7 +44,7 @@ final class RealtimeServerAdapterTest extends TestCase
     {
         $adapter = $this->createAdapter();
 
-        $request = new \stdClass();
+        $request = new stdClass();
         $request->header = [
             'upgrade' => 'websocket',
             'connection' => 'Upgrade',
@@ -34,7 +59,7 @@ final class RealtimeServerAdapterTest extends TestCase
     {
         $adapter = $this->createAdapter();
 
-        $request = new \stdClass();
+        $request = new stdClass();
         $request->header = [
             'Upgrade' => 'WebSocket',
             'Connection' => 'keep-alive, Upgrade',
@@ -49,7 +74,7 @@ final class RealtimeServerAdapterTest extends TestCase
     {
         $adapter = $this->createAdapter();
 
-        $request = new \stdClass();
+        $request = new stdClass();
         $request->header = ['content-type' => 'application/json'];
         $request->server = [];
 
@@ -61,7 +86,7 @@ final class RealtimeServerAdapterTest extends TestCase
     {
         $adapter = $this->createAdapter();
 
-        $request = new \stdClass();
+        $request = new stdClass();
         $request->header = ['upgrade' => 'websocket'];
         $request->server = [];
 
@@ -73,7 +98,7 @@ final class RealtimeServerAdapterTest extends TestCase
     {
         $adapter = $this->createAdapter();
 
-        $request = new \stdClass();
+        $request = new stdClass();
         $request->header = ['connection' => 'Upgrade'];
         $request->server = [];
 
@@ -85,7 +110,7 @@ final class RealtimeServerAdapterTest extends TestCase
     {
         $adapter = $this->createAdapter();
 
-        $request = new \stdClass();
+        $request = new stdClass();
         $request->header = ['upgrade' => 'h2c', 'connection' => 'Upgrade'];
         $request->server = [];
 
@@ -96,7 +121,7 @@ final class RealtimeServerAdapterTest extends TestCase
     public function delegatesHttpRequestToHttpAdapter(): void
     {
         $httpCalled = false;
-        $httpAdapter = function (object $req, object $res) use (&$httpCalled): void {
+        $httpAdapter = static function (object $req, object $res) use (&$httpCalled): void {
             $httpCalled = true;
         };
 
@@ -106,10 +131,10 @@ final class RealtimeServerAdapterTest extends TestCase
             logger: new NullLogger(),
         );
 
-        $request = new \stdClass();
+        $request = new stdClass();
         $request->header = ['content-type' => 'text/html'];
         $request->server = [];
-        $response = new \stdClass();
+        $response = new stdClass();
 
         $adapter($request, $response);
 
@@ -120,15 +145,23 @@ final class RealtimeServerAdapterTest extends TestCase
     public function delegatesWebSocketToHandler(): void
     {
         $openCalled = false;
-        $wsHandler = new class ($openCalled) implements WebSocketHandler {
+        $wsHandler = new class($openCalled) implements WebSocketHandler {
             public function __construct(private bool &$openCalled) {}
-            public function onOpen(WebSocketContext $ctx): void { $this->openCalled = true; }
+
+            public function onOpen(WebSocketContext $ctx): void
+            {
+                $this->openCalled = true;
+            }
+
             public function onMessage(WebSocketContext $ctx, string $data): void {}
+
             public function onClose(WebSocketContext $ctx): void {}
         };
 
         $httpCalled = false;
-        $httpAdapter = function () use (&$httpCalled): void { $httpCalled = true; };
+        $httpAdapter = static function () use (&$httpCalled): void {
+            $httpCalled = true;
+        };
 
         $adapter = new RealtimeServerAdapter(
             httpAdapter: $httpAdapter,
@@ -136,11 +169,11 @@ final class RealtimeServerAdapterTest extends TestCase
             logger: new NullLogger(),
         );
 
-        $request = new \stdClass();
+        $request = new stdClass();
         $request->header = ['upgrade' => 'websocket', 'connection' => 'Upgrade'];
         $request->server = [];
         $request->fd = 7;
-        $response = new \stdClass();
+        $response = new FakeWsResponse();
 
         $adapter($request, $response);
 
@@ -152,7 +185,9 @@ final class RealtimeServerAdapterTest extends TestCase
     public function delegatesHttpWhenNoWsHandler(): void
     {
         $httpCalled = false;
-        $httpAdapter = function () use (&$httpCalled): void { $httpCalled = true; };
+        $httpAdapter = static function () use (&$httpCalled): void {
+            $httpCalled = true;
+        };
 
         $adapter = new RealtimeServerAdapter(
             httpAdapter: $httpAdapter,
@@ -161,10 +196,10 @@ final class RealtimeServerAdapterTest extends TestCase
         );
 
         // Even with WS headers, no handler → delegate to HTTP
-        $request = new \stdClass();
+        $request = new stdClass();
         $request->header = ['upgrade' => 'websocket', 'connection' => 'Upgrade'];
         $request->server = [];
-        $response = new \stdClass();
+        $response = new stdClass();
 
         $adapter($request, $response);
 
@@ -175,7 +210,7 @@ final class RealtimeServerAdapterTest extends TestCase
     public function wsMaxLifetimeIsConfigurable(): void
     {
         $adapter = new RealtimeServerAdapter(
-            httpAdapter: fn() => null,
+            httpAdapter: static fn () => null,
             wsHandler: null,
             logger: new NullLogger(),
             wsMaxLifetimeSeconds: 7200,
@@ -188,7 +223,7 @@ final class RealtimeServerAdapterTest extends TestCase
     public function wsMaxLifetimeDefaultsTo3600(): void
     {
         $adapter = new RealtimeServerAdapter(
-            httpAdapter: fn() => null,
+            httpAdapter: static fn () => null,
             wsHandler: null,
             logger: new NullLogger(),
         );
@@ -202,22 +237,24 @@ final class RealtimeServerAdapterTest extends TestCase
         $metrics = new RealtimeMetrics();
         $wsHandler = new class implements WebSocketHandler {
             public function onOpen(WebSocketContext $ctx): void {}
+
             public function onMessage(WebSocketContext $ctx, string $data): void {}
+
             public function onClose(WebSocketContext $ctx): void {}
         };
 
         $adapter = new RealtimeServerAdapter(
-            httpAdapter: fn() => null,
+            httpAdapter: static fn () => null,
             wsHandler: $wsHandler,
             logger: new NullLogger(),
             metrics: $metrics,
         );
 
-        $request = new \stdClass();
+        $request = new stdClass();
         $request->header = ['upgrade' => 'websocket', 'connection' => 'Upgrade'];
         $request->server = [];
         $request->fd = 1;
-        $response = new \stdClass();
+        $response = new FakeWsResponse();
 
         self::assertSame(0, $metrics->getConnectionsActive());
         $adapter($request, $response);
@@ -230,27 +267,31 @@ final class RealtimeServerAdapterTest extends TestCase
         $metrics = new RealtimeMetrics();
         $closeFnRef = null;
 
-        $wsHandler = new class ($closeFnRef) implements WebSocketHandler {
+        $wsHandler = new class($closeFnRef) implements WebSocketHandler {
             public function __construct(private &$ref) {}
-            public function onOpen(WebSocketContext $ctx): void {
-                $this->ref = fn() => $ctx->close();
+
+            public function onOpen(WebSocketContext $ctx): void
+            {
+                $this->ref = static fn () => $ctx->close();
             }
+
             public function onMessage(WebSocketContext $ctx, string $data): void {}
+
             public function onClose(WebSocketContext $ctx): void {}
         };
 
         $adapter = new RealtimeServerAdapter(
-            httpAdapter: fn() => null,
+            httpAdapter: static fn () => null,
             wsHandler: $wsHandler,
             logger: new NullLogger(),
             metrics: $metrics,
         );
 
-        $request = new \stdClass();
+        $request = new stdClass();
         $request->header = ['upgrade' => 'websocket', 'connection' => 'Upgrade'];
         $request->server = [];
         $request->fd = 1;
-        $response = new \stdClass();
+        $response = new FakeWsResponse();
 
         $adapter($request, $response);
         self::assertSame(1, $metrics->getConnectionsActive());
@@ -264,7 +305,7 @@ final class RealtimeServerAdapterTest extends TestCase
     {
         $adapter = $this->createAdapter();
 
-        $request = new \stdClass();
+        $request = new stdClass();
         $request->header = [];
         $request->server = [];
 
@@ -274,7 +315,7 @@ final class RealtimeServerAdapterTest extends TestCase
     private function createAdapter(?WebSocketHandler $wsHandler = null): RealtimeServerAdapter
     {
         return new RealtimeServerAdapter(
-            httpAdapter: fn() => null,
+            httpAdapter: static fn () => null,
             wsHandler: $wsHandler ?? $this->createMock(WebSocketHandler::class),
             logger: new NullLogger(),
         );

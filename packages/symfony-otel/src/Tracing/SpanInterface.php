@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyOtel\Tracing;
 
+use Throwable;
+
 /**
  * Abstraction over OpenTelemetry\API\Trace\SpanInterface.
  */
 interface SpanInterface
 {
-    public function setAttribute(string $key, string|int|float|bool $value): self;
+    public function setAttribute(string $key, bool|float|int|string $value): self;
 
     public function setStatus(int $code, ?string $description = null): self;
 
-    public function recordException(\Throwable $exception): self;
+    public function recordException(Throwable $exception): self;
 
     public function end(): void;
 
@@ -30,7 +32,7 @@ interface SpanInterface
     /**
      * Returns all attributes set on this span.
      *
-     * @return array<string, string|int|float|bool>
+     * @return array<string, bool|float|int|string>
      */
     public function getAttributes(): array;
 
@@ -42,14 +44,14 @@ interface SpanInterface
     /**
      * Returns the parent context if set.
      *
-     * @return array<string, string>|null
+     * @return null|array<string, string>
      */
     public function getParentContext(): ?array;
 
     /**
      * Returns recorded exceptions.
      *
-     * @return list<\Throwable>
+     * @return list<Throwable>
      */
     public function getRecordedExceptions(): array;
 

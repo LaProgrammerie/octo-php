@@ -11,7 +11,11 @@ use Octo\RuntimePack\Exception\BlockingPoolHttpException;
 use Octo\RuntimePack\Exception\BlockingPoolSendException;
 use Octo\RuntimePack\Exception\BlockingPoolTimeoutException;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
+use stdClass;
+use Throwable;
 
 /**
  * Unit tests for BlockingPoolErrorHandler::runOrRespondError().
@@ -25,27 +29,6 @@ use PHPUnit\Framework\TestCase;
  */
 final class BlockingPoolErrorHandlerTest extends TestCase
 {
-    private function createMockPool(\Throwable $exception): BlockingPoolInterface
-    {
-        $mock = $this->createMock(BlockingPoolInterface::class);
-        $mock->method('run')->willThrowException($exception);
-        return $mock;
-    }
-
-    private function createSuccessPool(mixed $result): BlockingPoolInterface
-    {
-        $mock = $this->createMock(BlockingPoolInterface::class);
-        $mock->method('run')->willReturn($result);
-        return $mock;
-    }
-
-    private function createMockResponse(): \PHPUnit\Framework\MockObject\MockObject
-    {
-        return $this->getMockBuilder(\stdClass::class)
-            ->addMethods(['status', 'header', 'end'])
-            ->getMock();
-    }
-
     #[Test]
     public function mapsFullExceptionTo503WithRetryAfter(): void
     {
@@ -56,13 +39,14 @@ final class BlockingPoolErrorHandlerTest extends TestCase
 
         $headerCalls = [];
         $response->method('header')->willReturnCallback(
-            function (string $key, string $value) use (&$headerCalls): void {
+            static function (string $key, string $value) use (&$headerCalls): void {
                 $headerCalls[$key] = $value;
-            }
+            },
         );
 
         $response->expects(self::once())->method('end')
-            ->with(self::stringContains('pool saturated'));
+            ->with(self::stringContains('pool saturated'))
+        ;
 
         try {
             BlockingPoolErrorHandler::runOrRespondError($pool, 'test.job', [], $response);
@@ -84,9 +68,11 @@ final class BlockingPoolErrorHandlerTest extends TestCase
 
         $response->expects(self::once())->method('status')->with(504);
         $response->expects(self::once())->method('header')
-            ->with('Content-Type', 'application/json');
+            ->with('Content-Type', 'application/json')
+        ;
         $response->expects(self::once())->method('end')
-            ->with(self::stringContains('Gateway Timeout'));
+            ->with(self::stringContains('Gateway Timeout'))
+        ;
 
         try {
             BlockingPoolErrorHandler::runOrRespondError($pool, 'test.job', [], $response);
@@ -105,9 +91,11 @@ final class BlockingPoolErrorHandlerTest extends TestCase
 
         $response->expects(self::once())->method('status')->with(502);
         $response->expects(self::once())->method('header')
-            ->with('Content-Type', 'application/json');
+            ->with('Content-Type', 'application/json')
+        ;
         $response->expects(self::once())->method('end')
-            ->with(self::stringContains('Bad Gateway'));
+            ->with(self::stringContains('Bad Gateway'))
+        ;
 
         try {
             BlockingPoolErrorHandler::runOrRespondError($pool, 'test.job', [], $response);
@@ -121,14 +109,16 @@ final class BlockingPoolErrorHandlerTest extends TestCase
     #[Test]
     public function mapsRuntimeExceptionTo500(): void
     {
-        $pool = $this->createMockPool(new \RuntimeException('job crashed'));
+        $pool = $this->createMockPool(new RuntimeException('job crashed'));
         $response = $this->createMockResponse();
 
         $response->expects(self::once())->method('status')->with(500);
         $response->expects(self::once())->method('header')
-            ->with('Content-Type', 'application/json');
+            ->with('Content-Type', 'application/json')
+        ;
         $response->expects(self::once())->method('end')
-            ->with(self::stringContains('Internal Server Error'));
+            ->with(self::stringContains('Internal Server Error'))
+        ;
 
         try {
             BlockingPoolErrorHandler::runOrRespondError($pool, 'test.job', [], $response);
@@ -159,7 +149,8 @@ final class BlockingPoolErrorHandlerTest extends TestCase
         $pool->expects(self::once())
             ->method('run')
             ->with('test.job', ['key' => 'val'], 15.0)
-            ->willReturn('ok');
+            ->willReturn('ok')
+        ;
 
         $response = $this->createMockResponse();
 
@@ -180,5 +171,28 @@ final class BlockingPoolErrorHandlerTest extends TestCase
         } catch (BlockingPoolHttpException $e) {
             self::assertSame($originalMsg, $e->getMessage());
         }
+    }
+
+    private function createMockPool(Throwable $exception): BlockingPoolInterface
+    {
+        $mock = $this->createMock(BlockingPoolInterface::class);
+        $mock->method('run')->willThrowException($exception);
+
+        return $mock;
+    }
+
+    private function createSuccessPool(mixed $result): BlockingPoolInterface
+    {
+        $mock = $this->createMock(BlockingPoolInterface::class);
+        $mock->method('run')->willReturn($result);
+
+        return $mock;
+    }
+
+    private function createMockResponse(): MockObject
+    {
+        return $this->getMockBuilder(stdClass::class)
+            ->addMethods(['status', 'header', 'end'])
+            ->getMock();
     }
 }

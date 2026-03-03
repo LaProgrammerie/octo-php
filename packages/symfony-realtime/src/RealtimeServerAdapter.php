@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyRealtime;
 
+use OpenSwoole\Http\Request;
+use OpenSwoole\Http\Response;
 use Psr\Log\LoggerInterface;
+use Throwable;
 
 /**
  * Callable compatible with ServerBootstrap::run($handler).
@@ -28,7 +31,7 @@ final class RealtimeServerAdapter
     private $httpAdapter;
 
     /**
-     * @param callable(object, object): void $httpAdapter  Typically HttpKernelAdapter
+     * @param callable(object, object): void $httpAdapter Typically HttpKernelAdapter
      */
     public function __construct(
         callable $httpAdapter,
@@ -43,6 +46,9 @@ final class RealtimeServerAdapter
 
     /**
      * Entry point called by the runtime pack for each request.
+     *
+     * @param object&Request $request
+     * @param object&Response $response
      */
     public function __invoke(object $request, object $response): void
     {
@@ -59,69 +65,28 @@ final class RealtimeServerAdapter
      * Checks:
      * - Upgrade header contains "websocket" (case-insensitive)
      * - Connection header contains "upgrade" token (case-insensitive)
+     *
+     * @param object&Request $request
      */
     public function isWebSocketUpgrade(object $request): bool
     {
-        $headers = $request->header ?? [];
+        $headers = $request->header;
 
         $upgrade = '';
         $connection = '';
 
         // Case-insensitive header lookup
         foreach ($headers as $name => $value) {
-            $lower = strtolower((string) $name);
+            $lower = mb_strtolower((string) $name);
             if ($lower === 'upgrade') {
-                $upgrade = strtolower((string) $value);
+                $upgrade = mb_strtolower((string) $value);
             }
             if ($lower === 'connection') {
-                $connection = strtolower((string) $value);
+                $connection = mb_strtolower((string) $value);
             }
         }
 
         return $upgrade === 'websocket' && str_contains($connection, 'upgrade');
-    }
-
-    /**
-     * Handles a WebSocket connection: creates context, delegates to handler.
-     */
-    private function handleWebSocket(object $request, object $response): void
-    {
-        $headers = $request->header ?? [];
-        $server = $request->server ?? [];
-        $connectionId = $request->fd ?? 0;
-        $requestId = $headers['x-request-id'] ?? bin2hex(random_bytes(8));
-
-        $ctx = new WebSocketContext(
-            connectionId: (int) $connectionId,
-            requestId: $requestId,
-            headers: $headers,
-            sendFn: function (string $data) use ($response): void {
-                $this->metrics->incrementMessagesSent();
-                if (method_exists($response, 'push')) {
-                    $response->push($data);
-                }
-            },
-            closeFn: function () use ($response): void {
-                $this->metrics->decrementActiveConnections();
-                if (method_exists($response, 'close')) {
-                    $response->close();
-                }
-            },
-        );
-
-        $this->metrics->incrementActiveConnections();
-
-        try {
-            $this->wsHandler->onOpen($ctx);
-        } catch (\Throwable $e) {
-            $this->logger->error('WebSocket onOpen failed', [
-                'connection_id' => $connectionId,
-                'request_id' => $requestId,
-                'error' => $e->getMessage(),
-                'component' => 'symfony_realtime',
-            ]);
-            $this->metrics->decrementActiveConnections();
-        }
     }
 
     public function getMetrics(): RealtimeMetrics
@@ -132,5 +97,51 @@ final class RealtimeServerAdapter
     public function getWsMaxLifetimeSeconds(): int
     {
         return $this->wsMaxLifetimeSeconds;
+    }
+
+    /**
+     * Handles a WebSocket connection: creates context, delegates to handler.
+     *
+     * @param object&Request $request
+     * @param object&Response $response
+     */
+    private function handleWebSocket(object $request, object $response): void
+    {
+        if ($this->wsHandler === null) {
+            return;
+        }
+
+        $headers = $request->header;
+        $server = $request->server;
+        $connectionId = $request->fd ?? 0;
+        $requestId = $headers['x-request-id'] ?? bin2hex(random_bytes(8));
+
+        $ctx = new WebSocketContext(
+            connectionId: (int) $connectionId,
+            requestId: $requestId,
+            headers: $headers,
+            sendFn: function (string $data) use ($response): void {
+                $this->metrics->incrementMessagesSent();
+                $response->push($data);
+            },
+            closeFn: function () use ($response): void {
+                $this->metrics->decrementActiveConnections();
+                $response->close();
+            },
+        );
+
+        $this->metrics->incrementActiveConnections();
+
+        try {
+            $this->wsHandler->onOpen($ctx);
+        } catch (Throwable $e) {
+            $this->logger->error('WebSocket onOpen failed', [
+                'connection_id' => $connectionId,
+                'request_id' => $requestId,
+                'error' => $e->getMessage(),
+                'component' => 'symfony_realtime',
+            ]);
+            $this->metrics->decrementActiveConnections();
+        }
     }
 }

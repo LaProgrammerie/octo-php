@@ -26,8 +26,7 @@ final readonly class SseEvent
         public ?string $event = null,
         public ?string $id = null,
         public ?int $retry = null,
-    ) {
-    }
+    ) {}
 
     /**
      * Formats the SSE event as W3C-compliant text.
@@ -71,18 +70,18 @@ final readonly class SseEvent
         $id = null;
         $retry = null;
 
-        foreach (explode("\n", rtrim($raw, "\n")) as $line) {
+        foreach (explode("\n", mb_rtrim($raw, "\n")) as $line) {
             if (str_starts_with($line, 'event: ')) {
-                $event = substr($line, 7);
+                $event = mb_substr($line, 7);
             } elseif (str_starts_with($line, 'data: ')) {
-                $dataLines[] = substr($line, 6);
+                $dataLines[] = mb_substr($line, 6);
             } elseif ($line === 'data:') {
                 // Empty data line (edge case: "data: " with empty value after trim)
                 $dataLines[] = '';
             } elseif (str_starts_with($line, 'id: ')) {
-                $id = substr($line, 4);
+                $id = mb_substr($line, 4);
             } elseif (str_starts_with($line, 'retry: ')) {
-                $retry = (int) substr($line, 7);
+                $retry = (int) mb_substr($line, 7);
             }
         }
 

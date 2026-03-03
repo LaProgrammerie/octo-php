@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack\Tests\Unit;
 
+use const PHP_FLOAT_MAX;
+
 use Octo\RuntimePack\MetricsCollector;
 use PHPUnit\Framework\TestCase;
 
@@ -22,31 +24,31 @@ final class MetricsCollectorTest extends TestCase
     {
         $snap = $this->metrics->snapshot();
 
-        $this->assertSame(0, $snap['requests_total']);
-        $this->assertSame(0, $snap['workers_configured']);
-        $this->assertSame(0, $snap['memory_rss_bytes']);
-        $this->assertSame(0, $snap['inflight_scopes']);
-        $this->assertSame(0, $snap['cancelled_requests_total']);
-        $this->assertSame(0, $snap['blocking_tasks_total']);
-        $this->assertSame(0, $snap['blocking_queue_depth']);
-        $this->assertSame(0, $snap['blocking_pool_rejected']);
-        $this->assertSame(0, $snap['blocking_pool_busy_workers']);
-        $this->assertSame(0, $snap['blocking_pool_send_failed']);
-        $this->assertSame(0, $snap['taskscope_children_max']);
-        $this->assertSame(0.0, $snap['event_loop_lag_ms']);
-        $this->assertSame(0, $snap['scope_rejected_total']);
-        $this->assertSame(0, $snap['cooperative_yield_total']);
+        self::assertSame(0, $snap['requests_total']);
+        self::assertSame(0, $snap['workers_configured']);
+        self::assertSame(0, $snap['memory_rss_bytes']);
+        self::assertSame(0, $snap['inflight_scopes']);
+        self::assertSame(0, $snap['cancelled_requests_total']);
+        self::assertSame(0, $snap['blocking_tasks_total']);
+        self::assertSame(0, $snap['blocking_queue_depth']);
+        self::assertSame(0, $snap['blocking_pool_rejected']);
+        self::assertSame(0, $snap['blocking_pool_busy_workers']);
+        self::assertSame(0, $snap['blocking_pool_send_failed']);
+        self::assertSame(0, $snap['taskscope_children_max']);
+        self::assertSame(0.0, $snap['event_loop_lag_ms']);
+        self::assertSame(0, $snap['scope_rejected_total']);
+        self::assertSame(0, $snap['cooperative_yield_total']);
 
         // Histogram initial state
         $hist = $snap['request_duration_ms'];
-        $this->assertSame(0.0, $hist['sum']);
-        $this->assertSame(0, $hist['count']);
-        $this->assertSame(PHP_FLOAT_MAX, $hist['min']);
-        $this->assertSame(0.0, $hist['max']);
+        self::assertSame(0.0, $hist['sum']);
+        self::assertSame(0, $hist['count']);
+        self::assertSame(PHP_FLOAT_MAX, $hist['min']);
+        self::assertSame(0.0, $hist['max']);
 
         // All bucket counts at 0
         foreach ($hist['buckets'] as $bucket) {
-            $this->assertSame(0, $bucket['count']);
+            self::assertSame(0, $bucket['count']);
         }
     }
 
@@ -56,9 +58,9 @@ final class MetricsCollectorTest extends TestCase
         $buckets = $snap['request_duration_ms']['buckets'];
 
         $expectedLe = [5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, '+Inf'];
-        $actualLe = array_map(fn(array $b) => $b['le'], $buckets);
+        $actualLe = array_map(static fn (array $b) => $b['le'], $buckets);
 
-        $this->assertSame($expectedLe, $actualLe);
+        self::assertSame($expectedLe, $actualLe);
     }
 
     // ---- incrementRequests ----
@@ -69,7 +71,7 @@ final class MetricsCollectorTest extends TestCase
         $this->metrics->incrementRequests();
         $this->metrics->incrementRequests();
 
-        $this->assertSame(3, $this->metrics->snapshot()['requests_total']);
+        self::assertSame(3, $this->metrics->snapshot()['requests_total']);
     }
 
     // ---- Gauges ----
@@ -77,32 +79,32 @@ final class MetricsCollectorTest extends TestCase
     public function testSetWorkersConfigured(): void
     {
         $this->metrics->setWorkersConfigured(8);
-        $this->assertSame(8, $this->metrics->snapshot()['workers_configured']);
+        self::assertSame(8, $this->metrics->snapshot()['workers_configured']);
     }
 
     public function testSetMemoryRss(): void
     {
         $this->metrics->setMemoryRss(134_217_728); // 128 MB
-        $this->assertSame(134_217_728, $this->metrics->snapshot()['memory_rss_bytes']);
+        self::assertSame(134_217_728, $this->metrics->snapshot()['memory_rss_bytes']);
     }
 
     public function testSetEventLoopLagMs(): void
     {
         $this->metrics->setEventLoopLagMs(12.5);
-        $this->assertSame(12.5, $this->metrics->snapshot()['event_loop_lag_ms']);
-        $this->assertSame(12.5, $this->metrics->getEventLoopLagMs());
+        self::assertSame(12.5, $this->metrics->snapshot()['event_loop_lag_ms']);
+        self::assertSame(12.5, $this->metrics->getEventLoopLagMs());
     }
 
     public function testSetBlockingPoolBusyWorkers(): void
     {
         $this->metrics->setBlockingPoolBusyWorkers(3);
-        $this->assertSame(3, $this->metrics->snapshot()['blocking_pool_busy_workers']);
+        self::assertSame(3, $this->metrics->snapshot()['blocking_pool_busy_workers']);
     }
 
     public function testSetBlockingQueueDepth(): void
     {
         $this->metrics->setBlockingQueueDepth(42);
-        $this->assertSame(42, $this->metrics->snapshot()['blocking_queue_depth']);
+        self::assertSame(42, $this->metrics->snapshot()['blocking_queue_depth']);
     }
 
     // ---- Async V1 counters ----
@@ -112,47 +114,47 @@ final class MetricsCollectorTest extends TestCase
         $this->metrics->incrementScopeRejected();
         $this->metrics->incrementScopeRejected();
 
-        $this->assertSame(2, $this->metrics->snapshot()['scope_rejected_total']);
+        self::assertSame(2, $this->metrics->snapshot()['scope_rejected_total']);
     }
 
     public function testIncrementInflightScopes(): void
     {
         $this->metrics->incrementInflightScopes();
         $this->metrics->incrementInflightScopes();
-        $this->assertSame(2, $this->metrics->snapshot()['inflight_scopes']);
+        self::assertSame(2, $this->metrics->snapshot()['inflight_scopes']);
 
         $this->metrics->decrementInflightScopes();
-        $this->assertSame(1, $this->metrics->snapshot()['inflight_scopes']);
+        self::assertSame(1, $this->metrics->snapshot()['inflight_scopes']);
     }
 
     public function testDecrementInflightScopesNeverNegative(): void
     {
         $this->metrics->decrementInflightScopes();
-        $this->assertSame(0, $this->metrics->snapshot()['inflight_scopes']);
+        self::assertSame(0, $this->metrics->snapshot()['inflight_scopes']);
     }
 
     public function testIncrementCancelledRequests(): void
     {
         $this->metrics->incrementCancelledRequests();
-        $this->assertSame(1, $this->metrics->snapshot()['cancelled_requests_total']);
+        self::assertSame(1, $this->metrics->snapshot()['cancelled_requests_total']);
     }
 
     public function testIncrementBlockingTasks(): void
     {
         $this->metrics->incrementBlockingTasks();
-        $this->assertSame(1, $this->metrics->snapshot()['blocking_tasks_total']);
+        self::assertSame(1, $this->metrics->snapshot()['blocking_tasks_total']);
     }
 
     public function testIncrementBlockingPoolRejected(): void
     {
         $this->metrics->incrementBlockingPoolRejected();
-        $this->assertSame(1, $this->metrics->snapshot()['blocking_pool_rejected']);
+        self::assertSame(1, $this->metrics->snapshot()['blocking_pool_rejected']);
     }
 
     public function testIncrementBlockingPoolSendFailed(): void
     {
         $this->metrics->incrementBlockingPoolSendFailed();
-        $this->assertSame(1, $this->metrics->snapshot()['blocking_pool_send_failed']);
+        self::assertSame(1, $this->metrics->snapshot()['blocking_pool_send_failed']);
     }
 
     public function testRecordScopeChild(): void
@@ -160,14 +162,14 @@ final class MetricsCollectorTest extends TestCase
         $this->metrics->recordScopeChild();
         $this->metrics->recordScopeChild();
         $this->metrics->recordScopeChild();
-        $this->assertSame(3, $this->metrics->snapshot()['taskscope_children_max']);
+        self::assertSame(3, $this->metrics->snapshot()['taskscope_children_max']);
     }
 
     public function testIncrementCooperativeYield(): void
     {
         $this->metrics->incrementCooperativeYield();
         $this->metrics->incrementCooperativeYield();
-        $this->assertSame(2, $this->metrics->snapshot()['cooperative_yield_total']);
+        self::assertSame(2, $this->metrics->snapshot()['cooperative_yield_total']);
     }
 
     // ---- Histogram: recordDuration ----
@@ -179,15 +181,15 @@ final class MetricsCollectorTest extends TestCase
         $snap = $this->metrics->snapshot();
         $hist = $snap['request_duration_ms'];
 
-        $this->assertSame(1, $hist['count']);
-        $this->assertSame(3.0, $hist['sum']);
-        $this->assertSame(3.0, $hist['min']);
-        $this->assertSame(3.0, $hist['max']);
+        self::assertSame(1, $hist['count']);
+        self::assertSame(3.0, $hist['sum']);
+        self::assertSame(3.0, $hist['min']);
+        self::assertSame(3.0, $hist['max']);
 
         // Bucket 5 should have count 1
-        $this->assertSame(1, $this->findBucketCount($hist['buckets'], 5));
+        self::assertSame(1, $this->findBucketCount($hist['buckets'], 5));
         // All other buckets should be 0
-        $this->assertSame(0, $this->findBucketCount($hist['buckets'], 10));
+        self::assertSame(0, $this->findBucketCount($hist['buckets'], 10));
     }
 
     public function testRecordDurationExactlyOnBucketBoundary(): void
@@ -196,9 +198,9 @@ final class MetricsCollectorTest extends TestCase
 
         $hist = $this->metrics->snapshot()['request_duration_ms'];
 
-        $this->assertSame(1, $this->findBucketCount($hist['buckets'], 50));
-        $this->assertSame(0, $this->findBucketCount($hist['buckets'], 100));
-        $this->assertSame(0, $this->findBucketCount($hist['buckets'], 25));
+        self::assertSame(1, $this->findBucketCount($hist['buckets'], 50));
+        self::assertSame(0, $this->findBucketCount($hist['buckets'], 100));
+        self::assertSame(0, $this->findBucketCount($hist['buckets'], 25));
     }
 
     public function testRecordDurationAboveAllBucketsGoesToInf(): void
@@ -207,8 +209,8 @@ final class MetricsCollectorTest extends TestCase
 
         $hist = $this->metrics->snapshot()['request_duration_ms'];
 
-        $this->assertSame(1, $this->findBucketCount($hist['buckets'], '+Inf'));
-        $this->assertSame(0, $this->findBucketCount($hist['buckets'], 10000));
+        self::assertSame(1, $this->findBucketCount($hist['buckets'], '+Inf'));
+        self::assertSame(0, $this->findBucketCount($hist['buckets'], 10000));
     }
 
     public function testRecordDurationUpdatesMinMax(): void
@@ -219,8 +221,8 @@ final class MetricsCollectorTest extends TestCase
 
         $hist = $this->metrics->snapshot()['request_duration_ms'];
 
-        $this->assertSame(5.0, $hist['min']);
-        $this->assertSame(500.0, $hist['max']);
+        self::assertSame(5.0, $hist['min']);
+        self::assertSame(500.0, $hist['max']);
     }
 
     public function testRecordDurationUpdatesSumAndCount(): void
@@ -231,8 +233,8 @@ final class MetricsCollectorTest extends TestCase
 
         $hist = $this->metrics->snapshot()['request_duration_ms'];
 
-        $this->assertSame(3, $hist['count']);
-        $this->assertSame(60.0, $hist['sum']);
+        self::assertSame(3, $hist['count']);
+        self::assertSame(60.0, $hist['sum']);
     }
 
     public function testRecordDurationMultipleBuckets(): void
@@ -245,15 +247,15 @@ final class MetricsCollectorTest extends TestCase
 
         $hist = $this->metrics->snapshot()['request_duration_ms'];
 
-        $this->assertSame(5, $hist['count']);
-        $this->assertSame(1, $this->findBucketCount($hist['buckets'], 5));
-        $this->assertSame(1, $this->findBucketCount($hist['buckets'], 10));
-        $this->assertSame(1, $this->findBucketCount($hist['buckets'], 250));
-        $this->assertSame(1, $this->findBucketCount($hist['buckets'], 10000));
-        $this->assertSame(1, $this->findBucketCount($hist['buckets'], '+Inf'));
+        self::assertSame(5, $hist['count']);
+        self::assertSame(1, $this->findBucketCount($hist['buckets'], 5));
+        self::assertSame(1, $this->findBucketCount($hist['buckets'], 10));
+        self::assertSame(1, $this->findBucketCount($hist['buckets'], 250));
+        self::assertSame(1, $this->findBucketCount($hist['buckets'], 10000));
+        self::assertSame(1, $this->findBucketCount($hist['buckets'], '+Inf'));
         // Untouched buckets
-        $this->assertSame(0, $this->findBucketCount($hist['buckets'], 25));
-        $this->assertSame(0, $this->findBucketCount($hist['buckets'], 50));
+        self::assertSame(0, $this->findBucketCount($hist['buckets'], 25));
+        self::assertSame(0, $this->findBucketCount($hist['buckets'], 50));
     }
 
     public function testRecordDurationZeroMs(): void
@@ -262,9 +264,9 @@ final class MetricsCollectorTest extends TestCase
 
         $hist = $this->metrics->snapshot()['request_duration_ms'];
 
-        $this->assertSame(1, $this->findBucketCount($hist['buckets'], 5));
-        $this->assertSame(0.0, $hist['min']);
-        $this->assertSame(0.0, $hist['max']);
+        self::assertSame(1, $this->findBucketCount($hist['buckets'], 5));
+        self::assertSame(0.0, $hist['min']);
+        self::assertSame(0.0, $hist['max']);
     }
 
     // ---- Snapshot structure completeness ----
@@ -292,7 +294,7 @@ final class MetricsCollectorTest extends TestCase
         ];
 
         foreach ($expectedKeys as $key) {
-            $this->assertArrayHasKey($key, $snap, "Missing key: {$key}");
+            self::assertArrayHasKey($key, $snap, "Missing key: {$key}");
         }
     }
 
@@ -300,11 +302,11 @@ final class MetricsCollectorTest extends TestCase
     {
         $hist = $this->metrics->snapshot()['request_duration_ms'];
 
-        $this->assertArrayHasKey('buckets', $hist);
-        $this->assertArrayHasKey('sum', $hist);
-        $this->assertArrayHasKey('count', $hist);
-        $this->assertArrayHasKey('min', $hist);
-        $this->assertArrayHasKey('max', $hist);
+        self::assertArrayHasKey('buckets', $hist);
+        self::assertArrayHasKey('sum', $hist);
+        self::assertArrayHasKey('count', $hist);
+        self::assertArrayHasKey('min', $hist);
+        self::assertArrayHasKey('max', $hist);
     }
 
     // ---- Helper ----
@@ -319,6 +321,6 @@ final class MetricsCollectorTest extends TestCase
                 return $bucket['count'];
             }
         }
-        $this->fail("Bucket with le={$le} not found");
+        self::fail("Bucket with le={$le} not found");
     }
 }

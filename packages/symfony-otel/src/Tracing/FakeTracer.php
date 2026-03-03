@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyOtel\Tracing;
 
+use Override;
+
 /**
  * In-memory tracer for testing without the OTEL SDK.
  *
@@ -14,6 +16,7 @@ final class FakeTracer implements TracerInterface
     /** @var list<SpanInterface> */
     private array $createdSpans = [];
 
+    #[Override]
     public function spanBuilder(string $name): SpanBuilderInterface
     {
         return new FakeSpanBuilder($name);

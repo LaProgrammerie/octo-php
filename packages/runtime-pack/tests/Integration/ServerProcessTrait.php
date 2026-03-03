@@ -4,6 +4,21 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack\Tests\Integration;
 
+use const AF_INET;
+use const PHP_BINARY;
+use const SIGKILL;
+use const SIGTERM;
+use const SOCK_STREAM;
+use const SOL_TCP;
+
+use RuntimeException;
+use Throwable;
+
+use function dirname;
+use function function_exists;
+use function is_array;
+use function is_resource;
+
 /**
  * Trait for managing a real OpenSwoole server process in integration tests.
  *
@@ -16,10 +31,10 @@ namespace Octo\RuntimePack\Tests\Integration;
  */
 trait ServerProcessTrait
 {
-    /** @var resource|null */
-    private $serverProcess = null;
+    /** @var null|resource */
+    private $serverProcess;
 
-    /** @var resource[] */
+    /** @var list<resource> */
     private array $serverPipes = [];
 
     private int $serverPort = 0;
@@ -46,7 +61,8 @@ trait ServerProcessTrait
      *
      * @param string $command 'async:serve' or 'async:run'
      * @param array<string, string> $env Additional environment variables
-     * @param string|null $workingDir Working directory (defaults to skeleton/)
+     * @param null|string $workingDir Working directory (defaults to skeleton/)
+     *
      * @return int The port the server is listening on
      */
     protected function startServer(
@@ -142,7 +158,7 @@ trait ServerProcessTrait
                 if ($response['status'] === 200) {
                     return;
                 }
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 // Server not ready yet
             }
 
@@ -209,7 +225,7 @@ trait ServerProcessTrait
         $responseBody = @file_get_contents($url, false, $context);
 
         if ($responseBody === false) {
-            throw new \RuntimeException("HTTP request failed: {$method} {$url}");
+            throw new RuntimeException("HTTP request failed: {$method} {$url}");
         }
 
         // Parse response headers (PHP 8.4+ uses http_get_last_response_headers())
@@ -225,7 +241,7 @@ trait ServerProcessTrait
                     $statusCode = (int) $m[1];
                 } elseif (str_contains($header, ':')) {
                     [$key, $value] = explode(':', $header, 2);
-                    $responseHeaders[strtolower(trim($key))] = trim($value);
+                    $responseHeaders[mb_strtolower(mb_trim($key))] = mb_trim($value);
                 }
             }
         }
@@ -254,21 +270,6 @@ trait ServerProcessTrait
         } else {
             posix_kill($this->serverPid, $signal);
         }
-    }
-
-    /**
-     * Find the child PHP process PID (the actual server, not the shell wrapper).
-     */
-    private function findChildPid(int $parentPid): ?int
-    {
-        // Try to find child processes via /proc
-        $output = [];
-        exec("pgrep -P {$parentPid} 2>/dev/null", $output);
-        if (!empty($output)) {
-            return (int) $output[0];
-        }
-
-        return null;
     }
 
     /**
@@ -404,11 +405,11 @@ trait ServerProcessTrait
     protected function parseLogLines(?string $stderr = null): array
     {
         $stderr ??= $this->collectStderr();
-        $lines = explode("\n", trim($stderr));
+        $lines = explode("\n", mb_trim($stderr));
         $parsed = [];
 
         foreach ($lines as $line) {
-            $line = trim($line);
+            $line = mb_trim($line);
             if ($line === '') {
                 continue;
             }
@@ -425,6 +426,7 @@ trait ServerProcessTrait
      * Search log lines for entries matching criteria.
      *
      * @param array<string, mixed> $criteria Key-value pairs to match
+     *
      * @return array<int, array<string, mixed>>
      */
     protected function findLogEntries(array $criteria, ?string $stderr = null): array
@@ -437,6 +439,7 @@ trait ServerProcessTrait
             foreach ($criteria as $key => $value) {
                 if (!isset($log[$key]) || $log[$key] !== $value) {
                     $match = false;
+
                     break;
                 }
             }
@@ -446,5 +449,20 @@ trait ServerProcessTrait
         }
 
         return $matches;
+    }
+
+    /**
+     * Find the child PHP process PID (the actual server, not the shell wrapper).
+     */
+    private function findChildPid(int $parentPid): ?int
+    {
+        // Try to find child processes via /proc
+        $output = [];
+        exec("pgrep -P {$parentPid} 2>/dev/null", $output);
+        if (!empty($output)) {
+            return (int) $output[0];
+        }
+
+        return null;
     }
 }

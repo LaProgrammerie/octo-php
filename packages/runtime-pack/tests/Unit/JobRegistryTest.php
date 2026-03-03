@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack\Tests\Unit;
 
+use InvalidArgumentException;
+use LogicException;
 use Octo\RuntimePack\JobRegistry;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -19,7 +21,7 @@ final class JobRegistryTest extends TestCase
     public function registerAndResolveJob(): void
     {
         $registry = new JobRegistry();
-        $handler = fn(array $p) => $p['x'] * 2;
+        $handler = static fn (array $p) => $p['x'] * 2;
 
         $registry->register('math.double', $handler);
 
@@ -31,7 +33,7 @@ final class JobRegistryTest extends TestCase
     public function hasReturnsTrueForRegisteredJob(): void
     {
         $registry = new JobRegistry();
-        $registry->register('test.job', fn() => null);
+        $registry->register('test.job', static fn () => null);
 
         self::assertTrue($registry->has('test.job'));
         self::assertFalse($registry->has('nonexistent'));
@@ -41,8 +43,8 @@ final class JobRegistryTest extends TestCase
     public function namesReturnsRegisteredJobNames(): void
     {
         $registry = new JobRegistry();
-        $registry->register('a.job', fn() => null);
-        $registry->register('b.job', fn() => null);
+        $registry->register('a.job', static fn () => null);
+        $registry->register('b.job', static fn () => null);
 
         self::assertSame(['a.job', 'b.job'], $registry->names());
     }
@@ -52,7 +54,7 @@ final class JobRegistryTest extends TestCase
     {
         $registry = new JobRegistry();
 
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage("Unknown job: 'missing'");
 
         $registry->resolve('missing');
@@ -62,12 +64,12 @@ final class JobRegistryTest extends TestCase
     public function registerThrowsOnDuplicateName(): void
     {
         $registry = new JobRegistry();
-        $registry->register('dup.job', fn() => 1);
+        $registry->register('dup.job', static fn () => 1);
 
-        $this->expectException(\LogicException::class);
+        $this->expectException(LogicException::class);
         $this->expectExceptionMessage("Job 'dup.job' already registered");
 
-        $registry->register('dup.job', fn() => 2);
+        $registry->register('dup.job', static fn () => 2);
     }
 
     #[Test]

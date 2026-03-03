@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack;
 
+use const SWOOLE_HOOK_CURL;
+
 /**
  * Centralized execution policy for I/O dependencies.
  *
@@ -99,7 +101,7 @@ final class ExecutionPolicy
             'guzzle',
             $curlHookActive
             ? ExecutionStrategy::DirectCoroutineOk
-            : ExecutionStrategy::ProbeRequired
+            : ExecutionStrategy::ProbeRequired,
         );
 
         // Conditional — needs integration proof on prod image

@@ -4,6 +4,18 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack;
 
+use const SWOOLE_HOOK_ALL;
+use const SWOOLE_HOOK_CURL;
+
+use OpenSwoole\Coroutine;
+use OpenSwoole\Http\Request;
+use OpenSwoole\Http\Response;
+use OpenSwoole\Http\Server;
+use OpenSwoole\Runtime;
+use OpenSwoole\Timer;
+
+use function extension_loaded;
+
 /**
  * Main entry point for the OpenSwoole HTTP server.
  *
@@ -34,9 +46,9 @@ final class ServerBootstrap
     /**
      * Starts the OpenSwoole HTTP server.
      *
-     * @param callable $appHandler User application handler: fn(object $request, object $response): void
+     * @param callable(object, object): void $appHandler User application handler
      * @param bool $production Production mode flag (true = async:run, false = async:serve)
-     * @param callable|null $jobRegistrar Optional job registrar for BlockingPool: fn(object $registry): void
+     * @param null|callable(JobRegistry): void $jobRegistrar Optional job registrar for BlockingPool
      */
     public static function run(
         callable $appHandler,
@@ -60,20 +72,20 @@ final class ServerBootstrap
         self::runStartupChecks($config, $runtimeLogger, $production);
 
         // Capture hook flags after enableCoroutine for onWorkerStart
-        $hookFlags = \OpenSwoole\Runtime::getHookFlags();
+        $hookFlags = Runtime::getHookFlags();
 
         // === 3. CREATE SERVER + SETTINGS ===
-        $server = new \OpenSwoole\Http\Server($config->host, $config->port);
+        $server = new Server($config->host, $config->port);
         $server->set(self::buildSettings($config));
 
         // === 4. GRACEFUL SHUTDOWN ===
         $gracefulShutdown = new GracefulShutdown($config, $logger);
 
-        $server->on('Start', function () use ($server, $gracefulShutdown): void {
+        $server->on('Start', static function () use ($server, $gracefulShutdown): void {
             $gracefulShutdown->registerMaster($server);
         });
 
-        $server->on('Shutdown', function () use ($gracefulShutdown): void {
+        $server->on('Shutdown', static function () use ($gracefulShutdown): void {
             $gracefulShutdown->logShutdownComplete(!$gracefulShutdown->isForcedShutdown());
         });
 
@@ -84,21 +96,22 @@ final class ServerBootstrap
         /** @var array<int, RequestHandler> $workerHandlers */
         $workerHandlers = [];
 
-        $server->on('Request', function (\OpenSwoole\Http\Request $request, \OpenSwoole\Http\Response $response, ) use (&$workerHandlers): void {
-            $workerId = $request->server['worker_id'] ?? \OpenSwoole\Coroutine::getCid();
+        $server->on('Request', static function (Request $request, Response $response) use (&$workerHandlers): void {
+            $workerId = $request->server['worker_id'] ?? Coroutine::getCid();
             // Resolve handler for current worker
-            $handler = $workerHandlers[\posix_getpid()] ?? null;
+            $handler = $workerHandlers[posix_getpid()] ?? null;
             if ($handler === null) {
                 $response->status(503);
                 $response->header('Content-Type', 'application/json');
                 $response->end('{"error":"Worker not ready"}');
+
                 return;
             }
             $handler->handle($request, $response);
         });
 
         // === 6. ON WORKER START ===
-        $server->on('WorkerStart', function (\OpenSwoole\Http\Server $srv, int $workerId, ) use (&$workerHandlers, $config, $production, $appHandler, $gracefulShutdown, $hookFlags, $jobRegistrar, ): void {
+        $server->on('WorkerStart', static function (Server $srv, int $workerId) use (&$workerHandlers, $config, $production, $appHandler, $gracefulShutdown, $hookFlags, $jobRegistrar): void {
             self::onWorkerStart(
                 $srv,
                 $workerId,
@@ -141,10 +154,10 @@ final class ServerBootstrap
         bool $production,
     ): void {
         // 1. Enable coroutine hooks BEFORE any I/O
-        \OpenSwoole\Runtime::enableCoroutine(SWOOLE_HOOK_ALL);
+        Runtime::enableCoroutine(true, SWOOLE_HOOK_ALL);
 
         // 2. Verify hook flags
-        $hookFlags = \OpenSwoole\Runtime::getHookFlags();
+        $hookFlags = Runtime::getHookFlags();
         $logger->info('Coroutine hooks enabled', [
             'flags' => $hookFlags,
             'SWOOLE_HOOK_ALL' => SWOOLE_HOOK_ALL,
@@ -154,7 +167,7 @@ final class ServerBootstrap
         // 3. Log SWOOLE_HOOK_CURL status
         $curlHookActive = ($hookFlags & SWOOLE_HOOK_CURL) === SWOOLE_HOOK_CURL;
         $logger->info('SWOOLE_HOOK_CURL active: ' . ($curlHookActive ? 'yes' : 'no'), [
-            'curl_extension_loaded' => \extension_loaded('curl'),
+            'curl_extension_loaded' => extension_loaded('curl'),
             'hook_curl_flag' => $curlHookActive,
         ]);
 
@@ -167,12 +180,13 @@ final class ServerBootstrap
                     'actual' => $hookFlags,
                     'missing' => $requiredFlags & ~$hookFlags,
                 ]);
+
                 exit(1);
             }
         }
 
         // 5. In prod: Xdebug MUST be OFF
-        if ($production && \extension_loaded('xdebug')) {
+        if ($production && extension_loaded('xdebug')) {
             $logger->critical(
                 'Xdebug is loaded in production mode — incompatible with coroutine scheduling',
                 [
@@ -180,14 +194,15 @@ final class ServerBootstrap
                     'hint' => 'Use the prod Docker stage which does not include Xdebug',
                 ],
             );
+
             exit(1);
         }
 
         // 6. Log hook dependencies
         $hookDeps = [];
-        if (\extension_loaded('curl') && $curlHookActive) {
+        if (extension_loaded('curl') && $curlHookActive) {
             $hookDeps['curl'] = 'available (SWOOLE_HOOK_CURL active: yes)';
-        } elseif (\extension_loaded('curl') && !$curlHookActive) {
+        } elseif (extension_loaded('curl') && !$curlHookActive) {
             $hookDeps['curl'] = 'ext-curl loaded but SWOOLE_HOOK_CURL inactive — curl calls may block';
             if ($production) {
                 $logger->warning('ext-curl loaded but SWOOLE_HOOK_CURL inactive', [
@@ -238,9 +253,13 @@ final class ServerBootstrap
      *
      * Creates all per-worker component instances and registers event handlers.
      * Each worker gets its own isolated set of components (no shared mutable state).
+     *
+     * @param callable(object, object): void $appHandler
+     * @param null|callable(JobRegistry): void $jobRegistrar
+     * @param array<int, RequestHandler> $workerHandlers
      */
     private static function onWorkerStart(
-        \OpenSwoole\Http\Server $server,
+        Server $server,
         int $workerId,
         ServerConfig $config,
         bool $production,
@@ -264,7 +283,7 @@ final class ServerBootstrap
         $gracefulShutdown->registerWorker($server, $lifecycle);
 
         // --- Start tick timer (250ms) for event loop health monitoring ---
-        \OpenSwoole\Timer::tick(WorkerLifecycle::TICK_INTERVAL_MS, function () use ($lifecycle): void {
+        Timer::tick(WorkerLifecycle::TICK_INTERVAL_MS, static function () use ($lifecycle): void {
             $lifecycle->tick();
         });
 
@@ -289,9 +308,9 @@ final class ServerBootstrap
             $blockingPool->initWorker();
 
             // Start periodic cleanup timer for orphaned jobs (60s)
-            \OpenSwoole\Timer::tick(
+            Timer::tick(
                 BlockingPool::CLEANUP_INTERVAL_SECONDS * 1000,
-                function () use ($blockingPool): void {
+                static function () use ($blockingPool): void {
                     $blockingPool->cleanupOrphanedJobs();
                 },
             );
@@ -304,8 +323,8 @@ final class ServerBootstrap
         $logger->withComponent('runtime')->debug('ExecutionPolicy initialized', [
             'worker_id' => $workerId,
             'hook_flags' => $hookFlags,
-            'policies' => \array_map(
-                static fn(ExecutionStrategy $s): string => $s->value,
+            'policies' => array_map(
+                static fn (ExecutionStrategy $s): string => $s->value,
                 $executionPolicy->all(),
             ),
         ]);
@@ -321,10 +340,10 @@ final class ServerBootstrap
             appHandler: $appHandler,
         );
 
-        $workerHandlers[\posix_getpid()] = $requestHandler;
+        $workerHandlers[posix_getpid()] = $requestHandler;
     }
 
-    /**
+    /*
      * Handles an incoming HTTP request.
      *
      * Minimal dispatch logic (full routing in RequestHandler, Task 10):

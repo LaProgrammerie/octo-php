@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyMessenger;
 
+use Override;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Exception\TransportException;
 use Symfony\Component\Messenger\Transport\TransportInterface;
+
+use function get_class;
+use function sprintf;
 
 /**
  * Transport Messenger in-process via bounded channel.
@@ -20,8 +24,6 @@ use Symfony\Component\Messenger\Transport\TransportInterface;
  *
  * Backpressure: if the channel is full, send() blocks the coroutine
  * until space is available or the timeout is reached.
- *
- * @implements TransportInterface
  */
 final class OpenSwooleTransport implements TransportInterface
 {
@@ -37,6 +39,7 @@ final class OpenSwooleTransport implements TransportInterface
         $this->channel = $channel ?? new FakeChannel($channelCapacity);
     }
 
+    #[Override]
     public function send(Envelope $envelope): Envelope
     {
         $pushed = $this->channel->push($envelope, $this->sendTimeout);
@@ -58,6 +61,7 @@ final class OpenSwooleTransport implements TransportInterface
     }
 
     /** @return iterable<Envelope> */
+    #[Override]
     public function get(): iterable
     {
         $envelope = $this->channel->pop(1.0); // 1s poll timeout
@@ -72,11 +76,13 @@ final class OpenSwooleTransport implements TransportInterface
         return [$envelope];
     }
 
+    #[Override]
     public function ack(Envelope $envelope): void
     {
         // In-process: ack is a no-op (message already consumed from channel)
     }
 
+    #[Override]
     public function reject(Envelope $envelope): void
     {
         $this->logger?->warning('Message rejected', [

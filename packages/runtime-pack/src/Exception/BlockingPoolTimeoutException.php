@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack\Exception;
 
+use RuntimeException;
+
 /**
  * Exception thrown when a BlockingPool job exceeds its timeout.
  *
@@ -11,6 +13,4 @@ namespace Octo\RuntimePack\Exception;
  * within the configured timeout. Maps to HTTP 504 Gateway Timeout
  * in runOrRespondError().
  */
-final class BlockingPoolTimeoutException extends \RuntimeException
-{
-}
+final class BlockingPoolTimeoutException extends RuntimeException {}

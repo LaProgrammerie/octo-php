@@ -6,20 +6,23 @@ namespace Octo\SymfonyBridge\Tests\Property;
 
 require_once __DIR__ . '/../Unit/TestDoubles.php';
 
+use const PHP_INT_MAX;
+
+use Eris\Generators;
+use Eris\TestTrait;
 use Octo\RuntimePack\MetricsCollector;
 use Octo\SymfonyBridge\HttpKernelAdapter;
 use Octo\SymfonyBridge\Tests\Unit\FakeSwooleRequest;
 use Octo\SymfonyBridge\Tests\Unit\FakeSwooleResponse;
 use Octo\SymfonyBridge\Tests\Unit\LifecycleTrackingKernel;
 use Octo\SymfonyBridge\Tests\Unit\SpyLogger;
-use Eris\Generators;
-use Eris\TestTrait;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Property 17: Bridge log content invariant
+ * Property 17: Bridge log content invariant.
  *
  * **Validates: Requirements 6.2, 6.3**
  *
@@ -32,7 +35,7 @@ final class BridgeLogContentTest extends TestCase
     use TestTrait;
 
     #[Test]
-    public function end_of_request_log_contains_required_fields(): void
+    public function endOfRequestLogContainsRequiredFields(): void
     {
         $this->limitTo(100);
 
@@ -40,8 +43,8 @@ final class BridgeLogContentTest extends TestCase
             Generators::choose(200, 599),
             Generators::elements(['req-aaa', 'req-bbb', 'req-ccc', 'req-123', 'req-xyz']),
             Generators::bool(),
-        )->then(function (int $statusCode, string $requestId, bool $throwException): void {
-            $exception = $throwException ? new \RuntimeException('test') : null;
+        )->then(static function (int $statusCode, string $requestId, bool $throwException): void {
+            $exception = $throwException ? new RuntimeException('test') : null;
             $response = new Response('body', $statusCode);
 
             $kernel = new LifecycleTrackingKernel($response, $exception);
@@ -50,7 +53,7 @@ final class BridgeLogContentTest extends TestCase
                 kernel: $kernel,
                 logger: $logger,
                 metricsCollector: new MetricsCollector(),
-                memoryWarningThreshold: \PHP_INT_MAX,
+                memoryWarningThreshold: PHP_INT_MAX,
             );
 
             $adapter(
@@ -59,40 +62,39 @@ final class BridgeLogContentTest extends TestCase
             );
 
             // Find the end-of-request log
-            $completedLogs = \array_filter($logger->logs, fn(array $log) =>
-                $log['level'] === 'info' && \str_contains($log['message'], 'Request completed'));
+            $completedLogs = array_filter($logger->logs, static fn (array $log) => $log['level'] === 'info' && str_contains($log['message'], 'Request completed'));
 
             self::assertNotEmpty(
                 $completedLogs,
-                'End-of-request log must be emitted'
+                'End-of-request log must be emitted',
             );
 
-            $log = \array_values($completedLogs)[0];
+            $log = array_values($completedLogs)[0];
 
             // Required fields
             self::assertSame(
                 $requestId,
                 $log['context']['request_id'],
-                'Log must contain request_id'
+                'Log must contain request_id',
             );
             self::assertArrayHasKey(
                 'status_code',
                 $log['context'],
-                'Log must contain status_code'
+                'Log must contain status_code',
             );
             self::assertArrayHasKey(
                 'duration_ms',
                 $log['context'],
-                'Log must contain duration_ms'
+                'Log must contain duration_ms',
             );
             self::assertIsFloat(
                 $log['context']['duration_ms'],
-                'duration_ms must be a float'
+                'duration_ms must be a float',
             );
             self::assertSame(
                 'symfony_bridge',
                 $log['context']['component'],
-                'Log must contain component=symfony_bridge'
+                'Log must contain component=symfony_bridge',
             );
 
             // exception_class present only when exception was thrown
@@ -100,14 +102,14 @@ final class BridgeLogContentTest extends TestCase
                 self::assertArrayHasKey(
                     'exception_class',
                     $log['context'],
-                    'Log must contain exception_class when exception was thrown'
+                    'Log must contain exception_class when exception was thrown',
                 );
-                self::assertSame(\RuntimeException::class, $log['context']['exception_class']);
+                self::assertSame(RuntimeException::class, $log['context']['exception_class']);
             } else {
                 self::assertArrayNotHasKey(
                     'exception_class',
                     $log['context'],
-                    'Log must not contain exception_class when no exception'
+                    'Log must not contain exception_class when no exception',
                 );
             }
         });

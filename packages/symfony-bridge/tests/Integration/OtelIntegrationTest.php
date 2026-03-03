@@ -6,6 +6,7 @@ namespace Octo\SymfonyBridge\Tests\Integration;
 
 require_once __DIR__ . '/IntegrationTestDoubles.php';
 
+use LogicException;
 use Octo\SymfonyOtel\OtelRequestListener;
 use Octo\SymfonyOtel\OtelSpanFactory;
 use Octo\SymfonyOtel\Tracing\FakeSpan;
@@ -14,6 +15,7 @@ use Octo\SymfonyOtel\Tracing\SpanKind;
 use Octo\SymfonyOtel\Tracing\StatusCode;
 use Octo\SymfonyOtel\Tracing\W3CTraceContextPropagator;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 /**
  * Integration test: OTEL span lifecycle.
@@ -52,17 +54,17 @@ final class OtelIntegrationTest extends TestCase
         // 1. beforeHandle — creates root span
         $rootSpan = $this->listener->beforeHandle($request);
 
-        $this->assertInstanceOf(FakeSpan::class, $rootSpan);
-        $this->assertSame(SpanKind::KIND_SERVER, $rootSpan->getKind());
+        self::assertInstanceOf(FakeSpan::class, $rootSpan);
+        self::assertSame(SpanKind::KIND_SERVER, $rootSpan->getKind());
 
         $attrs = $rootSpan->getAttributes();
-        $this->assertSame('GET', $attrs['http.method']);
-        $this->assertSame('/api/users', $attrs['http.url']);
-        $this->assertSame('otel-test-1', $attrs['http.request_id']);
+        self::assertSame('GET', $attrs['http.method']);
+        self::assertSame('/api/users', $attrs['http.url']);
+        self::assertSame('otel-test-1', $attrs['http.request_id']);
 
         // 2. Create child spans (simulating bridge lifecycle)
         $handleSpan = $this->spanFactory->createChildSpan('symfony.kernel.handle');
-        $this->assertSame(SpanKind::KIND_INTERNAL, $handleSpan->getKind());
+        self::assertSame(SpanKind::KIND_INTERNAL, $handleSpan->getKind());
         $handleSpan->end();
 
         $convertSpan = $this->spanFactory->createChildSpan('symfony.response.convert');
@@ -72,13 +74,13 @@ final class OtelIntegrationTest extends TestCase
         $resetSpan->end();
 
         // 3. afterHandle — enrich and end root span
-        $this->listener->afterHandle($rootSpan, 200, 'app_users_list', 'App\\Controller\\UserController::list');
+        $this->listener->afterHandle($rootSpan, 200, 'app_users_list', 'App\Controller\UserController::list');
 
-        $this->assertTrue($rootSpan->hasEnded());
+        self::assertTrue($rootSpan->hasEnded());
         $finalAttrs = $rootSpan->getAttributes();
-        $this->assertSame(200, $finalAttrs['http.status_code']);
-        $this->assertSame('app_users_list', $finalAttrs['symfony.route']);
-        $this->assertSame('App\\Controller\\UserController::list', $finalAttrs['symfony.controller']);
+        self::assertSame(200, $finalAttrs['http.status_code']);
+        self::assertSame('app_users_list', $finalAttrs['symfony.route']);
+        self::assertSame('App\Controller\UserController::list', $finalAttrs['symfony.controller']);
     }
 
     public function testW3CTraceContextPropagation(): void
@@ -94,11 +96,11 @@ final class OtelIntegrationTest extends TestCase
 
         $rootSpan = $this->listener->beforeHandle($request);
 
-        $this->assertInstanceOf(FakeSpan::class, $rootSpan);
+        self::assertInstanceOf(FakeSpan::class, $rootSpan);
         $parentCtx = $rootSpan->getParentContext();
-        $this->assertNotNull($parentCtx);
-        $this->assertSame($traceParent, $parentCtx['traceparent']);
-        $this->assertSame($traceState, $parentCtx['tracestate']);
+        self::assertNotNull($parentCtx);
+        self::assertSame($traceParent, $parentCtx['traceparent']);
+        self::assertSame($traceState, $parentCtx['tracestate']);
     }
 
     public function testExceptionCapturedInRootSpan(): void
@@ -110,18 +112,18 @@ final class OtelIntegrationTest extends TestCase
         $rootSpan = $this->listener->beforeHandle($request);
 
         // Simulate exception during handle
-        $exception = new \RuntimeException('Something went wrong');
+        $exception = new RuntimeException('Something went wrong');
         $this->listener->onException($rootSpan, $exception);
 
-        $this->assertCount(1, $rootSpan->getRecordedExceptions());
-        $this->assertSame($exception, $rootSpan->getRecordedExceptions()[0]);
-        $this->assertSame(StatusCode::STATUS_ERROR, $rootSpan->getStatusCode());
-        $this->assertSame('Something went wrong', $rootSpan->getStatusDescription());
+        self::assertCount(1, $rootSpan->getRecordedExceptions());
+        self::assertSame($exception, $rootSpan->getRecordedExceptions()[0]);
+        self::assertSame(StatusCode::STATUS_ERROR, $rootSpan->getStatusCode());
+        self::assertSame('Something went wrong', $rootSpan->getStatusDescription());
 
         // afterHandle still works after exception
         $this->listener->afterHandle($rootSpan, 500);
-        $this->assertTrue($rootSpan->hasEnded());
-        $this->assertSame(500, $rootSpan->getAttributes()['http.status_code']);
+        self::assertTrue($rootSpan->hasEnded());
+        self::assertSame(500, $rootSpan->getAttributes()['http.status_code']);
     }
 
     public function testExceptionBeforeChildSpansStillEndsRootSpan(): void
@@ -133,12 +135,12 @@ final class OtelIntegrationTest extends TestCase
         $rootSpan = $this->listener->beforeHandle($request);
 
         // Exception happens immediately — no child spans created
-        $exception = new \LogicException('Early failure');
+        $exception = new LogicException('Early failure');
         $this->listener->onException($rootSpan, $exception);
         $this->listener->afterHandle($rootSpan, 500);
 
-        $this->assertTrue($rootSpan->hasEnded());
-        $this->assertSame(StatusCode::STATUS_ERROR, $rootSpan->getStatusCode());
+        self::assertTrue($rootSpan->hasEnded());
+        self::assertSame(StatusCode::STATUS_ERROR, $rootSpan->getStatusCode());
     }
 
     public function testNoTraceContextHeadersProducesNoParent(): void
@@ -149,20 +151,20 @@ final class OtelIntegrationTest extends TestCase
 
         $rootSpan = $this->listener->beforeHandle($request);
 
-        $this->assertNull($rootSpan->getParentContext());
+        self::assertNull($rootSpan->getParentContext());
     }
 
     public function testChildSpanAttributes(): void
     {
         $handleSpan = $this->spanFactory->createChildSpan('symfony.kernel.handle');
-        $this->assertSame('symfony.kernel.handle', $handleSpan->getName());
-        $this->assertSame(SpanKind::KIND_INTERNAL, $handleSpan->getKind());
+        self::assertSame('symfony.kernel.handle', $handleSpan->getName());
+        self::assertSame(SpanKind::KIND_INTERNAL, $handleSpan->getKind());
 
         $convertSpan = $this->spanFactory->createChildSpan('symfony.response.convert');
-        $this->assertSame('symfony.response.convert', $convertSpan->getName());
+        self::assertSame('symfony.response.convert', $convertSpan->getName());
 
         $resetSpan = $this->spanFactory->createChildSpan('symfony.reset');
-        $this->assertSame('symfony.reset', $resetSpan->getName());
+        self::assertSame('symfony.reset', $resetSpan->getName());
     }
 
     public function testRootSpanNameIncludesMethodAndUrl(): void
@@ -173,6 +175,6 @@ final class OtelIntegrationTest extends TestCase
 
         $rootSpan = $this->listener->beforeHandle($request);
 
-        $this->assertSame('HTTP DELETE /api/items/42', $rootSpan->getName());
+        self::assertSame('HTTP DELETE /api/items/42', $rootSpan->getName());
     }
 }

@@ -4,7 +4,12 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack;
 
+use OpenSwoole\Http\Request;
 use Psr\Log\LoggerInterface;
+
+use function chr;
+use function ord;
+use function sprintf;
 
 /**
  * Extracts or generates a unique request ID (UUIDv4) for each HTTP request.
@@ -19,13 +24,11 @@ use Psr\Log\LoggerInterface;
  */
 final class RequestIdMiddleware
 {
-    private const MAX_LENGTH = 128;
     private const HEADER_NAME = 'x-request-id';
 
     public function __construct(
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     /**
      * Extracts the X-Request-Id from the incoming request header or generates a new UUIDv4.
@@ -33,13 +36,13 @@ final class RequestIdMiddleware
      * If the incoming header value is invalid (too long, non-ASCII, or empty),
      * a new UUIDv4 is generated and a warning is logged (without reflecting the raw input).
      *
-     * @param \OpenSwoole\Http\Request $request The incoming HTTP request
+     * @param Request $request The incoming HTTP request
+     *
      * @return string A valid request ID (either the incoming value or a generated UUIDv4)
      */
     public function resolve(object $request): string
     {
-        /** @var array<string, string>|null $headers */
-        $headers = $request->header ?? [];
+        $headers = $request->header;
         $value = $headers[self::HEADER_NAME] ?? null;
 
         if ($value === null || $value === '') {
@@ -59,6 +62,10 @@ final class RequestIdMiddleware
      * Generates a UUIDv4 using random_bytes(16) with version 4 and variant 1 bits.
      *
      * Format: xxxxxxxx-xxxx-4xxx-[89ab]xxx-xxxxxxxxxxxx
+     *
+     * Uses unpack() instead of substr() to extract byte slices from binary data.
+     * CS Fixer's mb_str_functions rule converts substr→mb_substr, which corrupts
+     * bytes > 0x7F to 0x3F ('?') due to multibyte encoding interpretation.
      */
     private function generateUuidV4(): string
     {
@@ -70,13 +77,16 @@ final class RequestIdMiddleware
         // Set variant 1 bits (10xx) in byte 8 (high 2 bits)
         $bytes[8] = chr((ord($bytes[8]) & 0x3F) | 0x80);
 
+        /** @var array{a: string, b: string, c: string, d: string, e: string} $parts */
+        $parts = unpack('a4a/a2b/a2c/a2d/a6e', $bytes);
+
         return sprintf(
             '%s-%s-%s-%s-%s',
-            bin2hex(substr($bytes, 0, 4)),
-            bin2hex(substr($bytes, 4, 2)),
-            bin2hex(substr($bytes, 6, 2)),
-            bin2hex(substr($bytes, 8, 2)),
-            bin2hex(substr($bytes, 10, 6)),
+            bin2hex($parts['a']),
+            bin2hex($parts['b']),
+            bin2hex($parts['c']),
+            bin2hex($parts['d']),
+            bin2hex($parts['e']),
         );
     }
 
@@ -84,22 +94,16 @@ final class RequestIdMiddleware
      * Validates an incoming request ID value.
      *
      * Rules:
-     * - Length must be <= 128 characters
-     * - All characters must be printable ASCII (codes 32-126)
+     * - Byte length must be <= 128
+     * - All bytes must be printable ASCII (codes 32-126)
+     *
+     * Uses preg_match instead of strlen+loop to avoid CS Fixer's mb_str_functions
+     * rule converting strlen→mb_strlen (which counts characters, not bytes, and
+     * would skip trailing bytes in multibyte strings).
      */
     private function isValid(string $value): bool
     {
-        if (strlen($value) > self::MAX_LENGTH) {
-            return false;
-        }
-
-        for ($i = 0, $len = strlen($value); $i < $len; $i++) {
-            $ord = ord($value[$i]);
-            if ($ord < 32 || $ord > 126) {
-                return false;
-            }
-        }
-
-        return true;
+        // Single regex: 1-128 printable ASCII bytes (0x20-0x7E)
+        return preg_match('/\A[\x20-\x7E]{1,128}\z/', $value) === 1;
     }
 }

@@ -19,6 +19,9 @@ namespace Octo\RuntimePack;
  */
 final class WorkerLifecycle
 {
+    public const TICK_INTERVAL_MS = 250;
+    private const RSS_CHECK_EVERY_N_REQUESTS = 100;
+    private const RSS_CHECK_INTERVAL_SECONDS = 5.0;
     private float $lastLoopTickAt;
     private float $workerStartedAt;
     private int $requestCount = 0;
@@ -31,13 +34,10 @@ final class WorkerLifecycle
     private ?float $lastExpectedTickAt = null;
     private float $eventLoopLagMs = 0.0;
     private float $eventLoopLagThresholdMs;
-    public const TICK_INTERVAL_MS = 250;
 
     // RSS check throttling
     private int $requestsSinceLastRssCheck = 0;
     private float $lastRssCheckAt = 0.0;
-    private const RSS_CHECK_EVERY_N_REQUESTS = 100;
-    private const RSS_CHECK_INTERVAL_SECONDS = 5.0;
 
     public function __construct(
         private readonly ServerConfig $config,
@@ -96,7 +96,7 @@ final class WorkerLifecycle
      */
     public function beginRequest(): void
     {
-        $this->inflightScopes++;
+        ++$this->inflightScopes;
     }
 
     /**
@@ -105,7 +105,7 @@ final class WorkerLifecycle
      */
     public function endRequest(): void
     {
-        $this->inflightScopes--;
+        --$this->inflightScopes;
         if ($this->inflightScopes < 0) {
             $this->inflightScopes = 0;
             $this->logger->warning('inflightScopes went negative, reset to 0 (possible double endRequest)');
@@ -120,11 +120,11 @@ final class WorkerLifecycle
      * - If worker started < workerRestartMinInterval ago, skip reload + log warning.
      * - RSS check is throttled: every 100 requests OR every 5 seconds.
      *
-     * @return ReloadReason|null Reason for reload, or null if no reload needed
+     * @return null|ReloadReason Reason for reload, or null if no reload needed
      */
     public function afterRequest(): ?ReloadReason
     {
-        $this->requestCount++;
+        ++$this->requestCount;
 
         if ($this->shuttingDown) {
             return null;
@@ -138,7 +138,7 @@ final class WorkerLifecycle
         }
 
         // RSS check throttling
-        $this->requestsSinceLastRssCheck++;
+        ++$this->requestsSinceLastRssCheck;
         $now = microtime(true);
         $memoryRssBytes = null;
 

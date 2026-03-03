@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyBridge\Tests\Unit;
 
+use const UPLOAD_ERR_OK;
+
 use Octo\SymfonyBridge\RequestConverter;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -20,55 +22,10 @@ final class RequestConverterTest extends TestCase
         $this->converter = new RequestConverter();
     }
 
-    // --- Helper ---
-
-    /**
-     * Builds a fake OpenSwoole-like request object (anonymous class with the expected shape).
-     *
-     * @param array<string, mixed> $overrides
-     */
-    private function makeSwooleRequest(array $overrides = []): object
-    {
-        $server = $overrides['server'] ?? [
-            'request_method' => 'GET',
-            'request_uri' => '/',
-            'query_string' => '',
-            'server_protocol' => 'HTTP/1.1',
-            'server_port' => 8080,
-            'remote_addr' => '127.0.0.1',
-            'remote_port' => 54321,
-            'request_time' => 1700000000,
-            'request_time_float' => 1700000000.123,
-        ];
-        $header = $overrides['header'] ?? [];
-        $get = $overrides['get'] ?? [];
-        $post = $overrides['post'] ?? [];
-        $cookie = $overrides['cookie'] ?? [];
-        $files = $overrides['files'] ?? [];
-        $content = $overrides['rawContent'] ?? '';
-
-        return new class ($server, $header, $get, $post, $cookie, $files, $content) {
-            public function __construct(
-            public array $server,
-            public array $header,
-            public array $get,
-            public array $post,
-            public array $cookie,
-            public array $files,
-            private string $content,
-            ) {}
-
-            public function rawContent(): string
-            {
-                return $this->content;
-            }
-        };
-    }
-
     // --- Full conversion tests ---
 
     #[Test]
-    public function it_converts_method_and_uri(): void
+    public function itConvertsMethodAndUri(): void
     {
         $swoole = $this->makeSwooleRequest([
             'server' => [
@@ -86,13 +43,13 @@ final class RequestConverterTest extends TestCase
 
         $request = $this->converter->convert($swoole);
 
-        $this->assertSame('POST', $request->getMethod());
-        $this->assertSame('/api/users', $request->getPathInfo());
-        $this->assertSame('page=1&limit=10', $request->server->get('QUERY_STRING'));
+        self::assertSame('POST', $request->getMethod());
+        self::assertSame('/api/users', $request->getPathInfo());
+        self::assertSame('page=1&limit=10', $request->server->get('QUERY_STRING'));
     }
 
     #[Test]
-    public function it_converts_query_string_parameters(): void
+    public function itConvertsQueryStringParameters(): void
     {
         $swoole = $this->makeSwooleRequest([
             'get' => ['foo' => 'bar', 'baz' => '42'],
@@ -100,12 +57,12 @@ final class RequestConverterTest extends TestCase
 
         $request = $this->converter->convert($swoole);
 
-        $this->assertSame('bar', $request->query->get('foo'));
-        $this->assertSame('42', $request->query->get('baz'));
+        self::assertSame('bar', $request->query->get('foo'));
+        self::assertSame('42', $request->query->get('baz'));
     }
 
     #[Test]
-    public function it_converts_simple_and_multi_valued_headers(): void
+    public function itConvertsSimpleAndMultiValuedHeaders(): void
     {
         $swoole = $this->makeSwooleRequest([
             'header' => [
@@ -117,13 +74,13 @@ final class RequestConverterTest extends TestCase
 
         $request = $this->converter->convert($swoole);
 
-        $this->assertSame('example.com', $request->headers->get('host'));
-        $this->assertSame('text/html, application/json', $request->headers->get('accept'));
-        $this->assertSame('value1', $request->headers->get('x-custom'));
+        self::assertSame('example.com', $request->headers->get('host'));
+        self::assertSame('text/html, application/json', $request->headers->get('accept'));
+        self::assertSame('value1', $request->headers->get('x-custom'));
     }
 
     #[Test]
-    public function it_converts_form_data_body(): void
+    public function itConvertsFormDataBody(): void
     {
         $swoole = $this->makeSwooleRequest([
             'server' => [
@@ -144,12 +101,12 @@ final class RequestConverterTest extends TestCase
 
         $request = $this->converter->convert($swoole);
 
-        $this->assertSame('john', $request->request->get('username'));
-        $this->assertSame('secret', $request->request->get('password'));
+        self::assertSame('john', $request->request->get('username'));
+        self::assertSame('secret', $request->request->get('password'));
     }
 
     #[Test]
-    public function it_converts_json_body(): void
+    public function itConvertsJsonBody(): void
     {
         $json = '{"name":"Alice","age":30}';
         $swoole = $this->makeSwooleRequest([
@@ -166,19 +123,19 @@ final class RequestConverterTest extends TestCase
             ],
             'header' => [
                 'content-type' => 'application/json',
-                'content-length' => (string) strlen($json),
+                'content-length' => (string) mb_strlen($json),
             ],
             'rawContent' => $json,
         ]);
 
         $request = $this->converter->convert($swoole);
 
-        $this->assertSame($json, $request->getContent());
-        $this->assertSame('application/json', $request->headers->get('content-type'));
+        self::assertSame($json, $request->getContent());
+        self::assertSame('application/json', $request->headers->get('content-type'));
     }
 
     #[Test]
-    public function it_converts_cookies(): void
+    public function itConvertsCookies(): void
     {
         $swoole = $this->makeSwooleRequest([
             'cookie' => ['session_id' => 'abc123', 'theme' => 'dark'],
@@ -186,12 +143,12 @@ final class RequestConverterTest extends TestCase
 
         $request = $this->converter->convert($swoole);
 
-        $this->assertSame('abc123', $request->cookies->get('session_id'));
-        $this->assertSame('dark', $request->cookies->get('theme'));
+        self::assertSame('abc123', $request->cookies->get('session_id'));
+        self::assertSame('dark', $request->cookies->get('theme'));
     }
 
     #[Test]
-    public function it_propagates_request_id_in_headers_and_attributes(): void
+    public function itPropagatesRequestIdInHeadersAndAttributes(): void
     {
         $swoole = $this->makeSwooleRequest([
             'header' => ['x-request-id' => 'req-uuid-42'],
@@ -200,13 +157,13 @@ final class RequestConverterTest extends TestCase
         $request = $this->converter->convert($swoole);
 
         // In attributes
-        $this->assertSame('req-uuid-42', $request->attributes->get('_request_id'));
+        self::assertSame('req-uuid-42', $request->attributes->get('_request_id'));
         // In server vars (HTTP_X_REQUEST_ID)
-        $this->assertSame('req-uuid-42', $request->server->get('HTTP_X_REQUEST_ID'));
+        self::assertSame('req-uuid-42', $request->server->get('HTTP_X_REQUEST_ID'));
     }
 
     #[Test]
-    public function it_converts_uploaded_files(): void
+    public function itConvertsUploadedFiles(): void
     {
         $tmpFile = tempnam(sys_get_temp_dir(), 'test_upload_');
         file_put_contents($tmpFile, 'file content');
@@ -217,7 +174,7 @@ final class RequestConverterTest extends TestCase
                     'tmp_name' => $tmpFile,
                     'name' => 'photo.jpg',
                     'type' => 'image/jpeg',
-                    'error' => \UPLOAD_ERR_OK,
+                    'error' => UPLOAD_ERR_OK,
                     'size' => 12,
                 ],
             ],
@@ -226,16 +183,16 @@ final class RequestConverterTest extends TestCase
         $request = $this->converter->convert($swoole);
 
         $file = $request->files->get('avatar');
-        $this->assertInstanceOf(UploadedFile::class, $file);
-        $this->assertSame('photo.jpg', $file->getClientOriginalName());
-        $this->assertSame('image/jpeg', $file->getClientMimeType());
-        $this->assertSame(\UPLOAD_ERR_OK, $file->getError());
+        self::assertInstanceOf(UploadedFile::class, $file);
+        self::assertSame('photo.jpg', $file->getClientOriginalName());
+        self::assertSame('image/jpeg', $file->getClientMimeType());
+        self::assertSame(UPLOAD_ERR_OK, $file->getError());
 
         @unlink($tmpFile);
     }
 
     #[Test]
-    public function it_converts_multiple_uploaded_files(): void
+    public function itConvertsMultipleUploadedFiles(): void
     {
         $tmpFile1 = tempnam(sys_get_temp_dir(), 'test_upload_');
         $tmpFile2 = tempnam(sys_get_temp_dir(), 'test_upload_');
@@ -249,14 +206,14 @@ final class RequestConverterTest extends TestCase
                         'tmp_name' => $tmpFile1,
                         'name' => 'doc1.pdf',
                         'type' => 'application/pdf',
-                        'error' => \UPLOAD_ERR_OK,
+                        'error' => UPLOAD_ERR_OK,
                         'size' => 1,
                     ],
                     1 => [
                         'tmp_name' => $tmpFile2,
                         'name' => 'doc2.pdf',
                         'type' => 'application/pdf',
-                        'error' => \UPLOAD_ERR_OK,
+                        'error' => UPLOAD_ERR_OK,
                         'size' => 1,
                     ],
                 ],
@@ -266,12 +223,12 @@ final class RequestConverterTest extends TestCase
         $request = $this->converter->convert($swoole);
 
         $files = $request->files->get('docs');
-        $this->assertIsArray($files);
-        $this->assertCount(2, $files);
-        $this->assertInstanceOf(UploadedFile::class, $files[0]);
-        $this->assertInstanceOf(UploadedFile::class, $files[1]);
-        $this->assertSame('doc1.pdf', $files[0]->getClientOriginalName());
-        $this->assertSame('doc2.pdf', $files[1]->getClientOriginalName());
+        self::assertIsArray($files);
+        self::assertCount(2, $files);
+        self::assertInstanceOf(UploadedFile::class, $files[0]);
+        self::assertInstanceOf(UploadedFile::class, $files[1]);
+        self::assertSame('doc1.pdf', $files[0]->getClientOriginalName());
+        self::assertSame('doc2.pdf', $files[1]->getClientOriginalName());
 
         @unlink($tmpFile1);
         @unlink($tmpFile2);
@@ -280,7 +237,7 @@ final class RequestConverterTest extends TestCase
     // --- Server vars reconstruction ---
 
     #[Test]
-    public function it_builds_server_vars_correctly(): void
+    public function itBuildsServerVarsCorrectly(): void
     {
         $swoole = $this->makeSwooleRequest([
             'server' => [
@@ -303,45 +260,45 @@ final class RequestConverterTest extends TestCase
 
         $request = $this->converter->convert($swoole);
 
-        $this->assertSame('PUT', $request->server->get('REQUEST_METHOD'));
-        $this->assertSame('/resource/1', $request->server->get('REQUEST_URI'));
-        $this->assertSame('v=2', $request->server->get('QUERY_STRING'));
-        $this->assertSame('HTTP/2', $request->server->get('SERVER_PROTOCOL'));
-        $this->assertSame('api.example.com', $request->server->get('SERVER_NAME'));
-        $this->assertSame(9090, $request->server->get('SERVER_PORT'));
-        $this->assertSame('192.168.1.1', $request->server->get('REMOTE_ADDR'));
-        $this->assertSame(55555, $request->server->get('REMOTE_PORT'));
-        $this->assertSame('application/json', $request->server->get('CONTENT_TYPE'));
-        $this->assertSame('42', $request->server->get('CONTENT_LENGTH'));
+        self::assertSame('PUT', $request->server->get('REQUEST_METHOD'));
+        self::assertSame('/resource/1', $request->server->get('REQUEST_URI'));
+        self::assertSame('v=2', $request->server->get('QUERY_STRING'));
+        self::assertSame('HTTP/2', $request->server->get('SERVER_PROTOCOL'));
+        self::assertSame('api.example.com', $request->server->get('SERVER_NAME'));
+        self::assertSame(9090, $request->server->get('SERVER_PORT'));
+        self::assertSame('192.168.1.1', $request->server->get('REMOTE_ADDR'));
+        self::assertSame(55555, $request->server->get('REMOTE_PORT'));
+        self::assertSame('application/json', $request->server->get('CONTENT_TYPE'));
+        self::assertSame('42', $request->server->get('CONTENT_LENGTH'));
         // HTTP_ prefixed headers
-        $this->assertSame('api.example.com', $request->server->get('HTTP_HOST'));
+        self::assertSame('api.example.com', $request->server->get('HTTP_HOST'));
     }
 
     // --- Edge cases ---
 
     #[Test]
-    public function it_handles_empty_headers(): void
+    public function itHandlesEmptyHeaders(): void
     {
         $swoole = $this->makeSwooleRequest(['header' => []]);
 
         $request = $this->converter->convert($swoole);
 
-        $this->assertSame('GET', $request->getMethod());
-        $this->assertSame('/', $request->getPathInfo());
+        self::assertSame('GET', $request->getMethod());
+        self::assertSame('/', $request->getPathInfo());
     }
 
     #[Test]
-    public function it_handles_empty_body(): void
+    public function itHandlesEmptyBody(): void
     {
         $swoole = $this->makeSwooleRequest(['rawContent' => '']);
 
         $request = $this->converter->convert($swoole);
 
-        $this->assertSame('', $request->getContent());
+        self::assertSame('', $request->getContent());
     }
 
     #[Test]
-    public function it_handles_zero_size_file(): void
+    public function itHandlesZeroSizeFile(): void
     {
         $tmpFile = tempnam(sys_get_temp_dir(), 'test_upload_');
         // Leave file empty (0 bytes)
@@ -352,7 +309,7 @@ final class RequestConverterTest extends TestCase
                     'tmp_name' => $tmpFile,
                     'name' => 'empty.txt',
                     'type' => 'text/plain',
-                    'error' => \UPLOAD_ERR_OK,
+                    'error' => UPLOAD_ERR_OK,
                     'size' => 0,
                 ],
             ],
@@ -361,15 +318,15 @@ final class RequestConverterTest extends TestCase
         $request = $this->converter->convert($swoole);
 
         $file = $request->files->get('empty');
-        $this->assertInstanceOf(UploadedFile::class, $file);
-        $this->assertSame('empty.txt', $file->getClientOriginalName());
-        $this->assertSame(0, $file->getSize());
+        self::assertInstanceOf(UploadedFile::class, $file);
+        self::assertSame('empty.txt', $file->getClientOriginalName());
+        self::assertSame(0, $file->getSize());
 
         @unlink($tmpFile);
     }
 
     #[Test]
-    public function it_handles_cookies_with_special_characters(): void
+    public function itHandlesCookiesWithSpecialCharacters(): void
     {
         $swoole = $this->makeSwooleRequest([
             'cookie' => [
@@ -380,12 +337,12 @@ final class RequestConverterTest extends TestCase
 
         $request = $this->converter->convert($swoole);
 
-        $this->assertSame('value=with=equals&and+plus', $request->cookies->get('data'));
-        $this->assertSame('café', $request->cookies->get('utf8'));
+        self::assertSame('value=with=equals&and+plus', $request->cookies->get('data'));
+        self::assertSame('café', $request->cookies->get('utf8'));
     }
 
     #[Test]
-    public function it_handles_utf8_and_percent_encoded_uri(): void
+    public function itHandlesUtf8AndPercentEncodedUri(): void
     {
         $swoole = $this->makeSwooleRequest([
             'server' => [
@@ -404,14 +361,14 @@ final class RequestConverterTest extends TestCase
 
         $request = $this->converter->convert($swoole);
 
-        $this->assertSame('/search/%E4%B8%AD%E6%96%87', $request->server->get('REQUEST_URI'));
-        $this->assertSame('q=%C3%A9l%C3%A8ve', $request->server->get('QUERY_STRING'));
+        self::assertSame('/search/%E4%B8%AD%E6%96%87', $request->server->get('REQUEST_URI'));
+        self::assertSame('q=%C3%A9l%C3%A8ve', $request->server->get('QUERY_STRING'));
         // OpenSwoole decodes query params — the decoded value is in $request->get
-        $this->assertSame('élève', $request->query->get('q'));
+        self::assertSame('élève', $request->query->get('q'));
     }
 
     #[Test]
-    public function it_handles_request_without_content_type(): void
+    public function itHandlesRequestWithoutContentType(): void
     {
         $swoole = $this->makeSwooleRequest([
             'header' => ['host' => 'example.com'],
@@ -419,24 +376,24 @@ final class RequestConverterTest extends TestCase
 
         $request = $this->converter->convert($swoole);
 
-        $this->assertNull($request->server->get('CONTENT_TYPE'));
-        $this->assertNull($request->server->get('CONTENT_LENGTH'));
+        self::assertNull($request->server->get('CONTENT_TYPE'));
+        self::assertNull($request->server->get('CONTENT_LENGTH'));
     }
 
     #[Test]
-    public function it_does_not_set_request_id_attribute_when_header_absent(): void
+    public function itDoesNotSetRequestIdAttributeWhenHeaderAbsent(): void
     {
         $swoole = $this->makeSwooleRequest(['header' => []]);
 
         $request = $this->converter->convert($swoole);
 
-        $this->assertFalse($request->attributes->has('_request_id'));
+        self::assertFalse($request->attributes->has('_request_id'));
     }
 
     // --- Superglobals invariant ---
 
     #[Test]
-    public function it_does_not_read_or_modify_superglobals(): void
+    public function itDoesNotReadOrModifySuperglobals(): void
     {
         // Snapshot superglobals before conversion
         $serverBefore = $_SERVER;
@@ -467,10 +424,55 @@ final class RequestConverterTest extends TestCase
         $this->converter->convert($swoole);
 
         // Verify superglobals are unchanged
-        $this->assertSame($serverBefore, $_SERVER);
-        $this->assertSame($getBefore, $_GET);
-        $this->assertSame($postBefore, $_POST);
-        $this->assertSame($cookieBefore, $_COOKIE);
-        $this->assertSame($filesBefore, $_FILES);
+        self::assertSame($serverBefore, $_SERVER);
+        self::assertSame($getBefore, $_GET);
+        self::assertSame($postBefore, $_POST);
+        self::assertSame($cookieBefore, $_COOKIE);
+        self::assertSame($filesBefore, $_FILES);
+    }
+
+    // --- Helper ---
+
+    /**
+     * Builds a fake OpenSwoole-like request object (anonymous class with the expected shape).
+     *
+     * @param array<string, mixed> $overrides
+     */
+    private function makeSwooleRequest(array $overrides = []): object
+    {
+        $server = $overrides['server'] ?? [
+            'request_method' => 'GET',
+            'request_uri' => '/',
+            'query_string' => '',
+            'server_protocol' => 'HTTP/1.1',
+            'server_port' => 8080,
+            'remote_addr' => '127.0.0.1',
+            'remote_port' => 54321,
+            'request_time' => 1700000000,
+            'request_time_float' => 1700000000.123,
+        ];
+        $header = $overrides['header'] ?? [];
+        $get = $overrides['get'] ?? [];
+        $post = $overrides['post'] ?? [];
+        $cookie = $overrides['cookie'] ?? [];
+        $files = $overrides['files'] ?? [];
+        $content = $overrides['rawContent'] ?? '';
+
+        return new class($server, $header, $get, $post, $cookie, $files, $content) {
+            public function __construct(
+                public array $server,
+                public array $header,
+                public array $get,
+                public array $post,
+                public array $cookie,
+                public array $files,
+                private string $content,
+            ) {}
+
+            public function rawContent(): string
+            {
+                return $this->content;
+            }
+        };
     }
 }

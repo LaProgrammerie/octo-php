@@ -12,6 +12,8 @@ use Octo\RuntimePack\JsonLogger;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+use function is_resource;
+
 /**
  * Unit tests for IoExecutor.
  *
@@ -21,6 +23,7 @@ use PHPUnit\Framework\TestCase;
 final class IoExecutorTest extends TestCase
 {
     private ExecutionPolicy $policy;
+
     /** @var resource */
     private $logStream;
     private JsonLogger $logger;
@@ -28,35 +31,15 @@ final class IoExecutorTest extends TestCase
     protected function setUp(): void
     {
         $this->policy = new ExecutionPolicy();
-        $this->logStream = \fopen('php://memory', 'r+');
+        $this->logStream = fopen('php://memory', 'r+');
         $this->logger = new JsonLogger(false, $this->logStream);
     }
 
     protected function tearDown(): void
     {
-        if (\is_resource($this->logStream)) {
-            \fclose($this->logStream);
+        if (is_resource($this->logStream)) {
+            fclose($this->logStream);
         }
-    }
-
-    private function getLogOutput(): string
-    {
-        \rewind($this->logStream);
-        return \stream_get_contents($this->logStream);
-    }
-
-    private function createMockPool(mixed $returnValue = null, bool $expectCall = true): BlockingPoolInterface
-    {
-        $mock = $this->createMock(BlockingPoolInterface::class);
-        if ($expectCall) {
-            $mock->expects(self::once())
-                ->method('run')
-                ->willReturn($returnValue);
-        } else {
-            $mock->expects(self::never())
-                ->method('run');
-        }
-        return $mock;
     }
 
     #[Test]
@@ -71,8 +54,9 @@ final class IoExecutorTest extends TestCase
             'redis',
             'cache.get',
             ['key' => 'foo'],
-            function (array $payload) use (&$called) {
+            static function (array $payload) use (&$called) {
                 $called = true;
+
                 return 'value_' . $payload['key'];
             },
         );
@@ -90,7 +74,8 @@ final class IoExecutorTest extends TestCase
         $pool->expects(self::once())
             ->method('run')
             ->with('ffi.compute', ['data' => 42], 5.0)
-            ->willReturn('pool_result');
+            ->willReturn('pool_result')
+        ;
 
         $io = new IoExecutor($this->policy, $pool, $this->logger);
 
@@ -99,8 +84,9 @@ final class IoExecutorTest extends TestCase
             'ffi',
             'ffi.compute',
             ['data' => 42],
-            function () use (&$directCalled) {
+            static function () use (&$directCalled) {
                 $directCalled = true;
+
                 return 'direct_result';
             },
             5.0,
@@ -118,7 +104,8 @@ final class IoExecutorTest extends TestCase
         $pool->expects(self::once())
             ->method('run')
             ->with('db.query', ['sql' => 'SELECT 1'], null)
-            ->willReturn(['row']);
+            ->willReturn(['row'])
+        ;
 
         $io = new IoExecutor($this->policy, $pool, $this->logger);
 
@@ -126,7 +113,7 @@ final class IoExecutorTest extends TestCase
             'pdo_mysql',
             'db.query',
             ['sql' => 'SELECT 1'],
-            fn() => 'direct',
+            static fn () => 'direct',
         );
 
         self::assertSame(['row'], $result);
@@ -146,7 +133,8 @@ final class IoExecutorTest extends TestCase
         $pool->expects(self::once())
             ->method('run')
             ->with('cache.get', ['key' => 'bar'], null)
-            ->willReturn('pool_value');
+            ->willReturn('pool_value')
+        ;
 
         $io = new IoExecutor($this->policy, $pool, $this->logger);
 
@@ -163,7 +151,8 @@ final class IoExecutorTest extends TestCase
         $pool = $this->createMock(BlockingPoolInterface::class);
         $pool->expects(self::once())
             ->method('run')
-            ->willReturn('offloaded');
+            ->willReturn('offloaded')
+        ;
 
         $io = new IoExecutor($this->policy, $pool, $this->logger);
 
@@ -171,7 +160,7 @@ final class IoExecutorTest extends TestCase
             'unknown_lib',
             'unknown.job',
             [],
-            fn() => 'should_not_run',
+            static fn () => 'should_not_run',
         );
 
         self::assertSame('offloaded', $result);
@@ -201,8 +190,9 @@ final class IoExecutorTest extends TestCase
             'file_io',
             'fs.read',
             ['path' => '/tmp/test.txt'],
-            function (array $payload) use (&$receivedPayload) {
+            static function (array $payload) use (&$receivedPayload) {
                 $receivedPayload = $payload;
+
                 return 'content';
             },
         );
@@ -235,9 +225,34 @@ final class IoExecutorTest extends TestCase
         $pool->expects(self::once())
             ->method('run')
             ->with('ffi.call', [], 10.5)
-            ->willReturn(null);
+            ->willReturn(null)
+        ;
 
         $io = new IoExecutor($this->policy, $pool, $this->logger);
         $io->run('ffi', 'ffi.call', [], null, 10.5);
+    }
+
+    private function getLogOutput(): string
+    {
+        rewind($this->logStream);
+
+        return stream_get_contents($this->logStream);
+    }
+
+    private function createMockPool(mixed $returnValue = null, bool $expectCall = true): BlockingPoolInterface
+    {
+        $mock = $this->createMock(BlockingPoolInterface::class);
+        if ($expectCall) {
+            $mock->expects(self::once())
+                ->method('run')
+                ->willReturn($returnValue)
+            ;
+        } else {
+            $mock->expects(self::never())
+                ->method('run')
+            ;
+        }
+
+        return $mock;
     }
 }

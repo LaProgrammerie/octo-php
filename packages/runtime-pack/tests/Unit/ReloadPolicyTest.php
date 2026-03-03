@@ -10,6 +10,8 @@ use Octo\RuntimePack\ReloadReason;
 use Octo\RuntimePack\ServerConfig;
 use PHPUnit\Framework\TestCase;
 
+use function is_resource;
+
 final class ReloadPolicyTest extends TestCase
 {
     /** @var resource */
@@ -27,25 +29,6 @@ final class ReloadPolicyTest extends TestCase
         if (is_resource($this->logStream)) {
             fclose($this->logStream);
         }
-    }
-
-    private function getLogOutput(): string
-    {
-        rewind($this->logStream);
-        return stream_get_contents($this->logStream);
-    }
-
-    private function createPolicy(
-        int $maxRequests = 10_000,
-        int $maxUptime = 3_600,
-        int $maxMemoryRss = 134_217_728,
-    ): ReloadPolicy {
-        $config = new ServerConfig(
-            maxRequests: $maxRequests,
-            maxUptime: $maxUptime,
-            maxMemoryRss: $maxMemoryRss,
-        );
-        return new ReloadPolicy($config, $this->logger);
     }
 
     // ---------------------------------------------------------------
@@ -277,11 +260,12 @@ final class ReloadPolicyTest extends TestCase
         $policy->readMemoryRss();
 
         $logOutput = $this->getLogOutput();
-        $lines = array_filter(explode("\n", trim($logOutput)));
+        $lines = array_filter(explode("\n", mb_trim($logOutput)));
 
         // Filter for the specific warning
-        $warningLines = array_filter($lines, function (string $line): bool {
+        $warningLines = array_filter($lines, static function (string $line): bool {
             $decoded = json_decode($line, true);
+
             return $decoded !== null
                 && ($decoded['level'] ?? '') === 'warning'
                 && str_contains($decoded['message'] ?? '', '/proc/self/statm');
@@ -300,11 +284,32 @@ final class ReloadPolicyTest extends TestCase
         $policy->readMemoryRss();
 
         $logOutput = $this->getLogOutput();
-        $lines = array_filter(explode("\n", trim($logOutput)));
+        $lines = array_filter(explode("\n", mb_trim($logOutput)));
         $lastLine = json_decode(end($lines), true);
 
         self::assertSame('warning', $lastLine['level']);
         self::assertStringContainsString('/proc/self/statm not available', $lastLine['message']);
         self::assertStringContainsString('MAX_MEMORY_RSS', $lastLine['message']);
+    }
+
+    private function getLogOutput(): string
+    {
+        rewind($this->logStream);
+
+        return stream_get_contents($this->logStream);
+    }
+
+    private function createPolicy(
+        int $maxRequests = 10_000,
+        int $maxUptime = 3_600,
+        int $maxMemoryRss = 134_217_728,
+    ): ReloadPolicy {
+        $config = new ServerConfig(
+            maxRequests: $maxRequests,
+            maxUptime: $maxUptime,
+            maxMemoryRss: $maxMemoryRss,
+        );
+
+        return new ReloadPolicy($config, $this->logger);
     }
 }

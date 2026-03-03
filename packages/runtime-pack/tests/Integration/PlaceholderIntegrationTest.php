@@ -26,7 +26,7 @@ final class PlaceholderIntegrationTest extends TestCase
 
     public function testSemaphoreConcurrencyLimitsActiveScopes(): void
     {
-        $this->markTestSkipped('Requires Task 18 implementation (ScopeRunner semaphore)');
+        self::markTestSkipped('Requires Task 18 implementation (ScopeRunner semaphore)');
     }
 
     // =========================================================================
@@ -36,22 +36,22 @@ final class PlaceholderIntegrationTest extends TestCase
 
     public function testBlockingPoolRunOrRespondErrorFullQueue(): void
     {
-        $this->markTestSkipped('Requires Task 17 implementation (BlockingPool)');
+        self::markTestSkipped('Requires Task 17 implementation (BlockingPool)');
     }
 
     public function testBlockingPoolRunOrRespondErrorTimeout(): void
     {
-        $this->markTestSkipped('Requires Task 17 implementation (BlockingPool)');
+        self::markTestSkipped('Requires Task 17 implementation (BlockingPool)');
     }
 
     public function testBlockingPoolRunOrRespondErrorSendFailed(): void
     {
-        $this->markTestSkipped('Requires Task 17 implementation (BlockingPool)');
+        self::markTestSkipped('Requires Task 17 implementation (BlockingPool)');
     }
 
     public function testBlockingPoolRunOrRespondErrorJobFailed(): void
     {
-        $this->markTestSkipped('Requires Task 17 implementation (BlockingPool)');
+        self::markTestSkipped('Requires Task 17 implementation (BlockingPool)');
     }
 
     // =========================================================================
@@ -61,7 +61,7 @@ final class PlaceholderIntegrationTest extends TestCase
 
     public function testBlockingPoolLateResponseCleanup(): void
     {
-        $this->markTestSkipped('Requires Task 17 implementation (BlockingPool)');
+        self::markTestSkipped('Requires Task 17 implementation (BlockingPool)');
     }
 
     // =========================================================================
@@ -72,17 +72,17 @@ final class PlaceholderIntegrationTest extends TestCase
 
     public function testExecutionPolicyDirectCoroutineOk(): void
     {
-        $this->markTestSkipped('Requires Task 16 implementation (ExecutionPolicy + IoExecutor)');
+        self::markTestSkipped('Requires Task 16 implementation (ExecutionPolicy + IoExecutor)');
     }
 
     public function testExecutionPolicyMustOffload(): void
     {
-        $this->markTestSkipped('Requires Task 16 implementation (ExecutionPolicy + IoExecutor)');
+        self::markTestSkipped('Requires Task 16 implementation (ExecutionPolicy + IoExecutor)');
     }
 
     public function testExecutionPolicyDefaultsGuzzleWithCurlHook(): void
     {
-        $this->markTestSkipped('Requires Task 16 implementation (ExecutionPolicy + IoExecutor)');
+        self::markTestSkipped('Requires Task 16 implementation (ExecutionPolicy + IoExecutor)');
     }
 
     // =========================================================================
@@ -92,7 +92,7 @@ final class PlaceholderIntegrationTest extends TestCase
 
     public function testResponseFacadeEndWithoutStatusSetsStatusCode200(): void
     {
-        $this->markTestSkipped('Requires Task 19 implementation (ResponseFacade::end() fix)');
+        self::markTestSkipped('Requires Task 19 implementation (ResponseFacade::end() fix)');
     }
 
     // =========================================================================
@@ -103,7 +103,7 @@ final class PlaceholderIntegrationTest extends TestCase
 
     public function testBlockingPoolSendToPoolFailure(): void
     {
-        $this->markTestSkipped('Requires Task 17 implementation (BlockingPool)');
+        self::markTestSkipped('Requires Task 17 implementation (BlockingPool)');
     }
 
     // =========================================================================
@@ -113,6 +113,6 @@ final class PlaceholderIntegrationTest extends TestCase
 
     public function testIpcFramingLargePayload(): void
     {
-        $this->markTestSkipped('Requires Task 17 implementation (BlockingPool IPC framing)');
+        self::markTestSkipped('Requires Task 17 implementation (BlockingPool IPC framing)');
     }
 }

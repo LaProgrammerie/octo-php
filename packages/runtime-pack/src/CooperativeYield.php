@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack;
 
+use InvalidArgumentException;
+use OpenSwoole\Coroutine;
+
 /**
  * Cooperative yield helper for CPU-bound work in coroutines.
  *
@@ -44,7 +47,7 @@ final class CooperativeYield
         private readonly int $every = 1000,
     ) {
         if ($every <= 0) {
-            throw new \InvalidArgumentException('CooperativeYield::every must be > 0');
+            throw new InvalidArgumentException('CooperativeYield::every must be > 0');
         }
     }
 
@@ -56,7 +59,7 @@ final class CooperativeYield
     {
         if (++$this->counter >= $this->every) {
             $this->counter = 0;
-            \OpenSwoole\Coroutine::usleep(0);
+            Coroutine::usleep(0);
         }
     }
 
@@ -72,12 +75,12 @@ final class CooperativeYield
      * Static helper for use in loops where creating an instance is impractical.
      *
      * @param int $iteration Current loop iteration (0-based)
-     * @param int $every     Yield every N iterations
+     * @param int $every Yield every N iterations
      */
     public static function maybeYield(int $iteration, int $every = 1000): void
     {
         if ($every > 0 && $iteration > 0 && $iteration % $every === 0) {
-            \OpenSwoole\Coroutine::usleep(0);
+            Coroutine::usleep(0);
         }
     }
 }

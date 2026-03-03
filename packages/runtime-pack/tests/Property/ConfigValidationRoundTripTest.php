@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack\Tests\Property;
 
+use Eris\Generators;
+use Eris\TestTrait;
 use Octo\RuntimePack\Exception\ConfigValidationException;
 use Octo\RuntimePack\ServerConfig;
 use Octo\RuntimePack\ServerConfigFactory;
-use Eris\Generators;
-use Eris\TestTrait;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+use function count;
+
 /**
- * Feature: runtime-pack-openswoole, Property 1: Config validation round-trip
+ * Feature: runtime-pack-openswoole, Property 1: Config validation round-trip.
  *
  * **Validates: Requirements 1.3, 1.4, 1.5, 8.1, 8.2, 8.3, 8.4**
  *
@@ -25,12 +27,6 @@ use PHPUnit\Framework\TestCase;
 final class ConfigValidationRoundTripTest extends TestCase
 {
     use TestTrait;
-
-    /**
-     * Env vars set by this test — cleaned up in tearDown.
-     * @var string[]
-     */
-    private array $envVarsSet = [];
 
     private const ALL_ENV_VARS = [
         'APP_HOST',
@@ -51,26 +47,19 @@ final class ConfigValidationRoundTripTest extends TestCase
         'EVENT_LOOP_LAG_THRESHOLD_MS',
     ];
 
+    /**
+     * Env vars set by this test — cleaned up in tearDown.
+     *
+     * @var list<string>
+     */
+    private array $envVarsSet = [];
+
     protected function tearDown(): void
     {
         foreach ($this->envVarsSet as $var) {
             putenv($var);
         }
         $this->envVarsSet = [];
-    }
-
-    private function setEnv(string $name, string $value): void
-    {
-        putenv("{$name}={$value}");
-        $this->envVarsSet[] = $name;
-    }
-
-    private function clearAllEnvVars(): void
-    {
-        foreach (self::ALL_ENV_VARS as $var) {
-            putenv($var);
-            $this->envVarsSet[] = $var;
-        }
     }
 
     /**
@@ -137,7 +126,7 @@ final class ConfigValidationRoundTripTest extends TestCase
 
             $result = ServerConfigFactory::fromEnvironment(
                 production: false,
-                cpuCountResolver: static fn(): int => 4,
+                cpuCountResolver: static fn (): int => 4,
             );
 
             $config = $result['config'];
@@ -212,7 +201,7 @@ final class ConfigValidationRoundTripTest extends TestCase
             try {
                 ServerConfigFactory::fromEnvironment(
                     production: false,
-                    cpuCountResolver: static fn(): int => 4,
+                    cpuCountResolver: static fn (): int => 4,
                 );
                 self::fail("Expected ConfigValidationException for {$targetVar}={$invalidValue}");
             } catch (ConfigValidationException $e) {
@@ -223,5 +212,19 @@ final class ConfigValidationRoundTripTest extends TestCase
                 );
             }
         });
+    }
+
+    private function setEnv(string $name, string $value): void
+    {
+        putenv("{$name}={$value}");
+        $this->envVarsSet[] = $name;
+    }
+
+    private function clearAllEnvVars(): void
+    {
+        foreach (self::ALL_ENV_VARS as $var) {
+            putenv($var);
+            $this->envVarsSet[] = $var;
+        }
     }
 }

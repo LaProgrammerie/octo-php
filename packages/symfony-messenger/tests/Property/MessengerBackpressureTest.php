@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyMessenger\Tests\Property;
 
-use Octo\SymfonyMessenger\OpenSwooleTransport;
 use Eris\Generators;
 use Eris\TestTrait;
+use Octo\SymfonyMessenger\OpenSwooleTransport;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use stdClass;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Exception\TransportException;
 
 /**
- * Property 11: Messenger backpressure
+ * Property 11: Messenger backpressure.
  *
  * **Validates: Requirements 11.4**
  *
@@ -37,15 +38,15 @@ final class MessengerBackpressureTest extends TestCase
 
         $this->forAll(
             Generators::choose(1, 50),
-        )->then(function (int $capacity): void {
+        )->then(static function (int $capacity): void {
             $transport = new OpenSwooleTransport(
                 channelCapacity: $capacity,
                 sendTimeout: 0.01,
             );
 
             // Fill the channel to capacity
-            for ($i = 0; $i < $capacity; $i++) {
-                $msg = new \stdClass();
+            for ($i = 0; $i < $capacity; ++$i) {
+                $msg = new stdClass();
                 $msg->index = $i;
                 $transport->send(new Envelope($msg));
             }
@@ -55,8 +56,9 @@ final class MessengerBackpressureTest extends TestCase
 
             // The (N+1)th send MUST throw TransportException
             $thrown = false;
+
             try {
-                $transport->send(new Envelope(new \stdClass()));
+                $transport->send(new Envelope(new stdClass()));
             } catch (TransportException $e) {
                 $thrown = true;
                 self::assertStringContainsString(
@@ -80,15 +82,15 @@ final class MessengerBackpressureTest extends TestCase
 
         $this->forAll(
             Generators::choose(1, 30),
-        )->then(function (int $capacity): void {
+        )->then(static function (int $capacity): void {
             $transport = new OpenSwooleTransport(
                 channelCapacity: $capacity,
                 sendTimeout: 0.01,
             );
 
             // Fill the channel
-            for ($i = 0; $i < $capacity; $i++) {
-                $transport->send(new Envelope(new \stdClass()));
+            for ($i = 0; $i < $capacity; ++$i) {
+                $transport->send(new Envelope(new stdClass()));
             }
 
             // Consume one message to free space
@@ -97,7 +99,7 @@ final class MessengerBackpressureTest extends TestCase
             self::assertSame($capacity - 1, $transport->getChannelSize());
 
             // Now send should succeed
-            $msg = new \stdClass();
+            $msg = new stdClass();
             $msg->afterFree = true;
             $envelope = new Envelope($msg);
             $result = $transport->send($envelope);
@@ -114,7 +116,7 @@ final class MessengerBackpressureTest extends TestCase
 
         $this->forAll(
             Generators::choose(1, 100),
-        )->then(function (int $capacity): void {
+        )->then(static function (int $capacity): void {
             $transport = new OpenSwooleTransport(
                 channelCapacity: $capacity,
                 sendTimeout: 0.01,
@@ -123,16 +125,17 @@ final class MessengerBackpressureTest extends TestCase
             self::assertSame($capacity, $transport->getChannelCapacity());
 
             // Send exactly N messages — all should succeed
-            for ($i = 0; $i < $capacity; $i++) {
-                $transport->send(new Envelope(new \stdClass()));
+            for ($i = 0; $i < $capacity; ++$i) {
+                $transport->send(new Envelope(new stdClass()));
             }
 
             self::assertSame($capacity, $transport->getChannelSize());
 
             // N+1 should fail
             $exceptionThrown = false;
+
             try {
-                $transport->send(new Envelope(new \stdClass()));
+                $transport->send(new Envelope(new stdClass()));
             } catch (TransportException) {
                 $exceptionThrown = true;
             }

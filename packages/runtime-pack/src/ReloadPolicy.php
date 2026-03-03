@@ -29,8 +29,7 @@ final class ReloadPolicy
     public function __construct(
         private readonly ServerConfig $config,
         private readonly JsonLogger $logger,
-    ) {
-    }
+    ) {}
 
     /**
      * Checks if the worker should be reloaded based on request count, uptime, and memory.
@@ -41,8 +40,9 @@ final class ReloadPolicy
      *
      * @param int $requestCount Number of requests handled by this worker
      * @param float $uptimeSeconds Worker uptime in seconds
-     * @param int|null $memoryRssBytes Worker RSS memory in bytes (null if throttled)
-     * @return ReloadReason|null Reason for reload, or null if no reload needed
+     * @param null|int $memoryRssBytes Worker RSS memory in bytes (null if throttled)
+     *
+     * @return null|ReloadReason Reason for reload, or null if no reload needed
      */
     public function shouldReload(int $requestCount, float $uptimeSeconds, ?int $memoryRssBytes): ?ReloadReason
     {
@@ -77,26 +77,29 @@ final class ReloadPolicy
      * Returns null if /proc/self/statm is not available (non-Linux).
      * Logs a warning once on first failure.
      *
-     * @return int|null RSS in bytes, or null if not available
+     * @return null|int RSS in bytes, or null if not available
      */
     public function readMemoryRss(): ?int
     {
-        if (!@\is_readable(self::STATM_PATH)) {
+        if (!@is_readable(self::STATM_PATH)) {
             $this->logStatmWarningOnce();
+
             return null;
         }
 
-        $content = @\file_get_contents(self::STATM_PATH);
+        $content = @file_get_contents(self::STATM_PATH);
 
         if ($content === false) {
             $this->logStatmWarningOnce();
+
             return null;
         }
 
-        $fields = \explode(' ', \trim($content));
+        $fields = explode(' ', mb_trim($content));
 
         if (!isset($fields[1]) || !is_numeric($fields[1])) {
             $this->logStatmWarningOnce();
+
             return null;
         }
 

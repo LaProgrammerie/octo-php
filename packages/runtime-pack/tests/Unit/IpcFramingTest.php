@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack\Tests\Unit;
 
+use const JSON_THROW_ON_ERROR;
+
+use JsonException;
 use Octo\RuntimePack\IpcFraming;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 /**
  * Unit tests for IpcFraming — pure logic, no OpenSwoole dependency.
@@ -22,14 +26,14 @@ final class IpcFramingTest extends TestCase
         $frame = IpcFraming::encode($payload);
 
         // First 4 bytes = uint32 BE length prefix
-        self::assertGreaterThanOrEqual(IpcFraming::HEADER_SIZE, strlen($frame));
+        self::assertGreaterThanOrEqual(IpcFraming::HEADER_SIZE, mb_strlen($frame));
 
         $unpacked = unpack('Nlength', $frame);
         $jsonLength = $unpacked['length'];
 
         // Length prefix matches actual JSON payload length
-        $jsonPart = substr($frame, IpcFraming::HEADER_SIZE);
-        self::assertSame($jsonLength, strlen($jsonPart));
+        $jsonPart = mb_substr($frame, IpcFraming::HEADER_SIZE);
+        self::assertSame($jsonLength, mb_strlen($jsonPart));
 
         // JSON is valid and matches input
         $decoded = json_decode($jsonPart, true, 512, JSON_THROW_ON_ERROR);
@@ -54,7 +58,7 @@ final class IpcFramingTest extends TestCase
     #[Test]
     public function decodeThrowsOnTooShortFrame(): void
     {
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('too short');
 
         IpcFraming::decode('ab'); // Less than 4 bytes
@@ -66,7 +70,7 @@ final class IpcFramingTest extends TestCase
         // Create a frame header claiming 100 bytes but only provide 10
         $frame = pack('N', 100) . 'short';
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('incomplete');
 
         IpcFraming::decode($frame);
@@ -78,7 +82,7 @@ final class IpcFramingTest extends TestCase
         // Create a header claiming more than MAX_PAYLOAD_SIZE
         $frame = pack('N', IpcFraming::MAX_PAYLOAD_SIZE + 1) . '';
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('too large');
 
         IpcFraming::decode($frame);
@@ -88,9 +92,9 @@ final class IpcFramingTest extends TestCase
     public function decodeThrowsOnInvalidJson(): void
     {
         $invalidJson = '{not valid json';
-        $frame = pack('N', strlen($invalidJson)) . $invalidJson;
+        $frame = pack('N', mb_strlen($invalidJson)) . $invalidJson;
 
-        $this->expectException(\JsonException::class);
+        $this->expectException(JsonException::class);
 
         IpcFraming::decode($frame);
     }
@@ -111,7 +115,7 @@ final class IpcFramingTest extends TestCase
         $payload = ['test' => true];
         $json = json_encode($payload);
         // Header says full length, but we only provide partial data
-        $buffer = pack('N', strlen($json)) . substr($json, 0, 3);
+        $buffer = pack('N', mb_strlen($json)) . mb_substr($json, 0, 3);
 
         $result = IpcFraming::extractFromBuffer($buffer);
 
@@ -156,7 +160,7 @@ final class IpcFramingTest extends TestCase
 
         // Second frame is incomplete (only header + partial payload)
         $payload2Json = json_encode(['job_id' => 'j2']);
-        $partialFrame2 = pack('N', strlen($payload2Json)) . substr($payload2Json, 0, 5);
+        $partialFrame2 = pack('N', mb_strlen($payload2Json)) . mb_substr($payload2Json, 0, 5);
 
         $buffer = $frame1 . $partialFrame2;
 
@@ -217,7 +221,7 @@ final class IpcFramingTest extends TestCase
     #[Test]
     public function decodeBinaryPayloadThrowsOnInvalidType(): void
     {
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Invalid binary payload');
 
         IpcFraming::decodeBinaryPayload(['type' => 'text', 'encoding' => 'utf8', 'data' => 'hello']);
@@ -226,7 +230,7 @@ final class IpcFramingTest extends TestCase
     #[Test]
     public function decodeBinaryPayloadThrowsOnInvalidBase64(): void
     {
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Invalid base64');
 
         IpcFraming::decodeBinaryPayload(['type' => 'binary', 'encoding' => 'base64', 'data' => '!!!invalid!!!']);
@@ -237,7 +241,7 @@ final class IpcFramingTest extends TestCase
     {
         $buffer = pack('N', IpcFraming::MAX_PAYLOAD_SIZE + 1) . '';
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('too large');
 
         IpcFraming::extractFromBuffer($buffer);

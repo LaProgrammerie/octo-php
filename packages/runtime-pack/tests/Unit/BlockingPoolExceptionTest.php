@@ -10,6 +10,7 @@ use Octo\RuntimePack\Exception\BlockingPoolSendException;
 use Octo\RuntimePack\Exception\BlockingPoolTimeoutException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 /**
  * Unit tests for BlockingPool exception classes.
@@ -21,7 +22,7 @@ final class BlockingPoolExceptionTest extends TestCase
     #[Test]
     public function httpExceptionCarriesStatusCode(): void
     {
-        $previous = new \RuntimeException('original');
+        $previous = new RuntimeException('original');
         $e = new BlockingPoolHttpException(503, 'Queue full', $previous);
 
         self::assertSame(503, $e->httpStatusCode);
@@ -60,7 +61,7 @@ final class BlockingPoolExceptionTest extends TestCase
     public function sendExceptionIsRuntimeException(): void
     {
         $e = new BlockingPoolSendException('pool down');
-        self::assertInstanceOf(\RuntimeException::class, $e);
+        self::assertInstanceOf(RuntimeException::class, $e);
         self::assertSame('pool down', $e->getMessage());
     }
 
@@ -68,7 +69,7 @@ final class BlockingPoolExceptionTest extends TestCase
     public function fullExceptionIsRuntimeException(): void
     {
         $e = new BlockingPoolFullException('queue full (64)');
-        self::assertInstanceOf(\RuntimeException::class, $e);
+        self::assertInstanceOf(RuntimeException::class, $e);
         self::assertSame('queue full (64)', $e->getMessage());
     }
 
@@ -76,7 +77,7 @@ final class BlockingPoolExceptionTest extends TestCase
     public function timeoutExceptionIsRuntimeException(): void
     {
         $e = new BlockingPoolTimeoutException('job timed out after 30s');
-        self::assertInstanceOf(\RuntimeException::class, $e);
+        self::assertInstanceOf(RuntimeException::class, $e);
         self::assertSame('job timed out after 30s', $e->getMessage());
     }
 

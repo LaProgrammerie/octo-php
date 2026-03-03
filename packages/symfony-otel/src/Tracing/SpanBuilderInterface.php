@@ -11,7 +11,7 @@ interface SpanBuilderInterface
 {
     public function setSpanKind(int $spanKind): self;
 
-    public function setAttribute(string $key, string|int|float|bool $value): self;
+    public function setAttribute(string $key, bool|float|int|string $value): self;
 
     /**
      * Set the parent context for trace propagation.

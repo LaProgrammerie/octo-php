@@ -4,20 +4,25 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack\Tests\Property;
 
-use Octo\RuntimePack\ExecutionPolicy;
-use Octo\RuntimePack\ExecutionStrategy;
+use const SWOOLE_HOOK_CURL;
+
 use Eris\Generators;
 use Eris\TestTrait;
+use Octo\RuntimePack\ExecutionPolicy;
+use Octo\RuntimePack\ExecutionStrategy;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+use function define;
+use function defined;
+
 // Define SWOOLE_HOOK_CURL if not available (no OpenSwoole extension in test env)
-if (!\defined('SWOOLE_HOOK_CURL')) {
-    \define('SWOOLE_HOOK_CURL', 1 << 23);
+if (!defined('SWOOLE_HOOK_CURL')) {
+    define('SWOOLE_HOOK_CURL', 1 << 23);
 }
 
 /**
- * Feature: runtime-pack-openswoole, Property 20: ExecutionPolicy résolution déterministe
+ * Feature: runtime-pack-openswoole, Property 20: ExecutionPolicy résolution déterministe.
  *
  * **Validates: Contrat Async — Invariant (politique d'exécution centralisée)**
  *
@@ -54,11 +59,11 @@ final class ExecutionPolicyResolutionTest extends TestCase
             Generators::choose(1, 10),    // number of dependencies to register
             Generators::choose(0, 2),     // strategy index for first dep
             Generators::choose(0, 2),     // strategy index for second dep (if exists)
-        )->then(function (int $count, int $stratIdx1, int $stratIdx2): void {
+        )->then(static function (int $count, int $stratIdx1, int $stratIdx2): void {
             $policy = new ExecutionPolicy();
             $registrations = [];
 
-            for ($i = 0; $i < $count; $i++) {
+            for ($i = 0; $i < $count; ++$i) {
                 $depName = "dep_{$i}";
                 $stratIdx = ($i === 0) ? $stratIdx1 : (($i === 1) ? $stratIdx2 : $i % 3);
                 $strategy = self::ALL_STRATEGIES[$stratIdx];
@@ -91,14 +96,14 @@ final class ExecutionPolicyResolutionTest extends TestCase
         $this->forAll(
             Generators::choose(0, 5),     // number of registered deps
             Generators::choose(1, 10),    // number of unknown deps to query
-        )->then(function (int $regCount, int $unknownCount): void {
+        )->then(static function (int $regCount, int $unknownCount): void {
             $policy = new ExecutionPolicy();
-            for ($i = 0; $i < $regCount; $i++) {
+            for ($i = 0; $i < $regCount; ++$i) {
                 $policy->register("known_{$i}", self::ALL_STRATEGIES[$i % 3]);
             }
 
             // Query unknown dependencies
-            for ($i = 0; $i < $unknownCount; $i++) {
+            for ($i = 0; $i < $unknownCount; ++$i) {
                 $unknownDep = "unknown_{$i}";
                 $resolved = $policy->resolve($unknownDep);
                 self::assertSame(
@@ -120,7 +125,7 @@ final class ExecutionPolicyResolutionTest extends TestCase
 
         $this->forAll(
             Generators::choose(0, 2),     // strategy index
-        )->then(function (int $stratIdx): void {
+        )->then(static function (int $stratIdx): void {
             $strategy = self::ALL_STRATEGIES[$stratIdx];
             $policy = new ExecutionPolicy();
             $policy->register('test_dep', $strategy);
@@ -128,7 +133,7 @@ final class ExecutionPolicyResolutionTest extends TestCase
             $canDirect = $policy->canRunDirect('test_dep');
 
             if ($strategy === ExecutionStrategy::DirectCoroutineOk) {
-                self::assertTrue($canDirect, "canRunDirect should be true for DirectCoroutineOk");
+                self::assertTrue($canDirect, 'canRunDirect should be true for DirectCoroutineOk');
             } else {
                 self::assertFalse($canDirect, "canRunDirect should be false for {$strategy->value}");
             }
@@ -147,7 +152,7 @@ final class ExecutionPolicyResolutionTest extends TestCase
 
         $this->forAll(
             Generators::bool(),           // curlHookActive
-        )->then(function (bool $curlHookActive): void {
+        )->then(static function (bool $curlHookActive): void {
             $hookFlags = $curlHookActive ? SWOOLE_HOOK_CURL : 0;
             $policy = ExecutionPolicy::defaults($hookFlags);
 

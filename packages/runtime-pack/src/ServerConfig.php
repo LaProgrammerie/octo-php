@@ -67,6 +67,5 @@ final readonly class ServerConfig
 
         /** Event loop lag threshold in milliseconds. 0 = disabled, > 0 = /readyz 503 threshold. */
         public float $eventLoopLagThresholdMs = 500.0,
-    ) {
-    }
+    ) {}
 }

@@ -4,9 +4,23 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack;
 
+use const JSON_THROW_ON_ERROR;
+use const JSON_UNESCAPED_SLASHES;
+use const JSON_UNESCAPED_UNICODE;
+use const STDERR;
+
+use Override;
+use Psr\Log\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LoggerTrait;
 use Psr\Log\LogLevel;
+use stdClass;
+use Stringable;
+
+use function array_key_exists;
+use function in_array;
+use function is_resource;
+use function sprintf;
 
 /**
  * PSR-3 logger writing NDJSON to a configurable stream (default: STDERR).
@@ -42,14 +56,14 @@ final class JsonLogger implements LoggerInterface
 
     /**
      * @param bool $production Whether the logger is in production mode
-     * @param resource|null $stream Output stream (default: STDERR). Accepts any writable resource for testability.
+     * @param null|resource $stream Output stream (default: STDERR). Accepts any writable resource for testability.
      */
     public function __construct(
         private readonly bool $production = false,
         private $stream = null,
     ) {
         if ($this->stream === null) {
-            $this->stream = \STDERR;
+            $this->stream = STDERR;
         }
     }
 
@@ -60,27 +74,28 @@ final class JsonLogger implements LoggerInterface
      * (they are top-level fields set via withComponent/withRequestId).
      * In dev mode, a warning is emitted to stderr if these keys are found in context.
      *
-     * @throws \Psr\Log\InvalidArgumentException If the level is not a valid PSR-3 level.
+     * @throws InvalidArgumentException if the level is not a valid PSR-3 level
      */
-    public function log(mixed $level, string|\Stringable $message, array $context = []): void
+    #[Override]
+    public function log(mixed $level, string|Stringable $message, array $context = []): void
     {
         $level = (string) $level;
 
-        if (!\in_array($level, self::VALID_LEVELS, true)) {
-            throw new \Psr\Log\InvalidArgumentException(
-                \sprintf('Invalid log level: %s', $level),
+        if (!in_array($level, self::VALID_LEVELS, true)) {
+            throw new InvalidArgumentException(
+                sprintf('Invalid log level: %s', $level),
             );
         }
 
         // Guard: warn in dev if reserved keys are in context
         $extra = $context;
         foreach (self::RESERVED_KEYS as $key) {
-            if (\array_key_exists($key, $extra)) {
+            if (array_key_exists($key, $extra)) {
                 if (!$this->production) {
-                    \fwrite(\STDERR, \sprintf(
+                    fwrite(STDERR, sprintf(
                         "[JsonLogger] Warning: context key '%s' is reserved and will be ignored. Use with%s() instead.\n",
                         $key,
-                        \ucfirst(\str_replace('_', '', \ucwords($key, '_'))),
+                        ucfirst(str_replace('_', '', ucwords($key, '_'))),
                     ));
                 }
                 unset($extra[$key]);
@@ -88,17 +103,19 @@ final class JsonLogger implements LoggerInterface
         }
 
         $entry = [
-            'timestamp' => \gmdate('Y-m-d\TH:i:s\Z'),
+            'timestamp' => gmdate('Y-m-d\TH:i:s\Z'),
             'level' => $level,
             'message' => (string) $message,
             'component' => $this->component,
             'request_id' => $this->requestId,
-            'extra' => empty($extra) ? new \stdClass() : $extra,
+            'extra' => empty($extra) ? new stdClass() : $extra,
         ];
 
-        $json = \json_encode($entry, self::JSON_FLAGS);
+        $json = json_encode($entry, self::JSON_FLAGS);
 
-        \fwrite($this->stream, $json . "\n");
+        if (is_resource($this->stream)) {
+            fwrite($this->stream, $json . "\n");
+        }
     }
 
     /** Returns a new instance with the specified component. */

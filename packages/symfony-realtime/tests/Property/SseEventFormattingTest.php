@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyRealtime\Tests\Property;
 
-use Octo\SymfonyRealtime\SseEvent;
 use Eris\Generators;
 use Eris\TestTrait;
+use Octo\SymfonyRealtime\SseEvent;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Property 13: SSE event formatting
+ * Property 13: SSE event formatting.
  *
  * **Validates: Requirements 13.1, 13.2**
  *
@@ -35,7 +35,7 @@ final class SseEventFormattingTest extends TestCase
             Generators::elements([null, 'message', 'update', 'ping']),
             Generators::elements([null, '1', '42', 'evt-abc']),
             Generators::elements([null, 0, 1000, 3000, 5000]),
-        )->then(function (string $data, ?string $event, ?string $id, ?int $retry): void {
+        )->then(static function (string $data, ?string $event, ?string $id, ?int $retry): void {
             // Filter out data containing \r to avoid cross-platform issues
             $data = str_replace("\r", '', $data);
 
@@ -62,9 +62,9 @@ final class SseEventFormattingTest extends TestCase
 
         $this->forAll(
             Generators::choose(1, 10),
-        )->then(function (int $lineCount): void {
+        )->then(static function (int $lineCount): void {
             $lines = [];
-            for ($i = 0; $i < $lineCount; $i++) {
+            for ($i = 0; $i < $lineCount; ++$i) {
                 $lines[] = 'line-' . $i;
             }
             $data = implode("\n", $lines);
@@ -73,8 +73,8 @@ final class SseEventFormattingTest extends TestCase
             $formatted = $sseEvent->format();
 
             // Each line of data must be prefixed with "data: "
-            $formattedLines = explode("\n", rtrim($formatted, "\n"));
-            $dataLines = array_filter($formattedLines, fn(string $l) => str_starts_with($l, 'data: '));
+            $formattedLines = explode("\n", mb_rtrim($formatted, "\n"));
+            $dataLines = array_filter($formattedLines, static fn (string $l) => str_starts_with($l, 'data: '));
 
             self::assertCount(
                 $lineCount,
@@ -83,7 +83,7 @@ final class SseEventFormattingTest extends TestCase
             );
 
             // Verify each data line content
-            $dataValues = array_map(fn(string $l) => substr($l, 6), array_values($dataLines));
+            $dataValues = array_map(static fn (string $l) => mb_substr($l, 6), array_values($dataLines));
             self::assertSame($lines, $dataValues);
         });
     }
@@ -95,7 +95,7 @@ final class SseEventFormattingTest extends TestCase
 
         $this->forAll(
             Generators::string(),
-        )->then(function (string $data): void {
+        )->then(static function (string $data): void {
             $data = str_replace("\r", '', $data);
 
             // Event with no optional fields
@@ -105,7 +105,7 @@ final class SseEventFormattingTest extends TestCase
             // Check that optional SSE fields don't appear as line prefixes.
             // The data content itself may contain these strings, so we check
             // line-by-line that no line starts with event:/id:/retry:.
-            $lines = explode("\n", rtrim($formatted, "\n"));
+            $lines = explode("\n", mb_rtrim($formatted, "\n"));
             foreach ($lines as $line) {
                 self::assertFalse(str_starts_with($line, 'event:'), "No line should start with 'event:' when event is null, got: {$line}");
                 self::assertFalse(str_starts_with($line, 'id:'), "No line should start with 'id:' when id is null, got: {$line}");
@@ -122,14 +122,14 @@ final class SseEventFormattingTest extends TestCase
         $this->forAll(
             Generators::string(),
             Generators::elements(['message', 'update', 'ping', 'custom-event']),
-        )->then(function (string $data, string $eventName): void {
+        )->then(static function (string $data, string $eventName): void {
             $data = str_replace("\r", '', $data);
 
             $sseEvent = new SseEvent(data: $data, event: $eventName);
             $formatted = $sseEvent->format();
 
-            $eventPos = strpos($formatted, 'event: ');
-            $dataPos = strpos($formatted, 'data: ');
+            $eventPos = mb_strpos($formatted, 'event: ');
+            $dataPos = mb_strpos($formatted, 'data: ');
 
             self::assertNotFalse($eventPos);
             self::assertNotFalse($dataPos);
@@ -144,7 +144,7 @@ final class SseEventFormattingTest extends TestCase
 
         $this->forAll(
             Generators::choose(0, 60000),
-        )->then(function (int $retryMs): void {
+        )->then(static function (int $retryMs): void {
             $sseEvent = new SseEvent(data: 'test', retry: $retryMs);
             $formatted = $sseEvent->format();
 

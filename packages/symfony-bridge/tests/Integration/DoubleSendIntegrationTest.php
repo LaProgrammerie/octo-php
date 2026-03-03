@@ -30,7 +30,7 @@ final class DoubleSendIntegrationTest extends TestCase
     {
         $callOrder = [];
 
-        $kernel = new class ($callOrder) implements HttpKernelInterface, ResetInterface {
+        $kernel = new class($callOrder) implements HttpKernelInterface, ResetInterface {
             private array $callOrder;
 
             public function __construct(array &$callOrder)
@@ -41,6 +41,7 @@ final class DoubleSendIntegrationTest extends TestCase
             public function handle(Request $request, int $type = self::MAIN_REQUEST, bool $catch = true): Response
             {
                 $this->callOrder[] = 'handle';
+
                 return new Response('Should not be written', 200);
             }
 
@@ -70,11 +71,11 @@ final class DoubleSendIntegrationTest extends TestCase
 
         // The bridge should have skipped writing the response body
         // but terminate and reset must still execute
-        $this->assertContains('terminate', $callOrder, 'terminate must be called even when response already sent');
-        $this->assertContains('reset', $callOrder, 'reset must be called even when response already sent');
+        self::assertContains('terminate', $callOrder, 'terminate must be called even when response already sent');
+        self::assertContains('reset', $callOrder, 'reset must be called even when response already sent');
 
         // Warning log about skipped response
-        $this->assertTrue(
+        self::assertTrue(
             $logger->hasLogMatching('warning', 'already sent'),
             'Expected warning log about response already sent',
         );
@@ -93,9 +94,9 @@ final class DoubleSendIntegrationTest extends TestCase
         $response = new IntegrationFakeSwooleResponse();
         $adapter(IntegrationFakeSwooleRequest::get('/', 'normal-1'), $response);
 
-        $this->assertSame(200, $response->statusCode);
-        $this->assertSame('Normal response', $response->endContent);
-        $this->assertTrue($response->endCalled);
+        self::assertSame(200, $response->statusCode);
+        self::assertSame('Normal response', $response->endContent);
+        self::assertTrue($response->endCalled);
     }
 }
 
@@ -103,7 +104,7 @@ final class DoubleSendIntegrationTest extends TestCase
  * Fake response that always reports isSent()=true.
  * Simulates a 408 timeout scenario from the runtime pack.
  */
-class AlreadySentFakeSwooleResponse
+final class AlreadySentFakeSwooleResponse
 {
     public ?int $statusCode = null;
     public array $headers = [];
@@ -124,6 +125,7 @@ class AlreadySentFakeSwooleResponse
     public function write(string $content): bool
     {
         $this->writes[] = $content;
+
         return true;
     }
 
@@ -142,12 +144,9 @@ class AlreadySentFakeSwooleResponse
         bool $secure,
         bool $httpOnly,
         string $sameSite,
-    ): void {
-    }
+    ): void {}
 
-    public function sendfile(string $path): void
-    {
-    }
+    public function sendfile(string $path): void {}
 
     /**
      * Always returns true — simulates a response already sent by the runtime pack

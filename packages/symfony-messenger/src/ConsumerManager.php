@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyMessenger;
 
+use Closure;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Throwable;
+
+use function get_class;
 
 /**
  * Manages consumer coroutines for the OpenSwoole transport.
@@ -24,24 +28,27 @@ use Symfony\Component\Messenger\MessageBusInterface;
  */
 final class ConsumerManager
 {
-    /** @var int[] Coroutine IDs of consumers */
+    /** @var list<int> Coroutine IDs of consumers */
     private array $consumerCids = [];
     private bool $running = false;
 
-    /** @var callable(callable): int|bool */
-    private $coroutineSpawner;
+    private readonly Closure $coroutineSpawner; // @phpstan-ignore missingType.callable
 
-    public function __construct(
+    /**
+     * @phpstan-param null|\Closure(callable): int $coroutineSpawner
+     */
+    public function __construct(// @phpstan-ignore missingType.callable
         private readonly OpenSwooleTransport $transport,
         private readonly MessageBusInterface $bus,
         private readonly int $consumerCount = 1,
         private readonly ?LoggerInterface $logger = null,
-        ?callable $coroutineSpawner = null,
+        ?Closure $coroutineSpawner = null,
     ) {
         // Default spawner: direct execution (for tests).
         // In production, inject OpenSwoole\Coroutine::create(...)
         $this->coroutineSpawner = $coroutineSpawner ?? static function (callable $fn): int {
             $fn();
+
             return 0;
         };
     }
@@ -55,11 +62,9 @@ final class ConsumerManager
         $this->running = true;
         $this->consumerCids = [];
 
-        for ($i = 0; $i < $this->consumerCount; $i++) {
-            $cid = ($this->coroutineSpawner)(fn() => $this->consumeLoop($i));
-            if (is_int($cid)) {
-                $this->consumerCids[] = $cid;
-            }
+        for ($i = 0; $i < $this->consumerCount; ++$i) {
+            $cid = ($this->coroutineSpawner)(fn () => $this->consumeLoop($i));
+            $this->consumerCids[] = $cid;
         }
 
         $this->logger?->info('ConsumerManager started', [
@@ -69,10 +74,6 @@ final class ConsumerManager
 
     public function stop(): void
     {
-        if (!$this->running) {
-            return;
-        }
-
         $this->running = false;
         $this->consumerCids = [];
 
@@ -84,6 +85,12 @@ final class ConsumerManager
         return $this->running;
     }
 
+    /** @return list<int> */
+    public function getConsumerCids(): array
+    {
+        return $this->consumerCids;
+    }
+
     private function consumeLoop(int $consumerId): void
     {
         while ($this->running) {
@@ -91,7 +98,7 @@ final class ConsumerManager
                 try {
                     $this->bus->dispatch($envelope);
                     $this->transport->ack($envelope);
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     $this->transport->reject($envelope);
                     $this->logger?->error('Consumer failed to process message', [
                         'consumer_id' => $consumerId,
@@ -99,13 +106,6 @@ final class ConsumerManager
                         'error' => $e->getMessage(),
                     ]);
                 }
-            }
-
-            // In synchronous test mode, break after one iteration
-            // to avoid infinite loop. In production with real coroutines,
-            // the pop(1.0) timeout yields the coroutine.
-            if (!$this->running) {
-                break;
             }
 
             // For synchronous (test) mode: break after processing

@@ -8,6 +8,7 @@ use Octo\SymfonyBridge\ResetHookInterface;
 use Octo\SymfonyBridge\ResetManager;
 use Octo\SymfonyBundle\DependencyInjection\Compiler\ResetHookCompilerPass;
 use PHPUnit\Framework\TestCase;
+use stdClass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Reference;
@@ -86,7 +87,7 @@ final class ResetHookCompilerPassTest extends TestCase
         $container->setDefinition(ResetManager::class, $resetManagerDef);
 
         // Register a service that does NOT implement ResetHookInterface
-        $nonHookDef = new Definition(\stdClass::class);
+        $nonHookDef = new Definition(stdClass::class);
         $container->setDefinition('some.service', $nonHookDef);
 
         $pass = new ResetHookCompilerPass();
@@ -119,16 +120,12 @@ final class ResetHookCompilerPassTest extends TestCase
 
 // --- Test doubles ---
 
-class TestResetHook implements ResetHookInterface
+final class TestResetHook implements ResetHookInterface
 {
-    public function reset(): void
-    {
-    }
+    public function reset(): void {}
 }
 
-class AnotherTestResetHook implements ResetHookInterface
+final class AnotherTestResetHook implements ResetHookInterface
 {
-    public function reset(): void
-    {
-    }
+    public function reset(): void {}
 }

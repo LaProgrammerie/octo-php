@@ -9,7 +9,11 @@ require_once __DIR__ . '/IntegrationTestDoubles.php';
 use Octo\RuntimePack\MetricsCollector;
 use Octo\SymfonyBridge\HttpKernelAdapter;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\HttpKernelInterface;
+use Symfony\Contracts\Service\ResetInterface;
 
 /**
  * Integration test: core bridge end-to-end.
@@ -36,9 +40,9 @@ final class CoreBridgeIntegrationTest extends TestCase
 
         $adapter($request, $response);
 
-        $this->assertSame(200, $response->statusCode);
-        $this->assertSame('Welcome', $response->endContent);
-        $this->assertTrue($response->endCalled);
+        self::assertSame(200, $response->statusCode);
+        self::assertSame('Welcome', $response->endContent);
+        self::assertTrue($response->endCalled);
     }
 
     public function testLifecycleSequenceHandleTerminateReset(): void
@@ -53,9 +57,9 @@ final class CoreBridgeIntegrationTest extends TestCase
 
         $adapter(IntegrationFakeSwooleRequest::get('/', 'seq-1'), new IntegrationFakeSwooleResponse());
 
-        $this->assertSame(1, $kernel->handleCount);
-        $this->assertSame(1, $kernel->terminateCount);
-        $this->assertSame(1, $kernel->resetCount);
+        self::assertSame(1, $kernel->handleCount);
+        self::assertSame(1, $kernel->terminateCount);
+        self::assertSame(1, $kernel->resetCount);
     }
 
     public function testRequestIdPropagatedInLogs(): void
@@ -70,15 +74,14 @@ final class CoreBridgeIntegrationTest extends TestCase
 
         $adapter(IntegrationFakeSwooleRequest::get('/', 'trace-abc'), new IntegrationFakeSwooleResponse());
 
-        $completedLogs = array_filter($logger->logs, fn(array $log) =>
-            $log['level'] === 'info' && str_contains($log['message'], 'Request completed'));
-        $this->assertNotEmpty($completedLogs);
+        $completedLogs = array_filter($logger->logs, static fn (array $log) => $log['level'] === 'info' && str_contains($log['message'], 'Request completed'));
+        self::assertNotEmpty($completedLogs);
 
         $log = array_values($completedLogs)[0];
-        $this->assertSame('trace-abc', $log['context']['request_id']);
-        $this->assertSame(200, $log['context']['status_code']);
-        $this->assertArrayHasKey('duration_ms', $log['context']);
-        $this->assertSame('symfony_bridge', $log['context']['component']);
+        self::assertSame('trace-abc', $log['context']['request_id']);
+        self::assertSame(200, $log['context']['status_code']);
+        self::assertArrayHasKey('duration_ms', $log['context']);
+        self::assertSame('symfony_bridge', $log['context']['component']);
     }
 
     public function testMetricsIncrementedAfterRequest(): void
@@ -95,8 +98,8 @@ final class CoreBridgeIntegrationTest extends TestCase
         $adapter(IntegrationFakeSwooleRequest::get('/', 'met-1'), new IntegrationFakeSwooleResponse());
 
         $snapshot = $adapter->getMetricsBridge()->snapshot();
-        $this->assertSame(1, $snapshot['symfony_requests_total']);
-        $this->assertGreaterThan(0.0, $snapshot['symfony_request_duration_sum_ms']);
+        self::assertSame(1, $snapshot['symfony_requests_total']);
+        self::assertGreaterThan(0.0, $snapshot['symfony_request_duration_sum_ms']);
     }
 
     public function testPostRequestWithJsonBody(): void
@@ -115,8 +118,8 @@ final class CoreBridgeIntegrationTest extends TestCase
 
         $adapter($request, $response);
 
-        $this->assertSame(200, $response->statusCode);
-        $this->assertSame('{"ok":true}', $response->endContent);
+        self::assertSame(200, $response->statusCode);
+        self::assertSame('{"ok":true}', $response->endContent);
     }
 
     public function testExceptionReturns500InProdMode(): void
@@ -124,18 +127,19 @@ final class CoreBridgeIntegrationTest extends TestCase
         $kernel = new MiniHttpKernel();
         $kernel->setResponse(new Response('OK'));
         // Override kernel to throw
-        $throwingKernel = new class implements \Symfony\Component\HttpKernel\HttpKernelInterface, \Symfony\Contracts\Service\ResetInterface {
+        $throwingKernel = new class implements HttpKernelInterface, ResetInterface {
             public int $resetCount = 0;
-            public function handle(\Symfony\Component\HttpFoundation\Request $request, int $type = self::MAIN_REQUEST, bool $catch = true): Response
+
+            public function handle(Request $request, int $type = self::MAIN_REQUEST, bool $catch = true): Response
             {
-                throw new \RuntimeException('Integration test error');
+                throw new RuntimeException('Integration test error');
             }
-            public function terminate(\Symfony\Component\HttpFoundation\Request $request, Response $response): void
-            {
-            }
+
+            public function terminate(Request $request, Response $response): void {}
+
             public function reset(): void
             {
-                $this->resetCount++;
+                ++$this->resetCount;
             }
         };
 
@@ -150,10 +154,10 @@ final class CoreBridgeIntegrationTest extends TestCase
         $response = new IntegrationFakeSwooleResponse();
         $adapter(IntegrationFakeSwooleRequest::get('/', 'err-1'), $response);
 
-        $this->assertSame(500, $response->statusCode);
+        self::assertSame(500, $response->statusCode);
         $decoded = json_decode($response->endContent, true);
-        $this->assertSame('Internal Server Error', $decoded['error']);
+        self::assertSame('Internal Server Error', $decoded['error']);
         // Reset must still be called
-        $this->assertSame(1, $throwingKernel->resetCount);
+        self::assertSame(1, $throwingKernel->resetCount);
     }
 }

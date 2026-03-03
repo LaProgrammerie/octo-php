@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack\Tests\Unit;
 
+use InvalidArgumentException;
 use Octo\RuntimePack\CooperativeYield;
 use PHPUnit\Framework\TestCase;
 
@@ -14,27 +15,27 @@ final class CooperativeYieldTest extends TestCase
 {
     public function testConstructorRejectsZero(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('must be > 0');
         new CooperativeYield(every: 0);
     }
 
     public function testConstructorRejectsNegative(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         new CooperativeYield(every: -1);
     }
 
     public function testConstructorAcceptsPositive(): void
     {
         $yield = new CooperativeYield(every: 100);
-        $this->assertInstanceOf(CooperativeYield::class, $yield);
+        self::assertInstanceOf(CooperativeYield::class, $yield);
     }
 
     public function testConstructorDefaultValue(): void
     {
         $yield = new CooperativeYield();
-        $this->assertInstanceOf(CooperativeYield::class, $yield);
+        self::assertInstanceOf(CooperativeYield::class, $yield);
     }
 
     public function testResetClearsCounter(): void
@@ -42,7 +43,7 @@ final class CooperativeYieldTest extends TestCase
         // We can't directly observe the counter, but we can verify reset doesn't throw
         $yield = new CooperativeYield(every: 10);
         $yield->reset();
-        $this->assertInstanceOf(CooperativeYield::class, $yield);
+        self::assertInstanceOf(CooperativeYield::class, $yield);
     }
 
     /**
@@ -52,7 +53,7 @@ final class CooperativeYieldTest extends TestCase
     {
         // Should not throw or call usleep
         CooperativeYield::maybeYield(100, 0);
-        $this->assertTrue(true); // No exception = pass
+        self::assertTrue(true); // No exception = pass
     }
 
     /**
@@ -61,7 +62,7 @@ final class CooperativeYieldTest extends TestCase
     public function testMaybeYieldAtZeroIterationIsNoop(): void
     {
         CooperativeYield::maybeYield(0, 10);
-        $this->assertTrue(true);
+        self::assertTrue(true);
     }
 
     /**
@@ -70,6 +71,6 @@ final class CooperativeYieldTest extends TestCase
     public function testMaybeYieldWithNegativeEveryIsNoop(): void
     {
         CooperativeYield::maybeYield(100, -5);
-        $this->assertTrue(true);
+        self::assertTrue(true);
     }
 }

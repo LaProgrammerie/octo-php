@@ -6,6 +6,8 @@ namespace Octo\SymfonyBundle\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 
+use function dirname;
+
 /**
  * Verifies the Flex recipe file structure is correct and contains expected content.
  */
@@ -15,7 +17,7 @@ final class FlexRecipeTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->recipeDir = \dirname(__DIR__, 2) . '/recipe';
+        $this->recipeDir = dirname(__DIR__, 2) . '/recipe';
     }
 
     public function testConfigPackageFileExists(): void
@@ -26,7 +28,7 @@ final class FlexRecipeTest extends TestCase
 
     public function testConfigPackageContainsAsyncPlatformKey(): void
     {
-        $content = \file_get_contents($this->recipeDir . '/config/packages/octo.yaml');
+        $content = file_get_contents($this->recipeDir . '/config/packages/octo.yaml');
         self::assertStringContainsString('octo:', $content);
         self::assertStringContainsString('memory_warning_threshold', $content);
         self::assertStringContainsString('reset_warning_ms', $content);
@@ -41,7 +43,7 @@ final class FlexRecipeTest extends TestCase
 
     public function testBootstrapScriptContainsServerBootstrap(): void
     {
-        $content = \file_get_contents($this->recipeDir . '/bin/async-server.php');
+        $content = file_get_contents($this->recipeDir . '/bin/async-server.php');
         self::assertStringContainsString('ServerBootstrap::run', $content);
         self::assertStringContainsString('HttpKernelAdapter', $content);
         self::assertStringContainsString('Kernel', $content);
@@ -55,7 +57,7 @@ final class FlexRecipeTest extends TestCase
 
     public function testEnvFileContainsAsyncPlatformVariables(): void
     {
-        $content = \file_get_contents($this->recipeDir . '/.env');
+        $content = file_get_contents($this->recipeDir . '/.env');
         self::assertStringContainsString('OCTOP_SYMFONY_MEMORY_WARNING_THRESHOLD', $content);
         self::assertStringContainsString('OCTOP_SYMFONY_RESET_WARNING_MS', $content);
         self::assertStringContainsString('OCTOP_SYMFONY_KERNEL_REBOOT_EVERY', $content);
@@ -63,7 +65,7 @@ final class FlexRecipeTest extends TestCase
 
     public function testEnvFileHasFlexMarkers(): void
     {
-        $content = \file_get_contents($this->recipeDir . '/.env');
+        $content = file_get_contents($this->recipeDir . '/.env');
         self::assertStringContainsString('###> octo-php/symfony-bundle ###', $content);
         self::assertStringContainsString('###< octo-php/symfony-bundle ###', $content);
     }

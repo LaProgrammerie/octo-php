@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Octo\RuntimePack;
 
+use OpenSwoole\Http\Response;
+use Throwable;
+
 /**
  * Wrapper around OpenSwoole\Http\Response that protects all write operations
  * via ResponseState. The application handler receives ONLY this facade,
@@ -19,12 +22,14 @@ namespace Octo\RuntimePack;
  */
 final class ResponseFacade
 {
+    /**
+     * @param object&Response $rawResponse
+     */
     public function __construct(
         private readonly object $rawResponse,
         private readonly ResponseState $state,
         private readonly JsonLogger $logger,
-    ) {
-    }
+    ) {}
 
     /**
      * Sets the HTTP status code. Ignored if the response has already been sent.
@@ -77,11 +82,12 @@ final class ResponseFacade
         if (!$this->state->hasExplicitStatusCode()) {
             $this->state->setStatusCode(200);
         }
+
         try {
             $this->rawResponse->end($content);
 
             return true;
-        } catch (\Throwable) {
+        } catch (Throwable) {
             // Connection already closed client-side
             return false;
         }
@@ -96,9 +102,10 @@ final class ResponseFacade
         if ($this->state->isSent()) {
             return false;
         }
+
         try {
             return $this->rawResponse->write($content);
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return false;
         }
     }

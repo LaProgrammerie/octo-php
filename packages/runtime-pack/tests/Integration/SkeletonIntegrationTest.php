@@ -34,9 +34,9 @@ final class SkeletonIntegrationTest extends TestCase
         $skeletonDir = $this->getSkeletonDir();
 
         // Verify skeleton structure exists
-        $this->assertFileExists($skeletonDir . '/bin/console', 'Skeleton bin/console must exist');
-        $this->assertFileExists($skeletonDir . '/config/routes.php', 'Skeleton config/routes.php must exist');
-        $this->assertFileExists($skeletonDir . '/src/Handler/HomeHandler.php', 'Skeleton HomeHandler must exist');
+        self::assertFileExists($skeletonDir . '/bin/console', 'Skeleton bin/console must exist');
+        self::assertFileExists($skeletonDir . '/config/routes.php', 'Skeleton config/routes.php must exist');
+        self::assertFileExists($skeletonDir . '/src/Handler/HomeHandler.php', 'Skeleton HomeHandler must exist');
 
         $this->startServer('async:serve', [], $skeletonDir);
         $this->waitForServerReady();
@@ -44,11 +44,11 @@ final class SkeletonIntegrationTest extends TestCase
         // GET / → 200 {"message":"Hello, Async PHP!"}
         $response = $this->httpGet('/');
 
-        $this->assertSame(200, $response['status']);
+        self::assertSame(200, $response['status']);
 
         $body = json_decode($response['body'], true);
-        $this->assertIsArray($body);
-        $this->assertSame('Hello, Async PHP!', $body['message']);
+        self::assertIsArray($body);
+        self::assertSame('Hello, Async PHP!', $body['message']);
     }
 
     public function testSkeletonHealthEndpointsWork(): void
@@ -58,13 +58,13 @@ final class SkeletonIntegrationTest extends TestCase
 
         // /healthz
         $healthz = $this->httpGet('/healthz');
-        $this->assertSame(200, $healthz['status']);
-        $this->assertSame('alive', json_decode($healthz['body'], true)['status']);
+        self::assertSame(200, $healthz['status']);
+        self::assertSame('alive', json_decode($healthz['body'], true)['status']);
 
         // /readyz
         $readyz = $this->httpGet('/readyz');
-        $this->assertSame(200, $readyz['status']);
-        $this->assertSame('ready', json_decode($readyz['body'], true)['status']);
+        self::assertSame(200, $readyz['status']);
+        self::assertSame('ready', json_decode($readyz['body'], true)['status']);
     }
 
     public function testSkeletonReturns404ForUnknownRoutes(): void
@@ -74,8 +74,8 @@ final class SkeletonIntegrationTest extends TestCase
 
         $response = $this->httpGet('/nonexistent');
 
-        $this->assertSame(404, $response['status']);
+        self::assertSame(404, $response['status']);
         $body = json_decode($response['body'], true);
-        $this->assertSame('Not Found', $body['error']);
+        self::assertSame('Not Found', $body['error']);
     }
 }

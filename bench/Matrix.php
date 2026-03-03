@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Octo\Bench;
 
+use function count;
+
 /**
  * Matrix runner: executes multiple bench combinations and produces
  * an aggregated CSV for scaling analysis.
@@ -20,13 +22,13 @@ final class Matrix
 {
     private const RESULTS_DIR = __DIR__ . '/results';
 
-    /** @var int[] */
+    /** @var list<int> */
     private array $concurrencies;
 
-    /** @var int[] */
+    /** @var list<int> */
     private array $ioValues;
 
-    /** @var int[] */
+    /** @var list<int> */
     private array $cpuValues;
 
     public function __construct(
@@ -55,7 +57,7 @@ final class Matrix
         foreach ($this->cpuValues as $cpu) {
             foreach ($this->ioValues as $io) {
                 // ── Sync baseline for this (cpu, io) pair ───────────
-                $current++;
+                ++$current;
                 $label = "cpu={$cpu} io={$io}ms";
                 echo "[{$current}/{$total}] SYNC {$label}...\n";
 
@@ -68,7 +70,7 @@ final class Matrix
 
                 // ── Async runs at each concurrency level ────────────
                 foreach ($this->concurrencies as $c) {
-                    $current++;
+                    ++$current;
                     echo "[{$current}/{$total}] ASYNC {$label} c={$c}...\n";
 
                     $asyncResult = $asyncRunner->run(
@@ -133,7 +135,7 @@ final class Matrix
             $values = [];
             foreach ($columns as $col) {
                 $v = $row[$col] ?? '';
-                $values[] = $v === null ? '' : (string) $v;
+                $values[] = (string) $v;
             }
             $lines[] = implode(',', $values);
         }
@@ -148,7 +150,9 @@ final class Matrix
     }
 
     /**
-     * @param array<string, mixed> $stats
+     * @param array{mode: string, jobs: int, concurrency: null|int, total_ms: float, jobs_per_sec: float, queue_wait: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, exec: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, cpu: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, io_wait: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, e2e: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, rss_mb: null|float} $stats
+     *
+     * @return array<string, null|float|int|string>
      */
     private static function toCsvRow(array $stats, int $cpu, int $io): array
     {

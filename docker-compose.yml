@@ -2,10 +2,17 @@
 # Async PHP Platform — Development Stack
 # =============================================================================
 # Usage:
-#   docker compose up        — Start dev server on port 8080
-#   docker compose up -d     — Start in background
-#   docker compose down      — Stop and remove containers
-#   docker compose build     — Rebuild the image
+#   docker compose up              — Start dev server on port 8080
+#   docker compose up -d           — Start in background
+#   docker compose down            — Stop and remove containers
+#   docker compose build           — Rebuild the image
+#
+# Quality (run once, exit):
+#   docker compose run --rm app composer lint       — CS Fixer dry-run
+#   docker compose run --rm app composer lint:fix   — CS Fixer auto-fix
+#   docker compose run --rm app composer analyse    — PHPStan
+#   docker compose run --rm app composer test       — PHPUnit
+#   docker compose run --rm app composer quality    — All of the above
 #
 # The app service uses the "dev" stage (Composer + Xdebug available).
 # Source code is bind-mounted for live reload during development.

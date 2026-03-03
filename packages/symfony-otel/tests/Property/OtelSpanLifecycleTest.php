@@ -4,19 +4,24 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyOtel\Tests\Property;
 
+use const PHP_INT_MAX;
+use const STR_PAD_LEFT;
+
+use Eris\Generators;
+use Eris\TestTrait;
 use Octo\SymfonyOtel\OtelRequestListener;
 use Octo\SymfonyOtel\OtelSpanFactory;
 use Octo\SymfonyOtel\Tracing\FakeTracer;
 use Octo\SymfonyOtel\Tracing\SpanKind;
 use Octo\SymfonyOtel\Tracing\StatusCode;
 use Octo\SymfonyOtel\Tracing\W3CTraceContextPropagator;
-use Eris\Generators;
-use Eris\TestTrait;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
+use stdClass;
 
 /**
- * Property 15: OTEL span lifecycle
+ * Property 15: OTEL span lifecycle.
  *
  * **Validates: Requirements 14.1, 14.2, 14.3, 14.4**
  *
@@ -31,37 +36,6 @@ use PHPUnit\Framework\TestCase;
 final class OtelSpanLifecycleTest extends TestCase
 {
     use TestTrait;
-
-    private function createListener(): OtelRequestListener
-    {
-        return new OtelRequestListener(
-            new OtelSpanFactory(new FakeTracer()),
-            new W3CTraceContextPropagator(),
-        );
-    }
-
-    private function makeSwooleRequest(
-        string $method,
-        string $uri,
-        string $requestId,
-        ?string $traceparent = null,
-        ?string $tracestate = null,
-    ): object {
-        $req = new \stdClass();
-        $headers = ['x-request-id' => $requestId];
-        if ($traceparent !== null) {
-            $headers['traceparent'] = $traceparent;
-        }
-        if ($tracestate !== null) {
-            $headers['tracestate'] = $tracestate;
-        }
-        $req->header = $headers;
-        $req->server = [
-            'request_method' => strtolower($method),
-            'request_uri' => $uri,
-        ];
-        return $req;
-    }
 
     #[Test]
     public function rootSpanCreatedWithCorrectAttributesForAnyRequest(): void
@@ -79,7 +53,7 @@ final class OtelSpanLifecycleTest extends TestCase
             '/search?q=test&limit=10',
         ]);
         $requestIds = Generators::map(
-            fn(int $n): string => 'req-' . str_pad((string) $n, 6, '0', STR_PAD_LEFT),
+            static fn (int $n): string => 'req-' . mb_str_pad((string) $n, 6, '0', STR_PAD_LEFT),
             Generators::choose(0, 999999),
         );
 
@@ -101,7 +75,8 @@ final class OtelSpanLifecycleTest extends TestCase
 
                 // Root span is not ended yet (before handle)
                 self::assertFalse($rootSpan->hasEnded());
-            });
+            })
+        ;
     }
 
     #[Test]
@@ -150,7 +125,8 @@ final class OtelSpanLifecycleTest extends TestCase
 
                 // Root span has status_code attribute
                 self::assertSame($statusCode, $rootSpan->getAttributes()['http.status_code']);
-            });
+            })
+        ;
     }
 
     #[Test]
@@ -159,11 +135,11 @@ final class OtelSpanLifecycleTest extends TestCase
         $this->limitTo(100);
 
         $traceIds = Generators::map(
-            fn(int $n): string => str_pad(dechex($n), 32, '0', STR_PAD_LEFT),
+            static fn (int $n): string => mb_str_pad(dechex($n), 32, '0', STR_PAD_LEFT),
             Generators::choose(1, PHP_INT_MAX),
         );
         $spanIds = Generators::map(
-            fn(int $n): string => str_pad(dechex($n), 16, '0', STR_PAD_LEFT),
+            static fn (int $n): string => mb_str_pad(dechex($n), 16, '0', STR_PAD_LEFT),
             Generators::choose(1, PHP_INT_MAX),
         );
         $flags = Generators::elements(['00', '01']);
@@ -179,7 +155,8 @@ final class OtelSpanLifecycleTest extends TestCase
                 $parentCtx = $rootSpan->getParentContext();
                 self::assertNotNull($parentCtx, 'Parent context should be set when traceparent is present');
                 self::assertSame($traceparent, $parentCtx['traceparent']);
-            });
+            })
+        ;
     }
 
     #[Test]
@@ -206,7 +183,8 @@ final class OtelSpanLifecycleTest extends TestCase
                 self::assertNotNull($parentCtx);
                 self::assertSame($traceparent, $parentCtx['traceparent']);
                 self::assertSame($tracestate, $parentCtx['tracestate']);
-            });
+            })
+        ;
     }
 
     #[Test]
@@ -224,7 +202,8 @@ final class OtelSpanLifecycleTest extends TestCase
                 $rootSpan = $listener->beforeHandle($req);
 
                 self::assertNull($rootSpan->getParentContext());
-            });
+            })
+        ;
     }
 
     #[Test]
@@ -249,7 +228,7 @@ final class OtelSpanLifecycleTest extends TestCase
                 $rootSpan = $listener->beforeHandle($req);
 
                 // Exception occurs before any child spans
-                $exception = new \RuntimeException($message);
+                $exception = new RuntimeException($message);
                 $listener->onException($rootSpan, $exception);
 
                 // Root span should have error status
@@ -261,6 +240,39 @@ final class OtelSpanLifecycleTest extends TestCase
                 $listener->afterHandle($rootSpan, 500);
                 self::assertTrue($rootSpan->hasEnded());
                 self::assertSame(500, $rootSpan->getAttributes()['http.status_code']);
-            });
+            })
+        ;
+    }
+
+    private function createListener(): OtelRequestListener
+    {
+        return new OtelRequestListener(
+            new OtelSpanFactory(new FakeTracer()),
+            new W3CTraceContextPropagator(),
+        );
+    }
+
+    private function makeSwooleRequest(
+        string $method,
+        string $uri,
+        string $requestId,
+        ?string $traceparent = null,
+        ?string $tracestate = null,
+    ): object {
+        $req = new stdClass();
+        $headers = ['x-request-id' => $requestId];
+        if ($traceparent !== null) {
+            $headers['traceparent'] = $traceparent;
+        }
+        if ($tracestate !== null) {
+            $headers['tracestate'] = $tracestate;
+        }
+        $req->header = $headers;
+        $req->server = [
+            'request_method' => mb_strtolower($method),
+            'request_uri' => $uri,
+        ];
+
+        return $req;
     }
 }

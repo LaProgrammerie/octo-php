@@ -19,12 +19,12 @@ final class RunnerSync
     /**
      * @return array{
      *     total_ns: int,
-     *     queue_wait_ns: int[],
-     *     exec_ns: int[],
-     *     cpu_ns: int[],
-     *     io_ns: int[],
-     *     e2e_ns: int[],
-     *     rss_kb: int|null
+     *     queue_wait_ns: list<int>,
+     *     exec_ns: list<int>,
+     *     cpu_ns: list<int>,
+     *     io_ns: list<int>,
+     *     e2e_ns: list<int>,
+     *     rss_kb: null|int
      * }
      */
     public function run(int $jobs, int $cpuIterations, int $ioMs, int $jsonKb): array
@@ -44,10 +44,10 @@ final class RunnerSync
 
         $startTotal = hrtime(true);
 
-        for ($i = 0; $i < $jobs; $i++) {
+        for ($i = 0; $i < $jobs; ++$i) {
             $start = hrtime(true);
             $result = $job($i);
-            $elapsed = hrtime(true) - $start;
+            $elapsed = (int) (hrtime(true) - $start);
 
             $queueWaitNs[] = 0;
             $execNs[] = $elapsed;
@@ -56,7 +56,7 @@ final class RunnerSync
             $e2eNs[] = $elapsed;
         }
 
-        $totalNs = hrtime(true) - $startTotal;
+        $totalNs = (int) (hrtime(true) - $startTotal);
 
         return [
             'total_ns' => $totalNs,

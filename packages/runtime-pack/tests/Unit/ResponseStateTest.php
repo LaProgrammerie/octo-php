@@ -20,28 +20,28 @@ final class ResponseStateTest extends TestCase
     public function testTrySendReturnsTrueOnFirstCall(): void
     {
         $state = new ResponseState();
-        $this->assertTrue($state->trySend());
+        self::assertTrue($state->trySend());
     }
 
     public function testTrySendReturnsFalseOnSubsequentCalls(): void
     {
         $state = new ResponseState();
         $state->trySend();
-        $this->assertFalse($state->trySend());
-        $this->assertFalse($state->trySend());
+        self::assertFalse($state->trySend());
+        self::assertFalse($state->trySend());
     }
 
     public function testIsSentFalseInitially(): void
     {
         $state = new ResponseState();
-        $this->assertFalse($state->isSent());
+        self::assertFalse($state->isSent());
     }
 
     public function testIsSentTrueAfterTrySend(): void
     {
         $state = new ResponseState();
         $state->trySend();
-        $this->assertTrue($state->isSent());
+        self::assertTrue($state->isSent());
     }
 
     // --- statusCode tracking ---
@@ -49,14 +49,14 @@ final class ResponseStateTest extends TestCase
     public function testGetStatusCodeReturns200ByDefault(): void
     {
         $state = new ResponseState();
-        $this->assertSame(200, $state->getStatusCode());
+        self::assertSame(200, $state->getStatusCode());
     }
 
     public function testSetStatusCodeUpdatesValue(): void
     {
         $state = new ResponseState();
         $state->setStatusCode(404);
-        $this->assertSame(404, $state->getStatusCode());
+        self::assertSame(404, $state->getStatusCode());
     }
 
     public function testSetStatusCodeCanBeOverwritten(): void
@@ -64,7 +64,7 @@ final class ResponseStateTest extends TestCase
         $state = new ResponseState();
         $state->setStatusCode(408);
         $state->setStatusCode(500);
-        $this->assertSame(500, $state->getStatusCode());
+        self::assertSame(500, $state->getStatusCode());
     }
 
     // --- hasExplicitStatusCode() ---
@@ -72,21 +72,21 @@ final class ResponseStateTest extends TestCase
     public function testHasExplicitStatusCodeFalseByDefault(): void
     {
         $state = new ResponseState();
-        $this->assertFalse($state->hasExplicitStatusCode());
+        self::assertFalse($state->hasExplicitStatusCode());
     }
 
     public function testHasExplicitStatusCodeTrueAfterSetStatusCode(): void
     {
         $state = new ResponseState();
         $state->setStatusCode(200);
-        $this->assertTrue($state->hasExplicitStatusCode());
+        self::assertTrue($state->hasExplicitStatusCode());
     }
 
     public function testHasExplicitStatusCodeTrueAfterSetStatusCode500(): void
     {
         $state = new ResponseState();
         $state->setStatusCode(500);
-        $this->assertTrue($state->hasExplicitStatusCode());
+        self::assertTrue($state->hasExplicitStatusCode());
     }
 
     // --- Combined scenarios ---
@@ -96,7 +96,7 @@ final class ResponseStateTest extends TestCase
         $state = new ResponseState();
         $state->setStatusCode(201);
         $state->trySend();
-        $this->assertSame(201, $state->getStatusCode());
+        self::assertSame(201, $state->getStatusCode());
     }
 
     public function testStatusCodeSetBeforeTrySendIsPreserved(): void
@@ -104,9 +104,9 @@ final class ResponseStateTest extends TestCase
         // Simulates the timer ordering: setStatusCode(408) BEFORE trySend()
         $state = new ResponseState();
         $state->setStatusCode(408);
-        $this->assertTrue($state->trySend());
-        $this->assertSame(408, $state->getStatusCode());
-        $this->assertTrue($state->hasExplicitStatusCode());
+        self::assertTrue($state->trySend());
+        self::assertSame(408, $state->getStatusCode());
+        self::assertTrue($state->hasExplicitStatusCode());
     }
 
     public function testSecondTrySendDoesNotAffectStatusCode(): void
@@ -114,12 +114,12 @@ final class ResponseStateTest extends TestCase
         // First caller sets 408 and wins trySend
         $state = new ResponseState();
         $state->setStatusCode(408);
-        $this->assertTrue($state->trySend());
+        self::assertTrue($state->trySend());
 
         // Second caller sets 500 but loses trySend
         $state->setStatusCode(500);
-        $this->assertFalse($state->trySend());
+        self::assertFalse($state->trySend());
         // statusCode reflects the last setStatusCode call
-        $this->assertSame(500, $state->getStatusCode());
+        self::assertSame(500, $state->getStatusCode());
     }
 }

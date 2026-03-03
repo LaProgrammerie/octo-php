@@ -20,7 +20,7 @@ final class RealtimeMetrics
 
     public function incrementActiveConnections(): void
     {
-        $this->connectionsActive++;
+        ++$this->connectionsActive;
     }
 
     public function decrementActiveConnections(): void
@@ -30,12 +30,12 @@ final class RealtimeMetrics
 
     public function incrementMessagesReceived(): void
     {
-        $this->messagesReceivedTotal++;
+        ++$this->messagesReceivedTotal;
     }
 
     public function incrementMessagesSent(): void
     {
-        $this->messagesSentTotal++;
+        ++$this->messagesSentTotal;
     }
 
     public function getConnectionsActive(): int

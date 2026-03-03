@@ -10,7 +10,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Feature: runtime-pack-openswoole, Property 19: Sémaphore de concurrence
+ * Feature: runtime-pack-openswoole, Property 19: Sémaphore de concurrence.
  *
  * **Validates: Requirements 9.3 (concurrence bornée par worker)**
  *
@@ -30,88 +30,6 @@ final class SemaphoreConcurrencyTest extends TestCase
     use TestTrait;
 
     /**
-     * Pure logic semaphore simulation.
-     * Models the Channel-based semaphore pattern: pre-filled with N tokens,
-     * pop() = acquire (non-blocking), push() = release.
-     */
-    private static function simulateSemaphore(int $maxConcurrent, array $operations): array
-    {
-        $tokens = $maxConcurrent; // Available tokens
-        $active = 0;              // Currently active scopes
-        $peakActive = 0;          // Max observed active scopes
-        $rejected = 0;            // Count of 503 rejections
-        $results = [];            // Per-operation result: 200 or 503
-
-        foreach ($operations as $op) {
-            if ($op === 'acquire') {
-                if ($tokens > 0) {
-                    $tokens--;
-                    $active++;
-                    $peakActive = max($peakActive, $active);
-                    $results[] = 200;
-                } else {
-                    $rejected++;
-                    $results[] = 503;
-                }
-            } elseif ($op === 'release') {
-                if ($active > 0) {
-                    $active--;
-                    $tokens++;
-                    $results[] = 'released';
-                } else {
-                    // No active scope to release — skip (shouldn't happen in valid sequences)
-                    $results[] = 'noop';
-                }
-            }
-        }
-
-        return [
-            'peakActive' => $peakActive,
-            'rejected' => $rejected,
-            'finalActive' => $active,
-            'results' => $results,
-        ];
-    }
-
-    /**
-     * Generates a valid sequence of acquire/release operations.
-     * Ensures releases only happen when there are active scopes.
-     *
-     * @return array{ops: string[], totalAcquires: int, totalReleases: int}
-     */
-    private static function generateOperationSequence(int $length, int $maxConcurrent): array
-    {
-        $ops = [];
-        $active = 0;
-        $tokens = $maxConcurrent;
-
-        for ($i = 0; $i < $length; $i++) {
-            // Decide: acquire or release
-            if ($active === 0) {
-                // Must acquire (nothing to release)
-                $ops[] = 'acquire';
-                if ($tokens > 0) {
-                    $tokens--;
-                    $active++;
-                }
-                // If tokens == 0, acquire will be rejected (503) but still valid
-            } elseif (random_int(0, 1) === 0) {
-                $ops[] = 'acquire';
-                if ($tokens > 0) {
-                    $tokens--;
-                    $active++;
-                }
-            } else {
-                $ops[] = 'release';
-                $active--;
-                $tokens++;
-            }
-        }
-
-        return $ops;
-    }
-
-    /**
      * Property 19: At most N scopes are active simultaneously.
      */
     #[Test]
@@ -122,7 +40,7 @@ final class SemaphoreConcurrencyTest extends TestCase
         $this->forAll(
             Generators::choose(1, 20),    // maxConcurrentScopes (N)
             Generators::choose(5, 50),    // sequence length
-        )->then(function (int $maxConcurrent, int $seqLength): void {
+        )->then(static function (int $maxConcurrent, int $seqLength): void {
             $ops = self::generateOperationSequence($seqLength, $maxConcurrent);
             $result = self::simulateSemaphore($maxConcurrent, $ops);
 
@@ -149,7 +67,7 @@ final class SemaphoreConcurrencyTest extends TestCase
         $this->forAll(
             Generators::choose(1, 10),    // maxConcurrentScopes (N)
             Generators::choose(1, 20),    // extra requests beyond N (M)
-        )->then(function (int $maxConcurrent, int $extra): void {
+        )->then(static function (int $maxConcurrent, int $extra): void {
             // Send N + extra acquire requests with no releases
             $totalRequests = $maxConcurrent + $extra;
             $ops = array_fill(0, $totalRequests, 'acquire');
@@ -162,7 +80,7 @@ final class SemaphoreConcurrencyTest extends TestCase
 
             self::assertSame($maxConcurrent, $accepted, "Exactly N={$maxConcurrent} requests should be accepted");
             self::assertSame($extra, $rejected, "Exactly M={$extra} requests should be rejected with 503");
-            self::assertSame($maxConcurrent, $result['peakActive'], "Peak active should equal N");
+            self::assertSame($maxConcurrent, $result['peakActive'], 'Peak active should equal N');
         });
     }
 
@@ -176,7 +94,7 @@ final class SemaphoreConcurrencyTest extends TestCase
 
         $this->forAll(
             Generators::choose(1, 10),    // maxConcurrentScopes (N)
-        )->then(function (int $maxConcurrent): void {
+        )->then(static function (int $maxConcurrent): void {
             // Fill all slots
             $ops = array_fill(0, $maxConcurrent, 'acquire');
             // Release one
@@ -193,5 +111,87 @@ final class SemaphoreConcurrencyTest extends TestCase
             // Peak should still be N (never exceeded)
             self::assertSame($maxConcurrent, $result['peakActive']);
         });
+    }
+
+    /**
+     * Pure logic semaphore simulation.
+     * Models the Channel-based semaphore pattern: pre-filled with N tokens,
+     * pop() = acquire (non-blocking), push() = release.
+     */
+    private static function simulateSemaphore(int $maxConcurrent, array $operations): array
+    {
+        $tokens = $maxConcurrent; // Available tokens
+        $active = 0;              // Currently active scopes
+        $peakActive = 0;          // Max observed active scopes
+        $rejected = 0;            // Count of 503 rejections
+        $results = [];            // Per-operation result: 200 or 503
+
+        foreach ($operations as $op) {
+            if ($op === 'acquire') {
+                if ($tokens > 0) {
+                    --$tokens;
+                    ++$active;
+                    $peakActive = max($peakActive, $active);
+                    $results[] = 200;
+                } else {
+                    ++$rejected;
+                    $results[] = 503;
+                }
+            } elseif ($op === 'release') {
+                if ($active > 0) {
+                    --$active;
+                    ++$tokens;
+                    $results[] = 'released';
+                } else {
+                    // No active scope to release — skip (shouldn't happen in valid sequences)
+                    $results[] = 'noop';
+                }
+            }
+        }
+
+        return [
+            'peakActive' => $peakActive,
+            'rejected' => $rejected,
+            'finalActive' => $active,
+            'results' => $results,
+        ];
+    }
+
+    /**
+     * Generates a valid sequence of acquire/release operations.
+     * Ensures releases only happen when there are active scopes.
+     *
+     * @return array{ops: list<string>, totalAcquires: int, totalReleases: int}
+     */
+    private static function generateOperationSequence(int $length, int $maxConcurrent): array
+    {
+        $ops = [];
+        $active = 0;
+        $tokens = $maxConcurrent;
+
+        for ($i = 0; $i < $length; ++$i) {
+            // Decide: acquire or release
+            if ($active === 0) {
+                // Must acquire (nothing to release)
+                $ops[] = 'acquire';
+                if ($tokens > 0) {
+                    --$tokens;
+                    ++$active;
+                }
+            // If tokens == 0, acquire will be rejected (503) but still valid
+            } elseif (random_int(0, 1) === 0) {
+                $ops[] = 'acquire';
+                if ($tokens > 0) {
+                    --$tokens;
+                    ++$active;
+                }
+            } else {
+                $ops[] = 'release';
+                --$active;
+                ++$tokens;
+            }
+        }
+
+        return $ops;
     }
 }

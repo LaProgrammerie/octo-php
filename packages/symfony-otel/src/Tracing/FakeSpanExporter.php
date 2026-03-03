@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Octo\SymfonyOtel\Tracing;
 
+use Override;
+
 /**
  * In-memory span exporter for testing without the OTEL SDK.
  *
@@ -17,6 +19,7 @@ final class FakeSpanExporter implements SpanExporterInterface
     private bool $shouldFail = false;
     private bool $isShutdown = false;
 
+    #[Override]
     public function export(array $spans): bool
     {
         if ($this->shouldFail) {
@@ -24,12 +27,15 @@ final class FakeSpanExporter implements SpanExporterInterface
         }
 
         $this->exportedBatches[] = $spans;
+
         return true;
     }
 
+    #[Override]
     public function shutdown(): bool
     {
         $this->isShutdown = true;
+
         return true;
     }
 
