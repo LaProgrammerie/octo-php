@@ -76,6 +76,7 @@ Le rapport inclut un verdict automatique par run basé sur deux métriques d'uti
 - `BASELINE` — sync, pas de verdict
 - `OK` — nominal
 - `CPU_BOUND` — cpu_util > 85%, le CPU est le bottleneck
+- `SATURATED` — qw_p95 > 200ms ou throughput en régression avec queue montante
 - `N/A_SMALL_SAMPLE` — < 200 jobs, statistiques non fiables
 - `N/A_MICRO_BENCH` — exec_p50 < 0.2ms, overhead domine la mesure
 
@@ -131,6 +132,8 @@ Colonnes clés à tracer :
 - `e2e_p95` vs `concurrency` (latence perçue)
 - `cpu_util` vs `concurrency` (pression CPU réelle)
 - `worker_util` vs `concurrency` (occupation workers, inclut IO wait)
+- `speedup_vs_sync` — ratio throughput async / sync (même cpu/io)
+- `latency_penalty_p95` — ratio e2e_p95 async / sync (coût latence de la concurrence)
 
 Scénarios attendus :
 
@@ -140,12 +143,35 @@ Scénarios attendus :
 
 Le point de saturation (où `qw_p95` explose) indique la concurrency optimale.
 
+### Sweet Spot Detection
+
+Le rapport matrix inclut une section "Recommended Concurrency" qui détecte automatiquement la concurrency optimale pour chaque profil (cpu, io) :
+
+- Stratégie 1 : meilleur throughput où `qw_p95 < 50ms`
+- Stratégie 2 (fallback) : premier point où le gain marginal < 5%
+
+Exemple de lecture : "Pour io=5ms cpu=1000, la concurrency recommandée est c=10 (×3.9 vs sync)".
+
 ## Fichiers de résultats
 
 | Fichier | Contenu |
 |---------|---------|
 | `bench/results/latest.md` | Rapport Markdown (modes sync/async/both) |
 | `bench/results/latest.csv` | Données brutes CSV |
-| `bench/results/matrix.csv` | Sweep matrix agrégé |
+| `bench/results/matrix.csv` | Sweep matrix agrégé (backward compat) |
+| `bench/results/<timestamp>/` | Dossier horodaté par run |
 
-Tous sont dans `.gitignore`.
+Chaque run (matrix ou both) crée un sous-dossier `bench/results/YYYY-MM-DD_HH-MM-SS/` contenant :
+
+| Fichier | Contenu |
+|---------|---------|
+| `matrix.csv` / `results.csv` | Données brutes CSV du run |
+| `report.md` | Rapport Markdown stylé OctoPHP avec graphiques |
+| `heatmap-throughput.svg` | Heatmap concurrency × IO → throughput (matrix) |
+| `throughput.svg` | Courbe throughput vs concurrency par profil (matrix) |
+| `saturation.svg` | Queue wait p95 vs concurrency (matrix) |
+| `cpu-utilization.svg` | CPU utilization vs concurrency (matrix) |
+
+Les graphiques sont linkés dans le `report.md` — ouvrir le MD pour la vue complète.
+
+Tous les résultats sont dans `.gitignore`.

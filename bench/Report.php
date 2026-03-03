@@ -20,6 +20,7 @@ use function sprintf;
  * Verdicts:
  *   BASELINE      — sync mode
  *   CPU_BOUND     — cpu_util > 85%
+ *   SATURATED     — qw_p95 > 200ms or throughput regression with rising queue
  *   OK            — nominal
  *
  * Note: BACKPRESSURE detection requires a regulated arrival mode (Poisson/RPS).
@@ -73,13 +74,14 @@ final class Report
      * cpu_util uses parallelism=1 (mono-process coroutine, single CPU thread).
      * worker_util uses concurrency (logical worker slots).
      *
-     * Verdicts: BASELINE | OK | CPU_BOUND | N/A_SMALL_SAMPLE | N/A_MICRO_BENCH
+     * Verdicts: BASELINE | OK | CPU_BOUND | SATURATED | N/A_SMALL_SAMPLE | N/A_MICRO_BENCH
      *
      * @param array{mode: string, jobs: int, concurrency: null|int, total_ms: float, jobs_per_sec: float, queue_wait: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, exec: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, cpu: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, io_wait: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, e2e: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, rss_mb: null|float} $s
+     * @param array{mode: string, jobs: int, concurrency: null|int, total_ms: float, jobs_per_sec: float, queue_wait: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, exec: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, cpu: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, io_wait: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, e2e: array{p50: float, p95: float, p99: float, avg: float, min: float, max: float, sum: float}, rss_mb: null|float}|null $prevConcurrency Previous concurrency level stats (same cpu/io, lower c) for saturation detection
      *
      * @return array{cpu_util: float, worker_util: float, verdict: string}
      */
-    public static function verdict(array $s): array
+    public static function verdict(array $s, ?array $prevConcurrency = null): array
     {
         $c = $s['concurrency'] ?? 1;
 
@@ -130,6 +132,38 @@ final class Report
             ];
         }
 
+        // ── Saturation: qw_p95 > 200ms OR sustained throughput regression ─────
+        // Hysteresis: require throughput_drop >= 5% AND qw_p95_increase >= 20%
+        // to avoid false positives from noise.
+        $saturated = false;
+
+        if ($s['queue_wait']['p95'] > 200) {
+            $saturated = true;
+        }
+
+        if ($prevConcurrency !== null) {
+            $prevJps = $prevConcurrency['jobs_per_sec'];
+            $prevQw = $prevConcurrency['queue_wait']['p95'];
+            $curJps = $s['jobs_per_sec'];
+            $curQw = $s['queue_wait']['p95'];
+
+            // Throughput dropped >= 5% AND queue wait increased >= 20%
+            $throughputDrop = $prevJps > 0 ? ($prevJps - $curJps) / $prevJps : 0;
+            $qwIncrease = $prevQw > 0 ? ($curQw - $prevQw) / $prevQw : 0;
+
+            if ($throughputDrop >= 0.05 && $qwIncrease >= 0.20) {
+                $saturated = true;
+            }
+        }
+
+        if ($saturated) {
+            return [
+                'cpu_util' => $cpuUtil,
+                'worker_util' => $workerUtil,
+                'verdict' => 'SATURATED',
+            ];
+        }
+
         return [
             'cpu_util' => $cpuUtil,
             'worker_util' => $workerUtil,
@@ -149,10 +183,23 @@ final class Report
             mkdir(self::RESULTS_DIR, 0755, true);
         }
 
+        // Write to latest (backward compat)
         file_put_contents(self::RESULTS_DIR . '/latest.md', $md);
         file_put_contents(self::RESULTS_DIR . '/latest.csv', $csv);
 
+        // Write to timestamped subdirectory
+        $timestamp = date('Y-m-d_H-i-s');
+        $runDir = self::RESULTS_DIR . '/' . $timestamp;
+
+        if (!is_dir($runDir)) {
+            mkdir($runDir, 0755, true);
+        }
+
+        file_put_contents($runDir . '/results.csv', $csv);
+        file_put_contents($runDir . '/report.md', $md);
+
         echo $md;
+        echo "\n✓ Archived to {$runDir}/\n";
     }
 
     /**
@@ -170,7 +217,7 @@ final class Report
 
         /** @var non-empty-list<int> $ns */
         $count = count($ns);
-        $toMs = static fn (int $v): float => round($v / 1_000_000, 3);
+        $toMs = static fn(int $v): float => round($v / 1_000_000, 3);
 
         $sum = 0;
         foreach ($ns as $v) {
@@ -265,7 +312,7 @@ final class Report
         }
 
         $md .= "\n> CPU Util = cpu_sum / total (single thread). Worker Util = exec_sum / (total × concurrency).\n";
-        $md .= "> CPU_BOUND: cpu_util > 85%. OK: nominal. Burst mode — queue_wait not a saturation signal.\n";
+        $md .= "> CPU_BOUND: cpu_util > 85%. SATURATED: qw_p95 > 200ms or throughput regression. OK: nominal.\n";
 
         // ── Comparatif ──────────────────────────────────────────────────
         if (count($allStats) === 2) {

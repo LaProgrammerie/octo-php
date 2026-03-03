@@ -20,6 +20,8 @@ require_once __DIR__ . '/Report.php';
 
 require_once __DIR__ . '/Matrix.php';
 
+require_once __DIR__ . '/GraphGenerator.php';
+
 use Octo\Bench\Matrix;
 use Octo\Bench\Report;
 use Octo\Bench\RunnerAsync;

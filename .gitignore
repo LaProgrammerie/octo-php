@@ -36,6 +36,7 @@
 # Bench results (generated)
 /bench/results/latest.*
 /bench/results/matrix.csv
+/bench/results/20*
 
 # IDE
 /.idea/
