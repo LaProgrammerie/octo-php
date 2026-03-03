@@ -38,7 +38,7 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-      - name: Setup Go
+      - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
@@ -46,13 +46,8 @@ jobs:
       - name: Install splitsh-lite
         run: |
           set -euo pipefail
-          go env -w GOBIN="${GITHUB_WORKSPACE}/bin"
-          mkdir -p "${GITHUB_WORKSPACE}/bin"
-
-          go install github.com/splitsh/lite/v2/cmd/splitsh-lite@v2.0.0
-
-          echo "${GITHUB_WORKSPACE}/bin" >> "$GITHUB_PATH"
-          splitsh-lite --help
+          go install github.com/splitsh/lite/cmd/splitsh-lite@v1.0.1
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Split & push
         env:
