@@ -32,6 +32,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Configure git
         run: |
@@ -58,7 +59,6 @@ jobs:
           cmake --build "${RUNNER_TEMP}/libgit2-build" --parallel
           cmake --install "${RUNNER_TEMP}/libgit2-build"
 
-          # Make pkg-config + dynamic linker see this libgit2 first
           echo "PKG_CONFIG_PATH=${LIBGIT2_DIR}/lib/pkgconfig" >> "$GITHUB_ENV"
           echo "LD_LIBRARY_PATH=${LIBGIT2_DIR}/lib" >> "$GITHUB_ENV"
 
@@ -73,34 +73,35 @@ jobs:
           CGO_ENABLED=1 go build -o "${GITHUB_WORKSPACE}/bin/splitsh-lite" .
           chmod +x "${GITHUB_WORKSPACE}/bin/splitsh-lite"
 
-          # dispo dans CE step
-          export PATH="${GITHUB_WORKSPACE}/bin:$PATH"
-          splitsh-lite --help >/dev/null
-
-          # dispo dans les steps suivants
           echo "${GITHUB_WORKSPACE}/bin" >> "$GITHUB_PATH"
+          "${GITHUB_WORKSPACE}/bin/splitsh-lite" --help >/dev/null
 
       - name: Split & push
         env:
           SPLIT_PUSH_TOKEN: ${{ secrets.SPLIT_PUSH_TOKEN }}
-          PREFIX: ${{ matrix.prefix }}
-          REPO: ${{ matrix.repo }}
         run: |
           set -euo pipefail
 
+          PREFIX="${{ matrix.prefix }}"
+          REPO="${{ matrix.repo }}"
+
           export PATH="${GITHUB_WORKSPACE}/bin:$PATH"
 
-          REMOTE="https://x-access-token:${SPLIT_PUSH_TOKEN}@github.com/${REPO}.git"
-
           echo "Splitting ${PREFIX} -> ${REPO}"
-          SHA="$(splitsh-lite --prefix="${PREFIX}")"
-          echo "Split SHA: ${SHA}"
           echo "Token length: ${#SPLIT_PUSH_TOKEN}"
 
-          git push --force "${REMOTE}" "${SHA}:refs/heads/main"
+          SHA="$(splitsh-lite --prefix="${PREFIX}")"
+          echo "Split SHA: ${SHA}"
+
+          git remote remove split 2>/dev/null || true
+          git remote add split "https://x-access-token:${SPLIT_PUSH_TOKEN}@github.com/${REPO}.git"
+
+          git remote -v | sed -E 's/x-access-token:[^@]+/x-access-token:*** /g'
+
+          git push --force split "${SHA}:refs/heads/main"
 
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             TAG="${GITHUB_REF_NAME}"
             echo "Pushing tag ${TAG} -> ${REPO}"
-            git push --force "${REMOTE}" "${SHA}:refs/tags/${TAG}"
+            git push --force split "${SHA}:refs/tags/${TAG}"
           fi
