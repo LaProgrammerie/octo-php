@@ -32,7 +32,7 @@ Fournir un `RealtimeServerAdapter` comme callable routeur compatible avec `Serve
 
 ### Max lifetime par connexion
 
-- Chaque connexion WebSocket a un max lifetime configurable (`ASYNC_PLATFORM_SYMFONY_WS_MAX_LIFETIME_SECONDS`, défaut : 3600)
+- Chaque connexion WebSocket a un max lifetime configurable (`OCTOP_SYMFONY_WS_MAX_LIFETIME_SECONDS`, défaut : 3600)
 - Protège contre les connexions zombies et les leaks mémoire
 - Respecte les deadlines et la cancellation du runtime pack
 

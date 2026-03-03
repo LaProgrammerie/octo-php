@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack\Tests\Unit;
+namespace Octo\RuntimePack\Tests\Unit;
 
-use AsyncPlatform\RuntimePack\GracefulShutdown;
-use AsyncPlatform\RuntimePack\JsonLogger;
-use AsyncPlatform\RuntimePack\MetricsCollector;
-use AsyncPlatform\RuntimePack\ReloadPolicy;
-use AsyncPlatform\RuntimePack\ServerConfig;
-use AsyncPlatform\RuntimePack\SignalAdapter;
-use AsyncPlatform\RuntimePack\WorkerLifecycle;
+use Octo\RuntimePack\GracefulShutdown;
+use Octo\RuntimePack\JsonLogger;
+use Octo\RuntimePack\MetricsCollector;
+use Octo\RuntimePack\ReloadPolicy;
+use Octo\RuntimePack\ServerConfig;
+use Octo\RuntimePack\SignalAdapter;
+use Octo\RuntimePack\WorkerLifecycle;
 use PHPUnit\Framework\TestCase;
 
 /**

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack\Tests\Unit;
+namespace Octo\RuntimePack\Tests\Unit;
 
-use AsyncPlatform\RuntimePack\JsonLogger;
-use AsyncPlatform\RuntimePack\RequestIdMiddleware;
+use Octo\RuntimePack\JsonLogger;
+use Octo\RuntimePack\RequestIdMiddleware;
 use PHPUnit\Framework\TestCase;
 
 /**

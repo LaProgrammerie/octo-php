@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack\Tests\Unit;
+namespace Octo\RuntimePack\Tests\Unit;
 
-use AsyncPlatform\RuntimePack\Exception\ConfigValidationException;
-use AsyncPlatform\RuntimePack\ServerConfig;
-use AsyncPlatform\RuntimePack\ServerConfigFactory;
+use Octo\RuntimePack\Exception\ConfigValidationException;
+use Octo\RuntimePack\ServerConfig;
+use Octo\RuntimePack\ServerConfigFactory;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

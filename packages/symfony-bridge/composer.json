@@ -1,11 +1,11 @@
 {
-    "name": "async-platform/symfony-bridge",
+    "name": "octo-php/symfony-bridge",
     "description": "Core Symfony HttpKernel adapter for the Async PHP Platform — converts OpenSwoole requests/responses to HttpFoundation, manages long-running lifecycle (reset, anti-leak, streaming), and provides observability bridge.",
     "type": "library",
     "license": "MIT",
     "require": {
-        "php": ">=8.3",
-        "async-platform/runtime-pack": "^0.1",
+        "php": ">=8.4",
+        "octo-php/runtime-pack": "^0.1",
         "psr/log": "^3.0",
         "symfony/http-foundation": "^6.4|^7.0",
         "symfony/http-kernel": "^6.4|^7.0"
@@ -21,12 +21,12 @@
     },
     "autoload": {
         "psr-4": {
-            "AsyncPlatform\\SymfonyBridge\\": "src/"
+            "Octo\\SymfonyBridge\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "AsyncPlatform\\SymfonyBridge\\Tests\\": "tests/"
+            "Octo\\SymfonyBridge\\Tests\\": "tests/"
         }
     },
     "config": {

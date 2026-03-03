@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack\Tests\Unit;
+namespace Octo\RuntimePack\Tests\Unit;
 
-use AsyncPlatform\RuntimePack\JsonLogger;
-use AsyncPlatform\RuntimePack\MetricsCollector;
-use AsyncPlatform\RuntimePack\ScopeRunner;
+use Octo\RuntimePack\JsonLogger;
+use Octo\RuntimePack\MetricsCollector;
+use Octo\RuntimePack\ScopeRunner;
 use PHPUnit\Framework\TestCase;
 
 /**

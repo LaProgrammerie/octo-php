@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBridge\Tests\Unit;
+namespace Octo\SymfonyBridge\Tests\Unit;
 
 require_once __DIR__ . '/TestDoubles.php';
 
-use AsyncPlatform\SymfonyBridge\ResponseConverter;
+use Octo\SymfonyBridge\ResponseConverter;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

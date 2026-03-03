@@ -1,11 +1,11 @@
 {
-    "name": "async-platform/symfony-bundle",
+    "name": "octo-php/symfony-bundle",
     "description": "Symfony Bundle for the Async PHP Platform — auto-configuration, service wiring, ResetHook auto-tagging, Flex recipe, and optional package auto-detection.",
     "type": "symfony-bundle",
     "license": "MIT",
     "require": {
-        "php": ">=8.3",
-        "async-platform/symfony-bridge": "^0.1",
+        "php": ">=8.4",
+        "octo-php/symfony-bridge": "^0.1",
         "symfony/config": "^6.4|^7.0",
         "symfony/dependency-injection": "^6.4|^7.0",
         "symfony/framework-bundle": "^6.4|^7.0",
@@ -16,18 +16,18 @@
         "phpunit/phpunit": "^11.0"
     },
     "suggest": {
-        "async-platform/symfony-messenger": "Enables in-process Messenger transport via OpenSwoole channels",
-        "async-platform/symfony-otel": "Enables OpenTelemetry traces and metrics export",
-        "async-platform/symfony-realtime": "Enables WebSocket and advanced SSE helpers"
+        "octo-php/symfony-messenger": "Enables in-process Messenger transport via OpenSwoole channels",
+        "octo-php/symfony-otel": "Enables OpenTelemetry traces and metrics export",
+        "octo-php/symfony-realtime": "Enables WebSocket and advanced SSE helpers"
     },
     "autoload": {
         "psr-4": {
-            "AsyncPlatform\\SymfonyBundle\\": "src/"
+            "Octo\\SymfonyBundle\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "AsyncPlatform\\SymfonyBundle\\Tests\\": "tests/"
+            "Octo\\SymfonyBundle\\Tests\\": "tests/"
         }
     },
     "config": {

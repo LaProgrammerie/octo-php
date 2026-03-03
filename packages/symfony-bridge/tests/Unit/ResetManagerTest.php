@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBridge\Tests\Unit;
+namespace Octo\SymfonyBridge\Tests\Unit;
 
 require_once __DIR__ . '/TestDoubles.php';
 
-use AsyncPlatform\RuntimePack\MetricsCollector;
-use AsyncPlatform\SymfonyBridge\DoctrineResetHook;
-use AsyncPlatform\SymfonyBridge\MetricsBridge;
-use AsyncPlatform\SymfonyBridge\ResetManager;
+use Octo\RuntimePack\MetricsCollector;
+use Octo\SymfonyBridge\DoctrineResetHook;
+use Octo\SymfonyBridge\MetricsBridge;
+use Octo\SymfonyBridge\ResetManager;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

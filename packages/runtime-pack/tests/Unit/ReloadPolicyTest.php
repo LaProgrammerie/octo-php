@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack\Tests\Unit;
+namespace Octo\RuntimePack\Tests\Unit;
 
-use AsyncPlatform\RuntimePack\JsonLogger;
-use AsyncPlatform\RuntimePack\ReloadPolicy;
-use AsyncPlatform\RuntimePack\ReloadReason;
-use AsyncPlatform\RuntimePack\ServerConfig;
+use Octo\RuntimePack\JsonLogger;
+use Octo\RuntimePack\ReloadPolicy;
+use Octo\RuntimePack\ReloadReason;
+use Octo\RuntimePack\ServerConfig;
 use PHPUnit\Framework\TestCase;
 
 final class ReloadPolicyTest extends TestCase

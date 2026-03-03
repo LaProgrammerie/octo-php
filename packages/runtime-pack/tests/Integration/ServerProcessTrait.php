@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack\Tests\Integration;
+namespace Octo\RuntimePack\Tests\Integration;
 
 /**
  * Trait for managing a real OpenSwoole server process in integration tests.

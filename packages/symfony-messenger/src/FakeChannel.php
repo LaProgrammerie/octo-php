@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyMessenger;
+namespace Octo\SymfonyMessenger;
 
 /**
  * In-memory channel backed by SplQueue for testing without OpenSwoole.

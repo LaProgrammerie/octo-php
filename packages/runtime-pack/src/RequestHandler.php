@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack;
+namespace Octo\RuntimePack;
 
 /**
  * Point d'entrée pour chaque requête HTTP.

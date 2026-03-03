@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack;
+namespace Octo\RuntimePack;
 
 /**
  * Adapter interface for OS signal and timer operations.

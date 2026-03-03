@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBridge\Tests\Property;
+namespace Octo\SymfonyBridge\Tests\Property;
 
 require_once __DIR__ . '/../Unit/TestDoubles.php';
 
-use AsyncPlatform\RuntimePack\MetricsCollector;
-use AsyncPlatform\SymfonyBridge\MetricsBridge;
-use AsyncPlatform\SymfonyBridge\ResetManager;
-use AsyncPlatform\SymfonyBridge\Tests\Unit\SpyLogger;
+use Octo\RuntimePack\MetricsCollector;
+use Octo\SymfonyBridge\MetricsBridge;
+use Octo\SymfonyBridge\ResetManager;
+use Octo\SymfonyBridge\Tests\Unit\SpyLogger;
 use Eris\Generators;
 use Eris\TestTrait;
 use PHPUnit\Framework\Attributes\Test;
@@ -27,7 +27,7 @@ use Symfony\Contracts\Service\ResetInterface;
  * For any reset executed by the ResetManager, the duration SHALL be measured and
  * recorded as a metric (symfony_reset_duration_ms), a debug log SHALL be emitted
  * with the request_id and the duration, and if the duration exceeds the configurable
- * threshold (ASYNC_PLATFORM_SYMFONY_RESET_WARNING_MS), a warning log SHALL be emitted.
+ * threshold (OCTOP_SYMFONY_RESET_WARNING_MS), a warning log SHALL be emitted.
  */
 final class ResetDurationTest extends TestCase
 {

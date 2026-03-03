@@ -2,29 +2,29 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBundle\Tests\Unit;
+namespace Octo\SymfonyBundle\Tests\Unit;
 
-use AsyncPlatform\SymfonyBridge\HttpKernelAdapter;
-use AsyncPlatform\SymfonyBridge\MetricsBridge;
-use AsyncPlatform\SymfonyBridge\RequestIdProcessor;
-use AsyncPlatform\SymfonyBridge\ResetManager;
-use AsyncPlatform\SymfonyBundle\DependencyInjection\AsyncPlatformExtension;
+use Octo\SymfonyBridge\HttpKernelAdapter;
+use Octo\SymfonyBridge\MetricsBridge;
+use Octo\SymfonyBridge\RequestIdProcessor;
+use Octo\SymfonyBridge\ResetManager;
+use Octo\SymfonyBundle\DependencyInjection\OctoExtension;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 /**
- * Tests that the AsyncPlatformExtension correctly loads configuration,
+ * Tests that the OctoExtension correctly loads configuration,
  * registers core bridge services, and handles optional package auto-detection.
  */
-final class AsyncPlatformExtensionTest extends TestCase
+final class OctoExtensionTest extends TestCase
 {
     private ContainerBuilder $container;
-    private AsyncPlatformExtension $extension;
+    private OctoExtension $extension;
 
     protected function setUp(): void
     {
         $this->container = new ContainerBuilder();
-        $this->extension = new AsyncPlatformExtension();
+        $this->extension = new OctoExtension();
     }
 
     public function testCoreServicesAreRegistered(): void
@@ -41,9 +41,9 @@ final class AsyncPlatformExtensionTest extends TestCase
     {
         $this->extension->load([], $this->container);
 
-        self::assertSame(104_857_600, $this->container->getParameter('async_platform.memory_warning_threshold'));
-        self::assertSame(50, $this->container->getParameter('async_platform.reset_warning_ms'));
-        self::assertSame(0, $this->container->getParameter('async_platform.kernel_reboot_every'));
+        self::assertSame(104_857_600, $this->container->getParameter('octo.memory_warning_threshold'));
+        self::assertSame(50, $this->container->getParameter('octo.reset_warning_ms'));
+        self::assertSame(0, $this->container->getParameter('octo.kernel_reboot_every'));
     }
 
     public function testCustomConfigMapsToParameters(): void
@@ -56,32 +56,32 @@ final class AsyncPlatformExtensionTest extends TestCase
             ],
         ], $this->container);
 
-        self::assertSame(200_000_000, $this->container->getParameter('async_platform.memory_warning_threshold'));
-        self::assertSame(100, $this->container->getParameter('async_platform.reset_warning_ms'));
-        self::assertSame(1000, $this->container->getParameter('async_platform.kernel_reboot_every'));
+        self::assertSame(200_000_000, $this->container->getParameter('octo.memory_warning_threshold'));
+        self::assertSame(100, $this->container->getParameter('octo.reset_warning_ms'));
+        self::assertSame(1000, $this->container->getParameter('octo.kernel_reboot_every'));
     }
 
     public function testMessengerParametersAreSet(): void
     {
         $this->extension->load([], $this->container);
 
-        self::assertSame(100, $this->container->getParameter('async_platform.messenger.channel_capacity'));
-        self::assertSame(1, $this->container->getParameter('async_platform.messenger.consumers'));
-        self::assertSame(5.0, $this->container->getParameter('async_platform.messenger.send_timeout'));
+        self::assertSame(100, $this->container->getParameter('octo.messenger.channel_capacity'));
+        self::assertSame(1, $this->container->getParameter('octo.messenger.consumers'));
+        self::assertSame(5.0, $this->container->getParameter('octo.messenger.send_timeout'));
     }
 
     public function testRealtimeParametersAreSet(): void
     {
         $this->extension->load([], $this->container);
 
-        self::assertSame(3600, $this->container->getParameter('async_platform.realtime.ws_max_lifetime_seconds'));
+        self::assertSame(3600, $this->container->getParameter('octo.realtime.ws_max_lifetime_seconds'));
     }
 
     public function testOtelParametersAreSet(): void
     {
         $this->extension->load([], $this->container);
 
-        self::assertTrue($this->container->getParameter('async_platform.otel.enabled'));
+        self::assertTrue($this->container->getParameter('octo.otel.enabled'));
     }
 
     public function testRequestIdProcessorHasMonologTag(): void
@@ -114,13 +114,13 @@ final class AsyncPlatformExtensionTest extends TestCase
      */
     public function testMessengerServicesRegisteredWhenAvailable(): void
     {
-        if (!\class_exists('AsyncPlatform\SymfonyMessenger\OpenSwooleTransport')) {
+        if (!\class_exists('Octo\SymfonyMessenger\OpenSwooleTransport')) {
             $this->markTestSkipped('symfony-messenger package not autoloaded');
         }
 
         $this->extension->load([], $this->container);
 
-        self::assertTrue($this->container->hasDefinition('async_platform.messenger.transport'));
+        self::assertTrue($this->container->hasDefinition('octo.messenger.transport'));
     }
 
     /**
@@ -129,13 +129,13 @@ final class AsyncPlatformExtensionTest extends TestCase
      */
     public function testRealtimeServicesRegisteredWhenAvailable(): void
     {
-        if (!\class_exists('AsyncPlatform\SymfonyRealtime\RealtimeServerAdapter')) {
+        if (!\class_exists('Octo\SymfonyRealtime\RealtimeServerAdapter')) {
             $this->markTestSkipped('symfony-realtime package not autoloaded');
         }
 
         $this->extension->load([], $this->container);
 
-        self::assertTrue($this->container->hasDefinition('async_platform.realtime.adapter'));
+        self::assertTrue($this->container->hasDefinition('octo.realtime.adapter'));
     }
 
     /**
@@ -144,13 +144,13 @@ final class AsyncPlatformExtensionTest extends TestCase
      */
     public function testOtelServicesRegisteredWhenAvailable(): void
     {
-        if (!\class_exists('AsyncPlatform\SymfonyOtel\OtelSpanFactory')) {
+        if (!\class_exists('Octo\SymfonyOtel\OtelSpanFactory')) {
             $this->markTestSkipped('symfony-otel package not autoloaded');
         }
 
         $this->extension->load([], $this->container);
 
-        self::assertTrue($this->container->hasDefinition('async_platform.otel.span_factory'));
+        self::assertTrue($this->container->hasDefinition('octo.otel.span_factory'));
     }
 
     public function testOtelDisabledByConfig(): void
@@ -160,13 +160,13 @@ final class AsyncPlatformExtensionTest extends TestCase
         ], $this->container);
 
         // Even if the classes existed, otel.enabled=false should skip registration
-        self::assertFalse($this->container->hasDefinition('async_platform.otel.span_factory'));
+        self::assertFalse($this->container->hasDefinition('octo.otel.span_factory'));
     }
 
     public function testMetricsCollectorServiceRegistered(): void
     {
         $this->extension->load([], $this->container);
 
-        self::assertTrue($this->container->hasDefinition('AsyncPlatform\RuntimePack\MetricsCollector'));
+        self::assertTrue($this->container->hasDefinition('Octo\RuntimePack\MetricsCollector'));
     }
 }

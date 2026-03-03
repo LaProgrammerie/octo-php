@@ -1,10 +1,10 @@
 {
-    "name": "async-platform/runtime-pack",
+    "name": "octo-php/runtime-pack",
     "description": "OpenSwoole runtime pack for the Async PHP Platform — prod-safe HTTP server with healthchecks, graceful shutdown, reload policy, and structured concurrency.",
     "type": "library",
     "license": "MIT",
     "require": {
-        "php": ">=8.3",
+        "php": ">=8.4",
         "ext-openswoole": "*",
         "psr/log": "^3.0"
     },
@@ -14,12 +14,12 @@
     },
     "autoload": {
         "psr-4": {
-            "AsyncPlatform\\RuntimePack\\": "src/"
+            "Octo\\RuntimePack\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "AsyncPlatform\\RuntimePack\\Tests\\": "tests/"
+            "Octo\\RuntimePack\\Tests\\": "tests/"
         }
     },
     "config": {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack;
+namespace Octo\RuntimePack;
 
 /**
  * Reload policy — determines whether a worker should be reloaded.

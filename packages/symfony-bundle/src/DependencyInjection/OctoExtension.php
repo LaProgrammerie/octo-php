@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBundle\DependencyInjection;
+namespace Octo\SymfonyBundle\DependencyInjection;
 
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -10,15 +10,15 @@ use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 
 /**
- * Loads the async_platform configuration and registers core bridge services.
+ * Loads the octo configuration and registers core bridge services.
  *
  * Responsibilities:
  * - Load services.yaml with core bridge service definitions
- * - Map YAML config to container parameters (ASYNC_PLATFORM_SYMFONY_* env vars)
+ * - Map YAML config to container parameters (OCTOP_SYMFONY_* env vars)
  * - Auto-register RequestIdProcessor as Monolog processor if Monolog is available
  * - Auto-detect optional packages via class_exists() and register their services
  */
-final class AsyncPlatformExtension extends Extension
+final class OctoExtension extends Extension
 {
     public function load(array $configs, ContainerBuilder $container): void
     {
@@ -26,20 +26,20 @@ final class AsyncPlatformExtension extends Extension
         $config = $this->processConfiguration($configuration, $configs);
 
         // Map config to container parameters
-        $container->setParameter('async_platform.memory_warning_threshold', $config['memory_warning_threshold']);
-        $container->setParameter('async_platform.reset_warning_ms', $config['reset_warning_ms']);
-        $container->setParameter('async_platform.kernel_reboot_every', $config['kernel_reboot_every']);
+        $container->setParameter('octo.memory_warning_threshold', $config['memory_warning_threshold']);
+        $container->setParameter('octo.reset_warning_ms', $config['reset_warning_ms']);
+        $container->setParameter('octo.kernel_reboot_every', $config['kernel_reboot_every']);
 
         // Messenger config
-        $container->setParameter('async_platform.messenger.channel_capacity', $config['messenger']['channel_capacity']);
-        $container->setParameter('async_platform.messenger.consumers', $config['messenger']['consumers']);
-        $container->setParameter('async_platform.messenger.send_timeout', $config['messenger']['send_timeout']);
+        $container->setParameter('octo.messenger.channel_capacity', $config['messenger']['channel_capacity']);
+        $container->setParameter('octo.messenger.consumers', $config['messenger']['consumers']);
+        $container->setParameter('octo.messenger.send_timeout', $config['messenger']['send_timeout']);
 
         // Realtime config
-        $container->setParameter('async_platform.realtime.ws_max_lifetime_seconds', $config['realtime']['ws_max_lifetime_seconds']);
+        $container->setParameter('octo.realtime.ws_max_lifetime_seconds', $config['realtime']['ws_max_lifetime_seconds']);
 
         // OTEL config
-        $container->setParameter('async_platform.otel.enabled', $config['otel']['enabled']);
+        $container->setParameter('octo.otel.enabled', $config['otel']['enabled']);
 
         // Load service definitions
         $loader = new YamlFileLoader(
@@ -60,8 +60,8 @@ final class AsyncPlatformExtension extends Extension
     private function configureCore(ContainerBuilder $container, array $config): void
     {
         // Auto-register RequestIdProcessor as Monolog processor if Monolog is available
-        if (\class_exists(\Monolog\Logger::class) && $container->hasDefinition('AsyncPlatform\SymfonyBridge\RequestIdProcessor')) {
-            $definition = $container->getDefinition('AsyncPlatform\SymfonyBridge\RequestIdProcessor');
+        if (\class_exists(\Monolog\Logger::class) && $container->hasDefinition('Octo\SymfonyBridge\RequestIdProcessor')) {
+            $definition = $container->getDefinition('Octo\SymfonyBridge\RequestIdProcessor');
             if (!$definition->hasTag('monolog.processor')) {
                 $definition->addTag('monolog.processor');
             }
@@ -73,11 +73,11 @@ final class AsyncPlatformExtension extends Extension
      */
     private function configureMessenger(ContainerBuilder $container, array $config): void
     {
-        if (!\class_exists('AsyncPlatform\SymfonyMessenger\OpenSwooleTransport')) {
+        if (!\class_exists('Octo\SymfonyMessenger\OpenSwooleTransport')) {
             return;
         }
 
-        $container->register('async_platform.messenger.transport', 'AsyncPlatform\SymfonyMessenger\OpenSwooleTransport')
+        $container->register('octo.messenger.transport', 'Octo\SymfonyMessenger\OpenSwooleTransport')
             ->setArguments([
                 $config['messenger']['channel_capacity'],
                 $config['messenger']['send_timeout'],
@@ -85,8 +85,8 @@ final class AsyncPlatformExtension extends Extension
             ])
             ->setPublic(false);
 
-        if (\class_exists('AsyncPlatform\SymfonyMessenger\OpenSwooleTransportFactory')) {
-            $container->register('async_platform.messenger.transport_factory', 'AsyncPlatform\SymfonyMessenger\OpenSwooleTransportFactory')
+        if (\class_exists('Octo\SymfonyMessenger\OpenSwooleTransportFactory')) {
+            $container->register('octo.messenger.transport_factory', 'Octo\SymfonyMessenger\OpenSwooleTransportFactory')
                 ->addTag('messenger.transport_factory')
                 ->setPublic(false);
         }
@@ -97,14 +97,14 @@ final class AsyncPlatformExtension extends Extension
      */
     private function configureRealtime(ContainerBuilder $container, array $config): void
     {
-        if (!\class_exists('AsyncPlatform\SymfonyRealtime\RealtimeServerAdapter')) {
+        if (!\class_exists('Octo\SymfonyRealtime\RealtimeServerAdapter')) {
             return;
         }
 
-        $container->register('async_platform.realtime.adapter', 'AsyncPlatform\SymfonyRealtime\RealtimeServerAdapter')
+        $container->register('octo.realtime.adapter', 'Octo\SymfonyRealtime\RealtimeServerAdapter')
             ->setArguments([
-                $container->hasDefinition('AsyncPlatform\SymfonyBridge\HttpKernelAdapter')
-                ? $container->getDefinition('AsyncPlatform\SymfonyBridge\HttpKernelAdapter')
+                $container->hasDefinition('Octo\SymfonyBridge\HttpKernelAdapter')
+                ? $container->getDefinition('Octo\SymfonyBridge\HttpKernelAdapter')
                 : null,
                 null, // WebSocketHandler — provided by the application
                 null, // logger
@@ -121,20 +121,20 @@ final class AsyncPlatformExtension extends Extension
             return;
         }
 
-        if (!\class_exists('AsyncPlatform\SymfonyOtel\OtelSpanFactory')) {
+        if (!\class_exists('Octo\SymfonyOtel\OtelSpanFactory')) {
             return;
         }
 
-        $container->register('async_platform.otel.span_factory', 'AsyncPlatform\SymfonyOtel\OtelSpanFactory')
+        $container->register('octo.otel.span_factory', 'Octo\SymfonyOtel\OtelSpanFactory')
             ->setPublic(false);
 
-        if (\class_exists('AsyncPlatform\SymfonyOtel\OtelRequestListener')) {
-            $container->register('async_platform.otel.request_listener', 'AsyncPlatform\SymfonyOtel\OtelRequestListener')
+        if (\class_exists('Octo\SymfonyOtel\OtelRequestListener')) {
+            $container->register('octo.otel.request_listener', 'Octo\SymfonyOtel\OtelRequestListener')
                 ->setPublic(false);
         }
 
-        if (\class_exists('AsyncPlatform\SymfonyOtel\OtelMetricsExporter')) {
-            $container->register('async_platform.otel.metrics_exporter', 'AsyncPlatform\SymfonyOtel\OtelMetricsExporter')
+        if (\class_exists('Octo\SymfonyOtel\OtelMetricsExporter')) {
+            $container->register('octo.otel.metrics_exporter', 'Octo\SymfonyOtel\OtelMetricsExporter')
                 ->setPublic(false);
         }
     }

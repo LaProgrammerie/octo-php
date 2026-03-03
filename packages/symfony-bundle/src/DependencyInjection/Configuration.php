@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBundle\DependencyInjection;
+namespace Octo\SymfonyBundle\DependencyInjection;
 
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 
 /**
- * Configuration tree for the async_platform bundle.
+ * Configuration tree for the octo bundle.
  *
- * async_platform:
+ * octo:
  *   memory_warning_threshold: 104857600  # 100 MB default
  *   reset_warning_ms: 50                 # reset duration warning threshold
  *   kernel_reboot_every: 0               # 0 = disabled
@@ -27,7 +27,7 @@ final class Configuration implements ConfigurationInterface
 {
     public function getConfigTreeBuilder(): TreeBuilder
     {
-        $treeBuilder = new TreeBuilder('async_platform');
+        $treeBuilder = new TreeBuilder('octo');
 
         $rootNode = $treeBuilder->getRootNode();
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyOtel\Metrics;
+namespace Octo\SymfonyOtel\Metrics;
 
 /**
  * In-memory meter for testing without the OTEL SDK.

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyRealtime;
+namespace Octo\SymfonyRealtime;
 
 /**
  * Encapsulates SSE event sending via a write callable.

@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBridge\Tests\Property;
+namespace Octo\SymfonyBridge\Tests\Property;
 
 require_once __DIR__ . '/../Unit/TestDoubles.php';
 
-use AsyncPlatform\RuntimePack\MetricsCollector;
-use AsyncPlatform\SymfonyBridge\HttpKernelAdapter;
-use AsyncPlatform\SymfonyBridge\Tests\Unit\FakeSwooleRequest;
-use AsyncPlatform\SymfonyBridge\Tests\Unit\FakeSwooleResponse;
-use AsyncPlatform\SymfonyBridge\Tests\Unit\LifecycleTrackingKernel;
-use AsyncPlatform\SymfonyBridge\Tests\Unit\SpyLogger;
+use Octo\RuntimePack\MetricsCollector;
+use Octo\SymfonyBridge\HttpKernelAdapter;
+use Octo\SymfonyBridge\Tests\Unit\FakeSwooleRequest;
+use Octo\SymfonyBridge\Tests\Unit\FakeSwooleResponse;
+use Octo\SymfonyBridge\Tests\Unit\LifecycleTrackingKernel;
+use Octo\SymfonyBridge\Tests\Unit\SpyLogger;
 use Eris\Generators;
 use Eris\TestTrait;
 use PHPUnit\Framework\Attributes\Test;

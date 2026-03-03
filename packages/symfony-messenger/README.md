@@ -1,11 +1,11 @@
-# async-platform/symfony-messenger
+# octo-php/symfony-messenger
 
 Transport Symfony Messenger in-process pour la plateforme async PHP — message passing via channels OpenSwoole bornés avec backpressure.
 
 ## Installation
 
 ```bash
-composer require async-platform/symfony-messenger
+composer require octo-php/symfony-messenger
 ```
 
 ## Configuration
@@ -28,15 +28,15 @@ framework:
 
 | Variable | Type | Défaut | Description |
 |---|---|---|---|
-| `ASYNC_PLATFORM_SYMFONY_MESSENGER_CHANNEL_CAPACITY` | int | `100` | Capacité du channel borné (backpressure) |
-| `ASYNC_PLATFORM_SYMFONY_MESSENGER_CONSUMERS` | int | `1` | Nombre de coroutines consommatrices par worker |
-| `ASYNC_PLATFORM_SYMFONY_MESSENGER_SEND_TIMEOUT` | float (s) | `5.0` | Timeout d'envoi quand le channel est plein |
+| `OCTOP_SYMFONY_MESSENGER_CHANNEL_CAPACITY` | int | `100` | Capacité du channel borné (backpressure) |
+| `OCTOP_SYMFONY_MESSENGER_CONSUMERS` | int | `1` | Nombre de coroutines consommatrices par worker |
+| `OCTOP_SYMFONY_MESSENGER_SEND_TIMEOUT` | float (s) | `5.0` | Timeout d'envoi quand le channel est plein |
 
 ### Via le bundle
 
 ```yaml
-# config/packages/async_platform.yaml
-async_platform:
+# config/packages/octo.yaml
+octo:
     messenger:
         channel_capacity: 100
         consumers: 1

@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack\Tests\Unit;
+namespace Octo\RuntimePack\Tests\Unit;
 
-use AsyncPlatform\RuntimePack\BlockingPool;
-use AsyncPlatform\RuntimePack\Exception\BlockingPoolFullException;
-use AsyncPlatform\RuntimePack\Exception\BlockingPoolHttpException;
-use AsyncPlatform\RuntimePack\Exception\BlockingPoolSendException;
-use AsyncPlatform\RuntimePack\Exception\BlockingPoolTimeoutException;
-use AsyncPlatform\RuntimePack\JobRegistry;
-use AsyncPlatform\RuntimePack\JsonLogger;
-use AsyncPlatform\RuntimePack\MetricsCollector;
+use Octo\RuntimePack\BlockingPool;
+use Octo\RuntimePack\Exception\BlockingPoolFullException;
+use Octo\RuntimePack\Exception\BlockingPoolHttpException;
+use Octo\RuntimePack\Exception\BlockingPoolSendException;
+use Octo\RuntimePack\Exception\BlockingPoolTimeoutException;
+use Octo\RuntimePack\JobRegistry;
+use Octo\RuntimePack\JsonLogger;
+use Octo\RuntimePack\MetricsCollector;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

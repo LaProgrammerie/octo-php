@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBundle\Tests\Unit;
+namespace Octo\SymfonyBundle\Tests\Unit;
 
-use AsyncPlatform\SymfonyBundle\DependencyInjection\Configuration;
+use Octo\SymfonyBundle\DependencyInjection\Configuration;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\Definition\Processor;
 
 /**
- * Tests that the async_platform configuration tree is loaded correctly
+ * Tests that the octo configuration tree is loaded correctly
  * with defaults and custom values.
  */
 final class ConfigurationTest extends TestCase
@@ -92,6 +92,6 @@ final class ConfigurationTest extends TestCase
     {
         $tree = $this->configuration->getConfigTreeBuilder()->buildTree();
 
-        self::assertSame('async_platform', $tree->getName());
+        self::assertSame('octo', $tree->getName());
     }
 }

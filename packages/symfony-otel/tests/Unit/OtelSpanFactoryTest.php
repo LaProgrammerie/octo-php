@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyOtel\Tests\Unit;
+namespace Octo\SymfonyOtel\Tests\Unit;
 
-use AsyncPlatform\SymfonyOtel\OtelSpanFactory;
-use AsyncPlatform\SymfonyOtel\Tracing\FakeTracer;
-use AsyncPlatform\SymfonyOtel\Tracing\SpanKind;
+use Octo\SymfonyOtel\OtelSpanFactory;
+use Octo\SymfonyOtel\Tracing\FakeTracer;
+use Octo\SymfonyOtel\Tracing\SpanKind;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

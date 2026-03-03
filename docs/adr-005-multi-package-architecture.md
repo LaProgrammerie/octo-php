@@ -16,12 +16,12 @@ Organiser la suite en 6 packages Composer indépendants dans le monorepo :
 
 | Package | Responsabilité |
 |---|---|
-| `async-platform/symfony-bridge` | Core : conversion HTTP, lifecycle, reset, streaming, métriques |
-| `async-platform/symfony-bundle` | Bundle Symfony, auto-configuration, recipe Flex |
-| `async-platform/symfony-messenger` | Transport Messenger in-process |
-| `async-platform/symfony-realtime` | WebSocket + helpers SSE avancés |
-| `async-platform/symfony-otel` | Export OpenTelemetry (traces + métriques) |
-| `async-platform/symfony-bridge-full` | Meta-package installant tout |
+| `octo-php/symfony-bridge` | Core : conversion HTTP, lifecycle, reset, streaming, métriques |
+| `octo-php/symfony-bundle` | Bundle Symfony, auto-configuration, recipe Flex |
+| `octo-php/symfony-messenger` | Transport Messenger in-process |
+| `octo-php/symfony-realtime` | WebSocket + helpers SSE avancés |
+| `octo-php/symfony-otel` | Export OpenTelemetry (traces + métriques) |
+| `octo-php/symfony-bridge-full` | Meta-package installant tout |
 
 ### Principes
 

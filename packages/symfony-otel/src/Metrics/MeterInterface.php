@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyOtel\Metrics;
+namespace Octo\SymfonyOtel\Metrics;
 
 /**
  * Abstraction over OpenTelemetry\API\Metrics\MeterInterface for testability.

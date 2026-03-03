@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBridgeFull\Tests;
+namespace Octo\SymfonyBridgeFull\Tests;
 
 use PHPUnit\Framework\TestCase;
 
@@ -16,11 +16,11 @@ final class MetapackageValidationTest extends TestCase
     private const PACKAGE_DIR = __DIR__ . '/..';
 
     private const EXPECTED_PACKAGES = [
-        'async-platform/symfony-bridge',
-        'async-platform/symfony-bundle',
-        'async-platform/symfony-messenger',
-        'async-platform/symfony-otel',
-        'async-platform/symfony-realtime',
+        'octo-php/symfony-bridge',
+        'octo-php/symfony-bundle',
+        'octo-php/symfony-messenger',
+        'octo-php/symfony-otel',
+        'octo-php/symfony-realtime',
     ];
 
     private array $composerData;
@@ -100,7 +100,7 @@ final class MetapackageValidationTest extends TestCase
     public function testPackageName(): void
     {
         $this->assertSame(
-            'async-platform/symfony-bridge-full',
+            'octo-php/symfony-bridge-full',
             $this->composerData['name'] ?? null,
         );
     }

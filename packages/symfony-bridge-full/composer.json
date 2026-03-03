@@ -1,14 +1,14 @@
 {
-    "name": "async-platform/symfony-bridge-full",
+    "name": "octo-php/symfony-bridge-full",
     "description": "Meta-package installing the complete Async PHP Platform Symfony Bridge Suite — core bridge, bundle, messenger, realtime, and OTEL.",
     "type": "metapackage",
     "license": "MIT",
     "require": {
-        "async-platform/symfony-bridge": "^0.1",
-        "async-platform/symfony-bundle": "^0.1",
-        "async-platform/symfony-messenger": "^0.1",
-        "async-platform/symfony-otel": "^0.1",
-        "async-platform/symfony-realtime": "^0.1"
+        "octo-php/symfony-bridge": "^0.1",
+        "octo-php/symfony-bundle": "^0.1",
+        "octo-php/symfony-messenger": "^0.1",
+        "octo-php/symfony-otel": "^0.1",
+        "octo-php/symfony-realtime": "^0.1"
     },
     "extra": {
         "branch-alias": {

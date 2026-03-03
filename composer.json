@@ -1,18 +1,18 @@
 {
-    "name": "async-platform/monorepo",
+    "name": "octo-php/monorepo",
     "description": "Async PHP Platform monorepo — OpenSwoole runtime pack, Symfony bridge suite, skeleton, and tooling.",
     "type": "project",
     "license": "MIT",
     "require": {
-        "php": ">=8.3"
+        "php": ">=8.4"
     },
     "require-dev": {
-        "async-platform/runtime-pack": "^0.1@dev",
-        "async-platform/symfony-bridge": "^0.1@dev",
-        "async-platform/symfony-bundle": "^0.1@dev",
-        "async-platform/symfony-messenger": "^0.1@dev",
-        "async-platform/symfony-otel": "^0.1@dev",
-        "async-platform/symfony-realtime": "^0.1@dev",
+        "octo-php/runtime-pack": "^0.1@dev",
+        "octo-php/symfony-bridge": "^0.1@dev",
+        "octo-php/symfony-bundle": "^0.1@dev",
+        "octo-php/symfony-messenger": "^0.1@dev",
+        "octo-php/symfony-otel": "^0.1@dev",
+        "octo-php/symfony-realtime": "^0.1@dev",
         "friendsofphp/php-cs-fixer": "^3.0",
         "giorgiosironi/eris": "^1.0",
         "phpunit/phpunit": "^11.0"
@@ -30,21 +30,21 @@
         "psr-4": {
             "App\\": "skeleton/src/",
             "App\\Tests\\": "skeleton/tests/",
-            "AsyncPlatform\\RuntimePack\\Tests\\": "packages/runtime-pack/tests/",
-            "AsyncPlatform\\SymfonyBridge\\Tests\\": "packages/symfony-bridge/tests/",
-            "AsyncPlatform\\SymfonyBundle\\Tests\\": "packages/symfony-bundle/tests/",
-            "AsyncPlatform\\SymfonyMessenger\\Tests\\": "packages/symfony-messenger/tests/",
-            "AsyncPlatform\\SymfonyOtel\\Tests\\": "packages/symfony-otel/tests/",
-            "AsyncPlatform\\SymfonyRealtime\\Tests\\": "packages/symfony-realtime/tests/"
+            "Octo\\RuntimePack\\Tests\\": "packages/runtime-pack/tests/",
+            "Octo\\SymfonyBridge\\Tests\\": "packages/symfony-bridge/tests/",
+            "Octo\\SymfonyBundle\\Tests\\": "packages/symfony-bundle/tests/",
+            "Octo\\SymfonyMessenger\\Tests\\": "packages/symfony-messenger/tests/",
+            "Octo\\SymfonyOtel\\Tests\\": "packages/symfony-otel/tests/",
+            "Octo\\SymfonyRealtime\\Tests\\": "packages/symfony-realtime/tests/"
         }
     },
     "scripts": {
-        "test": "phpunit",
-        "test:unit": "phpunit --testsuite unit",
-        "test:property": "phpunit --testsuite property",
-        "test:integration": "phpunit --testsuite integration",
-        "lint": "php-cs-fixer fix --dry-run --diff",
-        "lint:fix": "php-cs-fixer fix",
+        "test": "vendor/bin/phpunit",
+        "test:unit": "vendor/bin/phpunit --testsuite unit",
+        "test:property": "vendor/bin/phpunit --testsuite property",
+        "test:integration": "vendor/bin/phpunit --testsuite integration",
+        "lint": "vendor/bin/php-cs-fixer fix --dry-run --diff",
+        "lint:fix": "vendor/bin/php-cs-fixer fix",
         "bench": "php bench/run.php",
         "bench:quick": "php bench/run.php --mode=both --jobs=500 --concurrency=50 --cpu=5000 --io-ms=2 --json-kb=4",
         "bench:stress": "php bench/run.php --jobs=10000 --concurrency=500 --cpu=30000 --io-ms=10 --json-kb=16",

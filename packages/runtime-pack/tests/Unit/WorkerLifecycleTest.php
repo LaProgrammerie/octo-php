@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack\Tests\Unit;
+namespace Octo\RuntimePack\Tests\Unit;
 
-use AsyncPlatform\RuntimePack\JsonLogger;
-use AsyncPlatform\RuntimePack\MetricsCollector;
-use AsyncPlatform\RuntimePack\ReloadPolicy;
-use AsyncPlatform\RuntimePack\ReloadReason;
-use AsyncPlatform\RuntimePack\ServerConfig;
-use AsyncPlatform\RuntimePack\WorkerLifecycle;
+use Octo\RuntimePack\JsonLogger;
+use Octo\RuntimePack\MetricsCollector;
+use Octo\RuntimePack\ReloadPolicy;
+use Octo\RuntimePack\ReloadReason;
+use Octo\RuntimePack\ServerConfig;
+use Octo\RuntimePack\WorkerLifecycle;
 use PHPUnit\Framework\TestCase;
 
 final class WorkerLifecycleTest extends TestCase

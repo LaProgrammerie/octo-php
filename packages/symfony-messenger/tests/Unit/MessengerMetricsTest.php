@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyMessenger\Tests\Unit;
+namespace Octo\SymfonyMessenger\Tests\Unit;
 
-use AsyncPlatform\SymfonyMessenger\MessengerMetrics;
+use Octo\SymfonyMessenger\MessengerMetrics;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

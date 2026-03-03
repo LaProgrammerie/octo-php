@@ -8,6 +8,7 @@ on:
 jobs:
   split:
     runs-on: ubuntu-latest
+    needs: quality
     strategy:
       fail-fast: false
       matrix:

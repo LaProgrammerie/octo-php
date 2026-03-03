@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBridge\Tests\Integration;
+namespace Octo\SymfonyBridge\Tests\Integration;
 
 require_once __DIR__ . '/IntegrationTestDoubles.php';
 
-use AsyncPlatform\RuntimePack\MetricsCollector;
-use AsyncPlatform\SymfonyBridge\HttpKernelAdapter;
+use Octo\RuntimePack\MetricsCollector;
+use Octo\SymfonyBridge\HttpKernelAdapter;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Response;
 

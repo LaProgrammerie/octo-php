@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyOtel\Tests\Unit;
+namespace Octo\SymfonyOtel\Tests\Unit;
 
-use AsyncPlatform\SymfonyOtel\CoroutineSafeBatchProcessor;
-use AsyncPlatform\SymfonyOtel\Tracing\FakeSpan;
-use AsyncPlatform\SymfonyOtel\Tracing\FakeSpanExporter;
-use AsyncPlatform\SymfonyOtel\Tracing\SpanKind;
+use Octo\SymfonyOtel\CoroutineSafeBatchProcessor;
+use Octo\SymfonyOtel\Tracing\FakeSpan;
+use Octo\SymfonyOtel\Tracing\FakeSpanExporter;
+use Octo\SymfonyOtel\Tracing\SpanKind;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

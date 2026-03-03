@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBridge;
+namespace Octo\SymfonyBridge;
 
-use AsyncPlatform\RuntimePack\MetricsCollector;
+use Octo\RuntimePack\MetricsCollector;
 
 /**
  * Bridge between the Symfony bridge and the runtime pack's MetricsCollector.

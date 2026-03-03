@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBridge\Tests\Integration;
+namespace Octo\SymfonyBridge\Tests\Integration;
 
 require_once __DIR__ . '/IntegrationTestDoubles.php';
 
-use AsyncPlatform\SymfonyBundle\DependencyInjection\AsyncPlatformExtension;
-use AsyncPlatform\SymfonyBundle\DependencyInjection\Compiler\ResetHookCompilerPass;
-use AsyncPlatform\SymfonyBridge\HttpKernelAdapter;
-use AsyncPlatform\SymfonyBridge\ResetHookInterface;
-use AsyncPlatform\SymfonyBridge\ResetManager;
-use AsyncPlatform\SymfonyBridge\RequestIdProcessor;
-use AsyncPlatform\SymfonyBridge\MetricsBridge;
+use Octo\SymfonyBundle\DependencyInjection\OctoExtension;
+use Octo\SymfonyBundle\DependencyInjection\Compiler\ResetHookCompilerPass;
+use Octo\SymfonyBridge\HttpKernelAdapter;
+use Octo\SymfonyBridge\ResetHookInterface;
+use Octo\SymfonyBridge\ResetManager;
+use Octo\SymfonyBridge\RequestIdProcessor;
+use Octo\SymfonyBridge\MetricsBridge;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
@@ -38,7 +38,7 @@ final class BundleIntegrationTest extends TestCase
         $container->register('kernel', \stdClass::class);
         $container->register('logger', \Psr\Log\NullLogger::class);
 
-        $extension = new AsyncPlatformExtension();
+        $extension = new OctoExtension();
         $extension->load([$config], $container);
 
         return $container;
@@ -58,14 +58,14 @@ final class BundleIntegrationTest extends TestCase
     {
         $container = $this->loadExtension();
 
-        $this->assertSame(104_857_600, $container->getParameter('async_platform.memory_warning_threshold'));
-        $this->assertSame(50, $container->getParameter('async_platform.reset_warning_ms'));
-        $this->assertSame(0, $container->getParameter('async_platform.kernel_reboot_every'));
-        $this->assertSame(100, $container->getParameter('async_platform.messenger.channel_capacity'));
-        $this->assertSame(1, $container->getParameter('async_platform.messenger.consumers'));
-        $this->assertSame(5.0, $container->getParameter('async_platform.messenger.send_timeout'));
-        $this->assertSame(3600, $container->getParameter('async_platform.realtime.ws_max_lifetime_seconds'));
-        $this->assertTrue($container->getParameter('async_platform.otel.enabled'));
+        $this->assertSame(104_857_600, $container->getParameter('octo.memory_warning_threshold'));
+        $this->assertSame(50, $container->getParameter('octo.reset_warning_ms'));
+        $this->assertSame(0, $container->getParameter('octo.kernel_reboot_every'));
+        $this->assertSame(100, $container->getParameter('octo.messenger.channel_capacity'));
+        $this->assertSame(1, $container->getParameter('octo.messenger.consumers'));
+        $this->assertSame(5.0, $container->getParameter('octo.messenger.send_timeout'));
+        $this->assertSame(3600, $container->getParameter('octo.realtime.ws_max_lifetime_seconds'));
+        $this->assertTrue($container->getParameter('octo.otel.enabled'));
     }
 
     public function testCustomConfigurationOverrides(): void
@@ -87,14 +87,14 @@ final class BundleIntegrationTest extends TestCase
             ],
         ]);
 
-        $this->assertSame(200_000_000, $container->getParameter('async_platform.memory_warning_threshold'));
-        $this->assertSame(100, $container->getParameter('async_platform.reset_warning_ms'));
-        $this->assertSame(500, $container->getParameter('async_platform.kernel_reboot_every'));
-        $this->assertSame(50, $container->getParameter('async_platform.messenger.channel_capacity'));
-        $this->assertSame(4, $container->getParameter('async_platform.messenger.consumers'));
-        $this->assertSame(10.0, $container->getParameter('async_platform.messenger.send_timeout'));
-        $this->assertSame(7200, $container->getParameter('async_platform.realtime.ws_max_lifetime_seconds'));
-        $this->assertFalse($container->getParameter('async_platform.otel.enabled'));
+        $this->assertSame(200_000_000, $container->getParameter('octo.memory_warning_threshold'));
+        $this->assertSame(100, $container->getParameter('octo.reset_warning_ms'));
+        $this->assertSame(500, $container->getParameter('octo.kernel_reboot_every'));
+        $this->assertSame(50, $container->getParameter('octo.messenger.channel_capacity'));
+        $this->assertSame(4, $container->getParameter('octo.messenger.consumers'));
+        $this->assertSame(10.0, $container->getParameter('octo.messenger.send_timeout'));
+        $this->assertSame(7200, $container->getParameter('octo.realtime.ws_max_lifetime_seconds'));
+        $this->assertFalse($container->getParameter('octo.otel.enabled'));
     }
 
     public function testAutoDetectionMessengerPackageInstalled(): void
@@ -103,7 +103,7 @@ final class BundleIntegrationTest extends TestCase
 
         // Since symfony-messenger IS installed in dev, the transport should be registered
         $this->assertTrue(
-            $container->hasDefinition('async_platform.messenger.transport'),
+            $container->hasDefinition('octo.messenger.transport'),
             'Messenger transport should be auto-registered when package is installed',
         );
     }
@@ -114,7 +114,7 @@ final class BundleIntegrationTest extends TestCase
 
         // Since symfony-realtime IS installed in dev, the adapter should be registered
         $this->assertTrue(
-            $container->hasDefinition('async_platform.realtime.adapter'),
+            $container->hasDefinition('octo.realtime.adapter'),
             'Realtime adapter should be auto-registered when package is installed',
         );
     }
@@ -125,7 +125,7 @@ final class BundleIntegrationTest extends TestCase
 
         // Since symfony-otel IS installed in dev, OTEL services should be registered
         $this->assertTrue(
-            $container->hasDefinition('async_platform.otel.span_factory'),
+            $container->hasDefinition('octo.otel.span_factory'),
             'OTEL span factory should be auto-registered when package is installed',
         );
     }
@@ -137,7 +137,7 @@ final class BundleIntegrationTest extends TestCase
         ]);
 
         $this->assertFalse(
-            $container->hasDefinition('async_platform.otel.span_factory'),
+            $container->hasDefinition('octo.otel.span_factory'),
             'OTEL services should NOT be registered when otel.enabled=false',
         );
     }
@@ -148,7 +148,7 @@ final class BundleIntegrationTest extends TestCase
         $container->register('kernel', \stdClass::class);
         $container->register('logger', \Psr\Log\NullLogger::class);
 
-        $extension = new AsyncPlatformExtension();
+        $extension = new OctoExtension();
         $extension->load([[]], $container);
 
         // Register a service implementing ResetHookInterface

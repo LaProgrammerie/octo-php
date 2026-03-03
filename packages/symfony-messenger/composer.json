@@ -1,12 +1,12 @@
 {
-    "name": "async-platform/symfony-messenger",
+    "name": "octo-php/symfony-messenger",
     "description": "Symfony Messenger transport for the Async PHP Platform — in-process message passing via bounded OpenSwoole channels with backpressure.",
     "type": "library",
     "license": "MIT",
     "require": {
-        "php": ">=8.3",
-        "async-platform/runtime-pack": "^0.1",
-        "async-platform/symfony-bridge": "^0.1",
+        "php": ">=8.4",
+        "octo-php/runtime-pack": "^0.1",
+        "octo-php/symfony-bridge": "^0.1",
         "symfony/messenger": "^6.4|^7.0"
     },
     "require-dev": {
@@ -15,12 +15,12 @@
     },
     "autoload": {
         "psr-4": {
-            "AsyncPlatform\\SymfonyMessenger\\": "src/"
+            "Octo\\SymfonyMessenger\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "AsyncPlatform\\SymfonyMessenger\\Tests\\": "tests/"
+            "Octo\\SymfonyMessenger\\Tests\\": "tests/"
         }
     },
     "config": {

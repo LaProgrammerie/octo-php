@@ -1,11 +1,11 @@
-# async-platform/symfony-otel
+# octo-php/symfony-otel
 
 Intégration OpenTelemetry pour la plateforme async PHP — export de traces et métriques coroutine-safe depuis le bridge Symfony.
 
 ## Installation
 
 ```bash
-composer require async-platform/symfony-otel
+composer require octo-php/symfony-otel
 ```
 
 Ce package dépend de `open-telemetry/sdk` et `open-telemetry/exporter-otlp`. Si vous ne souhaitez pas d'OTEL, n'installez pas ce package.
@@ -23,8 +23,8 @@ Aucune variable d'environnement custom n'est introduite pour la configuration OT
 ### Via le bundle
 
 ```yaml
-# config/packages/async_platform.yaml
-async_platform:
+# config/packages/octo.yaml
+octo:
     otel:
         enabled: true
 ```

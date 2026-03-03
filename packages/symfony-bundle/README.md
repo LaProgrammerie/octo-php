@@ -1,15 +1,15 @@
-# async-platform/symfony-bundle
+# octo-php/symfony-bundle
 
 Bundle Symfony pour la plateforme async PHP — auto-configuration des services, recipe Flex, auto-détection des packages optionnels.
 
 ## Installation
 
 ```bash
-composer require async-platform/symfony-bundle
+composer require octo-php/symfony-bundle
 ```
 
 Si Symfony Flex est activé, la recipe crée automatiquement :
-- `config/packages/async_platform.yaml` — configuration par défaut
+- `config/packages/octo.yaml` — configuration par défaut
 - `bin/async-server.php` — script de bootstrap
 - Variables d'environnement dans `.env`
 
@@ -19,15 +19,15 @@ Si Symfony Flex est activé, la recipe crée automatiquement :
 // config/bundles.php
 return [
     // ...
-    AsyncPlatform\SymfonyBundle\AsyncPlatformBundle::class => ['all' => true],
+    Octo\SymfonyBundle\OctoBundle::class => ['all' => true],
 ];
 ```
 
 ## Configuration YAML
 
 ```yaml
-# config/packages/async_platform.yaml
-async_platform:
+# config/packages/octo.yaml
+octo:
     # Seuil RSS en bytes pour warning mémoire (défaut: 100 Mo)
     memory_warning_threshold: 104857600
 
@@ -37,22 +37,22 @@ async_platform:
     # Reboot kernel tous les N requêtes (0 = désactivé)
     kernel_reboot_every: 0
 
-    # Configuration Messenger (si async-platform/symfony-messenger installé)
+    # Configuration Messenger (si octo-php/symfony-messenger installé)
     messenger:
         channel_capacity: 100
         consumers: 1
         send_timeout: 5.0
 
-    # Configuration Realtime (si async-platform/symfony-realtime installé)
+    # Configuration Realtime (si octo-php/symfony-realtime installé)
     realtime:
         ws_max_lifetime_seconds: 3600
 
-    # Configuration OTEL (si async-platform/symfony-otel installé)
+    # Configuration OTEL (si octo-php/symfony-otel installé)
     otel:
         enabled: true
 ```
 
-La configuration YAML est mappée vers les variables d'environnement `ASYNC_PLATFORM_SYMFONY_*`.
+La configuration YAML est mappée vers les variables d'environnement `OCTOP_SYMFONY_*`.
 
 ## Services auto-enregistrés
 
@@ -65,7 +65,7 @@ Le bundle enregistre automatiquement dans le container Symfony :
 
 ## Auto-tagging ResetHookInterface
 
-Les services implémentant `AsyncPlatform\SymfonyBridge\ResetHookInterface` sont automatiquement taggés et injectés dans le `ResetManager` via le `ResetHookCompilerPass`.
+Les services implémentant `Octo\SymfonyBridge\ResetHookInterface` sont automatiquement taggés et injectés dans le `ResetManager` via le `ResetHookCompilerPass`.
 
 ```php
 // Aucune configuration manuelle requise — le bundle détecte et enregistre les hooks
@@ -81,9 +81,9 @@ Le bundle détecte automatiquement les packages de la suite installés via `clas
 
 | Package installé | Effet |
 |---|---|
-| `async-platform/symfony-messenger` | Transport `OpenSwooleTransport` + factory enregistrés |
-| `async-platform/symfony-realtime` | `WebSocketHandler` + helpers SSE enregistrés |
-| `async-platform/symfony-otel` | Span processor + metrics exporter configurés |
+| `octo-php/symfony-messenger` | Transport `OpenSwooleTransport` + factory enregistrés |
+| `octo-php/symfony-realtime` | `WebSocketHandler` + helpers SSE enregistrés |
+| `octo-php/symfony-otel` | Span processor + metrics exporter configurés |
 
 Si un package n'est pas installé, aucune erreur n'est levée.
 
@@ -102,9 +102,9 @@ php bin/async-server.php
 ### `.env`
 
 ```dotenv
-ASYNC_PLATFORM_SYMFONY_MEMORY_WARNING_THRESHOLD=104857600
-ASYNC_PLATFORM_SYMFONY_RESET_WARNING_MS=50
-ASYNC_PLATFORM_SYMFONY_KERNEL_REBOOT_EVERY=0
+OCTOP_SYMFONY_MEMORY_WARNING_THRESHOLD=104857600
+OCTOP_SYMFONY_RESET_WARNING_MS=50
+OCTOP_SYMFONY_KERNEL_REBOOT_EVERY=0
 ```
 
 ## Profiler en mode long-running
@@ -125,7 +125,7 @@ Les données profiler des requêtes précédentes sont accessibles via `/_profil
 
 ## Optionalité du bundle
 
-Le bundle est optionnel. Le core bridge (`async-platform/symfony-bridge`) reste utilisable sans le bundle en mode callable handler pur. Voir le [README du core bridge](../symfony-bridge/) pour le bootstrap manuel.
+Le bundle est optionnel. Le core bridge (`octo-php/symfony-bridge`) reste utilisable sans le bundle en mode callable handler pur. Voir le [README du core bridge](../symfony-bridge/) pour le bootstrap manuel.
 
 ## Licence
 

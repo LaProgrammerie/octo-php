@@ -70,8 +70,8 @@ $production = ($command === 'async:run');
 // ServerBootstrap::run() expects a callable $appHandler and a bool $production flag.
 
 // Check if ServerBootstrap class exists (it will be created in Task 9)
-if (class_exists(\AsyncPlatform\RuntimePack\ServerBootstrap::class)) {
-    \AsyncPlatform\RuntimePack\ServerBootstrap::run(
+if (class_exists(\Octo\RuntimePack\ServerBootstrap::class)) {
+    \Octo\RuntimePack\ServerBootstrap::run(
         appHandler: static function (\OpenSwoole\Http\Request $request, $response): void {
             // Default handler — skeleton will override this
             $response->header('Content-Type', 'application/json');

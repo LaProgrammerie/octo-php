@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBundle\Tests\Unit;
+namespace Octo\SymfonyBundle\Tests\Unit;
 
-use AsyncPlatform\SymfonyBridge\ResetHookInterface;
-use AsyncPlatform\SymfonyBridge\ResetManager;
-use AsyncPlatform\SymfonyBundle\DependencyInjection\Compiler\ResetHookCompilerPass;
+use Octo\SymfonyBridge\ResetHookInterface;
+use Octo\SymfonyBridge\ResetManager;
+use Octo\SymfonyBundle\DependencyInjection\Compiler\ResetHookCompilerPass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;

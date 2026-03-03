@@ -11,7 +11,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 5) . '/vendor/autoload.php';
 
-use AsyncPlatform\RuntimePack\ServerBootstrap;
+use Octo\RuntimePack\ServerBootstrap;
 
 $appHandler = static function (object $request, object $response): void {
     $path = $request->server['request_uri'] ?? '/';

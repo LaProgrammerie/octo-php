@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyRealtime\Tests\Property;
+namespace Octo\SymfonyRealtime\Tests\Property;
 
-use AsyncPlatform\SymfonyRealtime\SseEvent;
+use Octo\SymfonyRealtime\SseEvent;
 use Eris\Generators;
 use Eris\TestTrait;
 use PHPUnit\Framework\Attributes\Test;

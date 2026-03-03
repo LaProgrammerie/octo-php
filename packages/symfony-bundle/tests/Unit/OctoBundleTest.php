@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBundle\Tests\Unit;
+namespace Octo\SymfonyBundle\Tests\Unit;
 
-use AsyncPlatform\SymfonyBundle\AsyncPlatformBundle;
-use AsyncPlatform\SymfonyBundle\DependencyInjection\Compiler\ResetHookCompilerPass;
+use Octo\SymfonyBundle\OctoBundle;
+use Octo\SymfonyBundle\DependencyInjection\Compiler\ResetHookCompilerPass;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
-final class AsyncPlatformBundleTest extends TestCase
+final class OctoBundleTest extends TestCase
 {
     public function testBuildRegistersResetHookCompilerPass(): void
     {
         $container = new ContainerBuilder();
-        $bundle = new AsyncPlatformBundle();
+        $bundle = new OctoBundle();
 
         $bundle->build($container);
 
@@ -34,7 +34,7 @@ final class AsyncPlatformBundleTest extends TestCase
 
     public function testBundleExtendsSymfonyBundle(): void
     {
-        $bundle = new AsyncPlatformBundle();
+        $bundle = new OctoBundle();
 
         self::assertInstanceOf(\Symfony\Component\HttpKernel\Bundle\Bundle::class, $bundle);
     }

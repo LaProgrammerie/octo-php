@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack\Tests\Unit;
+namespace Octo\RuntimePack\Tests\Unit;
 
-use AsyncPlatform\RuntimePack\ServerBootstrap;
+use Octo\RuntimePack\ServerBootstrap;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -83,7 +83,7 @@ final class ServerBootstrapTest extends TestCase
         // Access private buildSettings via reflection
         $method = new \ReflectionMethod(ServerBootstrap::class, 'buildSettings');
 
-        $config = new \AsyncPlatform\RuntimePack\ServerConfig(
+        $config = new \Octo\RuntimePack\ServerConfig(
             host: '127.0.0.1',
             port: 9090,
             workers: 4,
@@ -108,7 +108,7 @@ final class ServerBootstrapTest extends TestCase
     {
         $method = new \ReflectionMethod(ServerBootstrap::class, 'buildSettings');
 
-        $config = new \AsyncPlatform\RuntimePack\ServerConfig();
+        $config = new \Octo\RuntimePack\ServerConfig();
         $settings = $method->invoke(null, $config);
 
         // Default values from ServerConfig
@@ -124,7 +124,7 @@ final class ServerBootstrapTest extends TestCase
     {
         $method = new \ReflectionMethod(ServerBootstrap::class, 'buildSettings');
 
-        $config = new \AsyncPlatform\RuntimePack\ServerConfig();
+        $config = new \Octo\RuntimePack\ServerConfig();
         $settings = $method->invoke(null, $config);
 
         // http_server_software is not supported in OpenSwoole 26.x
@@ -135,7 +135,7 @@ final class ServerBootstrapTest extends TestCase
     {
         $method = new \ReflectionMethod(ServerBootstrap::class, 'buildSettings');
 
-        $config = new \AsyncPlatform\RuntimePack\ServerConfig();
+        $config = new \Octo\RuntimePack\ServerConfig();
         $settings = $method->invoke(null, $config);
 
         $expectedKeys = [
@@ -169,7 +169,7 @@ final class ServerBootstrapTest extends TestCase
         $this->assertFalse($reflection->hasMethod('onRequest'));
 
         // Verify RequestHandler exists and has handle()
-        $rhReflection = new \ReflectionClass(\AsyncPlatform\RuntimePack\RequestHandler::class);
+        $rhReflection = new \ReflectionClass(\Octo\RuntimePack\RequestHandler::class);
         $this->assertTrue($rhReflection->hasMethod('handle'));
     }
 }

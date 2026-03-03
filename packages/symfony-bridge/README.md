@@ -1,11 +1,11 @@
-# async-platform/symfony-bridge
+# octo-php/symfony-bridge
 
 Core Symfony HttpKernel adapter pour la plateforme async PHP — exécute une application Symfony sur le runtime OpenSwoole via `ServerBootstrap::run()`.
 
 ## Installation
 
 ```bash
-composer require async-platform/symfony-bridge
+composer require octo-php/symfony-bridge
 ```
 
 ## Compatibilité
@@ -15,7 +15,7 @@ composer require async-platform/symfony-bridge
 | PHP | >= 8.3 |
 | Symfony HttpKernel | ^6.4 LTS, ^7.0 |
 | Symfony HttpFoundation | ^6.4 LTS, ^7.0 |
-| async-platform/runtime-pack | ^0.1 |
+| octo-php/runtime-pack | ^0.1 |
 
 ## Bootstrap minimal
 
@@ -25,8 +25,8 @@ composer require async-platform/symfony-bridge
 declare(strict_types=1);
 
 use App\Kernel;
-use AsyncPlatform\RuntimePack\ServerBootstrap;
-use AsyncPlatform\SymfonyBridge\HttpKernelAdapter;
+use Octo\RuntimePack\ServerBootstrap;
+use Octo\SymfonyBridge\HttpKernelAdapter;
 
 require_once __DIR__ . '/vendor/autoload.php';
 
@@ -44,15 +44,15 @@ ServerBootstrap::run(
 );
 ```
 
-Le bridge est un callable handler pur : aucune commande CLI custom n'est imposée. Pour une intégration automatique via bundle et recipe Flex, voir [async-platform/symfony-bundle](../symfony-bundle/).
+Le bridge est un callable handler pur : aucune commande CLI custom n'est imposée. Pour une intégration automatique via bundle et recipe Flex, voir [octo-php/symfony-bundle](../symfony-bundle/).
 
 ## Variables d'environnement
 
 | Variable | Type | Défaut | Description |
 |---|---|---|---|
-| `ASYNC_PLATFORM_SYMFONY_MEMORY_WARNING_THRESHOLD` | int (bytes) | `104857600` (100 Mo) | Seuil RSS au-delà duquel un warning est émis après chaque reset |
-| `ASYNC_PLATFORM_SYMFONY_RESET_WARNING_MS` | int (ms) | `50` | Seuil de durée de reset au-delà duquel un warning est émis |
-| `ASYNC_PLATFORM_SYMFONY_KERNEL_REBOOT_EVERY` | int | `0` (désactivé) | Nombre de requêtes avant un reboot complet du kernel (`shutdown()` + `boot()`) |
+| `OCTOP_SYMFONY_MEMORY_WARNING_THRESHOLD` | int (bytes) | `104857600` (100 Mo) | Seuil RSS au-delà duquel un warning est émis après chaque reset |
+| `OCTOP_SYMFONY_RESET_WARNING_MS` | int (ms) | `50` | Seuil de durée de reset au-delà duquel un warning est émis |
+| `OCTOP_SYMFONY_KERNEL_REBOOT_EVERY` | int | `0` (désactivé) | Nombre de requêtes avant un reboot complet du kernel (`shutdown()` + `boot()`) |
 
 ## Cycle de vie d'une requête
 
@@ -118,7 +118,7 @@ return new StreamedResponse(function () {
 
 Quand `Content-Type: text/event-stream` est détecté, le bridge désactive automatiquement la compression HTTP et le buffering (`X-Accel-Buffering: no`, `Cache-Control: no-cache`). Chaque chunk est flushé immédiatement.
 
-Pour des helpers SSE avancés (formatage W3C, keep-alive, reconnection ID), voir [async-platform/symfony-realtime](../symfony-realtime/).
+Pour des helpers SSE avancés (formatage W3C, keep-alive, reconnection ID), voir [octo-php/symfony-realtime](../symfony-realtime/).
 
 ## Recommandations anti-leak
 
@@ -152,7 +152,7 @@ doctrine:
 Enregistrer un `DoctrineResetHook` pour nettoyer l'EntityManager :
 
 ```php
-use AsyncPlatform\SymfonyBridge\DoctrineResetHook;
+use Octo\SymfonyBridge\DoctrineResetHook;
 
 // Le hook appelle $em->clear() et rollback les transactions orphelines
 $resetManager->addHook(new DoctrineResetHook($entityManager, $logger));
@@ -165,7 +165,7 @@ Avec le bundle, les services implémentant `ResetHookInterface` sont auto-taggé
 Si le reset standard ne suffit pas (leaks dans des services non-resettables), activez le reboot périodique :
 
 ```bash
-ASYNC_PLATFORM_SYMFONY_KERNEL_REBOOT_EVERY=1000
+OCTOP_SYMFONY_KERNEL_REBOOT_EVERY=1000
 ```
 
 Le kernel est reconstruit (`shutdown()` + `boot()`) tous les N requêtes. Le worker n'est pas tué — seul le kernel et le container sont reconstruits.
@@ -179,7 +179,7 @@ Le `HttpKernel` Symfony s'exécute dans la coroutine de requête OpenSwoole. Les
 Utiliser via `IoExecutor` / `BlockingPool` si les hooks PDO ne sont pas validés. Configurer le pool de connexions pour le long-running :
 
 ```php
-use AsyncPlatform\RuntimePack\IoExecutor;
+use Octo\RuntimePack\IoExecutor;
 
 $result = IoExecutor::run(function () use ($repository) {
     return $repository->findAll();
@@ -233,21 +233,21 @@ Le bridge fournit un `RequestIdProcessor` qui propage le `request_id` dans tous 
 ```yaml
 # config/services.yaml
 services:
-    AsyncPlatform\SymfonyBridge\RequestIdProcessor:
+    Octo\SymfonyBridge\RequestIdProcessor:
         tags:
             - { name: monolog.processor }
 ```
 
 ### Enregistrement automatique
 
-Avec le bundle `async-platform/symfony-bundle`, le `RequestIdProcessor` est auto-enregistré comme processeur Monolog si Monolog est disponible.
+Avec le bundle `octo-php/symfony-bundle`, le `RequestIdProcessor` est auto-enregistré comme processeur Monolog si Monolog est disponible.
 
 ## ResetHookInterface custom
 
 Pour enregistrer un hook de reset custom exécuté après le reset Symfony principal :
 
 ```php
-use AsyncPlatform\SymfonyBridge\ResetHookInterface;
+use Octo\SymfonyBridge\ResetHookInterface;
 
 final class MyCustomResetHook implements ResetHookInterface
 {

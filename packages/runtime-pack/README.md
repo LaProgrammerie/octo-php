@@ -1,4 +1,4 @@
-# async-platform/runtime-pack
+# octo-php/runtime-pack
 
 OpenSwoole runtime pack — serveur HTTP prod-safe avec healthchecks, graceful shutdown, reload policy, structured concurrency, et observabilité.
 
@@ -11,7 +11,7 @@ OpenSwoole runtime pack — serveur HTTP prod-safe avec healthchecks, graceful s
 ## Installation
 
 ```bash
-composer require async-platform/runtime-pack
+composer require octo-php/runtime-pack
 ```
 
 ## Usage minimal
@@ -20,7 +20,7 @@ composer require async-platform/runtime-pack
 <?php
 declare(strict_types=1);
 
-use AsyncPlatform\RuntimePack\ServerBootstrap;
+use Octo\RuntimePack\ServerBootstrap;
 
 require_once __DIR__ . '/vendor/autoload.php';
 
@@ -136,7 +136,7 @@ Extraction ou génération du header `X-Request-Id` pour chaque requête entrant
 ## BlockingPool — usage
 
 ```php
-use AsyncPlatform\RuntimePack\IoExecutor;
+use Octo\RuntimePack\IoExecutor;
 
 // Via IoExecutor (recommandé — routage automatique)
 $result = $io->run(
@@ -155,22 +155,22 @@ $result = $blockingPool->run('user.find', ['id' => 42], timeout: 5.0);
 
 | Variable | Type | Défaut | Description |
 | -------- | ---- | ------ | ----------- |
-| `ASYNC_PLATFORM_HOST` | string | `0.0.0.0` | Adresse de bind |
-| `ASYNC_PLATFORM_PORT` | int | `8080` | Port de bind |
-| `ASYNC_PLATFORM_WORKERS` | int | `0` (auto) | Nombre de workers (0 = auto-detect CPU cores) |
-| `ASYNC_PLATFORM_MAX_REQUEST_BODY_SIZE` | int (bytes) | `2097152` (2 MB) | Taille max du body HTTP |
-| `ASYNC_PLATFORM_MAX_CONNECTIONS` | int | `1024` | Connexions simultanées max |
-| `ASYNC_PLATFORM_REQUEST_HANDLER_TIMEOUT` | int (s) | `60` | Deadline applicative par requête |
-| `ASYNC_PLATFORM_SHUTDOWN_TIMEOUT` | int (s) | `30` | Timeout graceful shutdown |
-| `ASYNC_PLATFORM_MAX_REQUESTS` | int | `10000` | Max requêtes par worker avant reload (0 = désactivé) |
-| `ASYNC_PLATFORM_MAX_UPTIME` | int (s) | `3600` | Max uptime worker avant reload (0 = désactivé) |
-| `ASYNC_PLATFORM_MAX_MEMORY_RSS` | int (bytes) | `134217728` (128 MB) | Max RSS worker avant reload (0 = désactivé) |
-| `ASYNC_PLATFORM_WORKER_RESTART_MIN_INTERVAL` | int (s) | `5` | Intervalle min entre restarts (anti crash-loop) |
-| `ASYNC_PLATFORM_BLOCKING_POOL_WORKERS` | int | `4` | Nombre de workers du BlockingPool (0 = désactivé) |
-| `ASYNC_PLATFORM_BLOCKING_POOL_QUEUE_SIZE` | int | `64` | Capacité de la queue bornée du BlockingPool |
-| `ASYNC_PLATFORM_BLOCKING_POOL_TIMEOUT` | int (s) | `30` | Timeout par défaut des jobs BlockingPool |
-| `ASYNC_PLATFORM_MAX_CONCURRENT_SCOPES` | int | `0` | Limite de scopes concurrents par worker (0 = illimité) |
-| `ASYNC_PLATFORM_EVENT_LOOP_LAG_THRESHOLD_MS` | float (ms) | `500.0` | Seuil de lag event loop pour /readyz 503 (0 = désactivé) |
+| `OCTOP_HOST` | string | `0.0.0.0` | Adresse de bind |
+| `OCTOP_PORT` | int | `8080` | Port de bind |
+| `OCTOP_WORKERS` | int | `0` (auto) | Nombre de workers (0 = auto-detect CPU cores) |
+| `OCTOP_MAX_REQUEST_BODY_SIZE` | int (bytes) | `2097152` (2 MB) | Taille max du body HTTP |
+| `OCTOP_MAX_CONNECTIONS` | int | `1024` | Connexions simultanées max |
+| `OCTOP_REQUEST_HANDLER_TIMEOUT` | int (s) | `60` | Deadline applicative par requête |
+| `OCTOP_SHUTDOWN_TIMEOUT` | int (s) | `30` | Timeout graceful shutdown |
+| `OCTOP_MAX_REQUESTS` | int | `10000` | Max requêtes par worker avant reload (0 = désactivé) |
+| `OCTOP_MAX_UPTIME` | int (s) | `3600` | Max uptime worker avant reload (0 = désactivé) |
+| `OCTOP_MAX_MEMORY_RSS` | int (bytes) | `134217728` (128 MB) | Max RSS worker avant reload (0 = désactivé) |
+| `OCTOP_WORKER_RESTART_MIN_INTERVAL` | int (s) | `5` | Intervalle min entre restarts (anti crash-loop) |
+| `OCTOP_BLOCKING_POOL_WORKERS` | int | `4` | Nombre de workers du BlockingPool (0 = désactivé) |
+| `OCTOP_BLOCKING_POOL_QUEUE_SIZE` | int | `64` | Capacité de la queue bornée du BlockingPool |
+| `OCTOP_BLOCKING_POOL_TIMEOUT` | int (s) | `30` | Timeout par défaut des jobs BlockingPool |
+| `OCTOP_MAX_CONCURRENT_SCOPES` | int | `0` | Limite de scopes concurrents par worker (0 = illimité) |
+| `OCTOP_EVENT_LOOP_LAG_THRESHOLD_MS` | float (ms) | `500.0` | Seuil de lag event loop pour /readyz 503 (0 = désactivé) |
 
 ## Métriques
 
@@ -211,7 +211,7 @@ Séquence d'arrêt :
 
 1. `SIGTERM` → le worker cesse d'accepter de nouvelles requêtes (réponse 503)
 2. Les requêtes en cours se terminent naturellement (drain)
-3. Hard timer (`ASYNC_PLATFORM_SHUTDOWN_TIMEOUT`) → arrêt forcé si le drain n'est pas terminé
+3. Hard timer (`OCTOP_SHUTDOWN_TIMEOUT`) → arrêt forcé si le drain n'est pas terminé
 4. Double `SIGTERM` → arrêt forcé immédiat
 
 En mode dev, `SIGINT` provoque un arrêt immédiat sans drain.

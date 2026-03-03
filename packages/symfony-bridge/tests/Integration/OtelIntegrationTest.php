@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBridge\Tests\Integration;
+namespace Octo\SymfonyBridge\Tests\Integration;
 
 require_once __DIR__ . '/IntegrationTestDoubles.php';
 
-use AsyncPlatform\SymfonyOtel\OtelRequestListener;
-use AsyncPlatform\SymfonyOtel\OtelSpanFactory;
-use AsyncPlatform\SymfonyOtel\Tracing\FakeSpan;
-use AsyncPlatform\SymfonyOtel\Tracing\FakeTracer;
-use AsyncPlatform\SymfonyOtel\Tracing\SpanKind;
-use AsyncPlatform\SymfonyOtel\Tracing\StatusCode;
-use AsyncPlatform\SymfonyOtel\Tracing\W3CTraceContextPropagator;
+use Octo\SymfonyOtel\OtelRequestListener;
+use Octo\SymfonyOtel\OtelSpanFactory;
+use Octo\SymfonyOtel\Tracing\FakeSpan;
+use Octo\SymfonyOtel\Tracing\FakeTracer;
+use Octo\SymfonyOtel\Tracing\SpanKind;
+use Octo\SymfonyOtel\Tracing\StatusCode;
+use Octo\SymfonyOtel\Tracing\W3CTraceContextPropagator;
 use PHPUnit\Framework\TestCase;
 
 /**

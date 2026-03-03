@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBridge\Tests\Integration;
+namespace Octo\SymfonyBridge\Tests\Integration;
 
 require_once __DIR__ . '/IntegrationTestDoubles.php';
 
-use AsyncPlatform\SymfonyMessenger\ConsumerManager;
-use AsyncPlatform\SymfonyMessenger\FakeChannel;
-use AsyncPlatform\SymfonyMessenger\MessengerMetrics;
-use AsyncPlatform\SymfonyMessenger\OpenSwooleTransport;
-use AsyncPlatform\SymfonyMessenger\OpenSwooleTransportFactory;
+use Octo\SymfonyMessenger\ConsumerManager;
+use Octo\SymfonyMessenger\FakeChannel;
+use Octo\SymfonyMessenger\MessengerMetrics;
+use Octo\SymfonyMessenger\OpenSwooleTransport;
+use Octo\SymfonyMessenger\OpenSwooleTransportFactory;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Exception\TransportException;

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyMessenger;
+namespace Octo\SymfonyMessenger;
 
-use AsyncPlatform\SymfonyBridge\MetricsBridge;
+use Octo\SymfonyBridge\MetricsBridge;
 
 /**
  * Messenger-specific metrics bridge.

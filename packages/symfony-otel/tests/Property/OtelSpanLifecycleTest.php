@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyOtel\Tests\Property;
+namespace Octo\SymfonyOtel\Tests\Property;
 
-use AsyncPlatform\SymfonyOtel\OtelRequestListener;
-use AsyncPlatform\SymfonyOtel\OtelSpanFactory;
-use AsyncPlatform\SymfonyOtel\Tracing\FakeTracer;
-use AsyncPlatform\SymfonyOtel\Tracing\SpanKind;
-use AsyncPlatform\SymfonyOtel\Tracing\StatusCode;
-use AsyncPlatform\SymfonyOtel\Tracing\W3CTraceContextPropagator;
+use Octo\SymfonyOtel\OtelRequestListener;
+use Octo\SymfonyOtel\OtelSpanFactory;
+use Octo\SymfonyOtel\Tracing\FakeTracer;
+use Octo\SymfonyOtel\Tracing\SpanKind;
+use Octo\SymfonyOtel\Tracing\StatusCode;
+use Octo\SymfonyOtel\Tracing\W3CTraceContextPropagator;
 use Eris\Generators;
 use Eris\TestTrait;
 use PHPUnit\Framework\Attributes\Test;

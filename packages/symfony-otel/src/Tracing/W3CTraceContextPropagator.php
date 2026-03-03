@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyOtel\Tracing;
+namespace Octo\SymfonyOtel\Tracing;
 
 /**
  * Default W3C Trace Context propagator.

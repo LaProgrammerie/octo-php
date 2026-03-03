@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyOtel\Tracing;
+namespace Octo\SymfonyOtel\Tracing;
 
 /**
  * In-memory span builder for testing without the OTEL SDK.

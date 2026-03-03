@@ -1,11 +1,11 @@
 {
-    "name": "async-platform/symfony-otel",
+    "name": "octo-php/symfony-otel",
     "description": "OpenTelemetry integration for the Async PHP Platform — coroutine-safe span export, request tracing, and metrics bridge for Symfony applications.",
     "type": "library",
     "license": "MIT",
     "require": {
-        "php": ">=8.3",
-        "async-platform/symfony-bridge": "^0.1"
+        "php": ">=8.4",
+        "octo-php/symfony-bridge": "^0.1"
     },
     "require-dev": {
         "giorgiosironi/eris": "^1.0",
@@ -13,12 +13,12 @@
     },
     "autoload": {
         "psr-4": {
-            "AsyncPlatform\\SymfonyOtel\\": "src/"
+            "Octo\\SymfonyOtel\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "AsyncPlatform\\SymfonyOtel\\Tests\\": "tests/"
+            "Octo\\SymfonyOtel\\Tests\\": "tests/"
         }
     },
     "config": {

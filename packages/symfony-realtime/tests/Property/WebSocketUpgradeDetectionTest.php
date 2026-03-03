@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyRealtime\Tests\Property;
+namespace Octo\SymfonyRealtime\Tests\Property;
 
-use AsyncPlatform\SymfonyRealtime\RealtimeServerAdapter;
-use AsyncPlatform\SymfonyRealtime\WebSocketContext;
-use AsyncPlatform\SymfonyRealtime\WebSocketHandler;
+use Octo\SymfonyRealtime\RealtimeServerAdapter;
+use Octo\SymfonyRealtime\WebSocketContext;
+use Octo\SymfonyRealtime\WebSocketHandler;
 use Eris\Generators;
 use Eris\TestTrait;
 use PHPUnit\Framework\Attributes\Test;

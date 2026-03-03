@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyMessenger;
+namespace Octo\SymfonyMessenger;
 
 /**
  * Abstraction over OpenSwoole\Coroutine\Channel for testability.

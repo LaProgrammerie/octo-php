@@ -1,12 +1,12 @@
 {
-    "name": "async-platform/symfony-realtime",
+    "name": "octo-php/symfony-realtime",
     "description": "Realtime package for the Async PHP Platform — WebSocket handler, SSE event formatting/streaming, and HTTP/WS routing adapter.",
     "type": "library",
     "license": "MIT",
     "require": {
-        "php": ">=8.3",
-        "async-platform/runtime-pack": "^0.1",
-        "async-platform/symfony-bridge": "^0.1"
+        "php": ">=8.4",
+        "octo-php/runtime-pack": "^0.1",
+        "octo-php/symfony-bridge": "^0.1"
     },
     "require-dev": {
         "giorgiosironi/eris": "^1.0",
@@ -14,12 +14,12 @@
     },
     "autoload": {
         "psr-4": {
-            "AsyncPlatform\\SymfonyRealtime\\": "src/"
+            "Octo\\SymfonyRealtime\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "AsyncPlatform\\SymfonyRealtime\\Tests\\": "tests/"
+            "Octo\\SymfonyRealtime\\Tests\\": "tests/"
         }
     },
     "config": {

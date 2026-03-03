@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack\Exception;
+namespace Octo\RuntimePack\Exception;
 
 /**
  * Exception thrown by BlockingPool::runOrRespondError() after sending the HTTP response.

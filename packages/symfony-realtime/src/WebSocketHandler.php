@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyRealtime;
+namespace Octo\SymfonyRealtime;
 
 /**
  * Interface for handling WebSocket connections.

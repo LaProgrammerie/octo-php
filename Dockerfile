@@ -2,7 +2,7 @@
 # Async PHP Platform — Multi-stage Dockerfile
 # =============================================================================
 # Stages:
-#   base — PHP 8.3 CLI (Debian bookworm) + OpenSwoole extension
+#   base — PHP 8.4 CLI (Debian bookworm) + OpenSwoole extension
 #   dev  — base + Composer (for local development)
 #   prod — base + OPcache + non-root user + HEALTHCHECK
 #
@@ -10,13 +10,13 @@
 # =============================================================================
 
 # ---------------------------------------------------------------------------
-# Stage 1: base — PHP 8.3 CLI + OpenSwoole
+# Stage 1: base — PHP 8.4 CLI + OpenSwoole
 # ---------------------------------------------------------------------------
 # libcurl4-openssl-dev: required for OpenSwoole curl hook support (SWOOLE_HOOK_CURL)
 # libssl-dev: required for SSL/TLS hook support
 # The effective status of SWOOLE_HOOK_CURL depends on OpenSwoole compilation —
 # verified at boot via startup check that logs "SWOOLE_HOOK_CURL active: yes/no"
-FROM php:8.3-cli-bookworm AS base
+FROM php:8.4-cli-bookworm AS base
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
@@ -29,7 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
     libcurl4-openssl-dev \
     && docker-php-ext-install zip sockets \
-    && pecl install openswoole \
+    && pecl install openswoole-25.2.0 \
     && docker-php-ext-enable openswoole \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/pear

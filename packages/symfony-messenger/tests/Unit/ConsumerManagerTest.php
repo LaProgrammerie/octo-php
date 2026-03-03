@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyMessenger\Tests\Unit;
+namespace Octo\SymfonyMessenger\Tests\Unit;
 
-use AsyncPlatform\SymfonyMessenger\ConsumerManager;
-use AsyncPlatform\SymfonyMessenger\OpenSwooleTransport;
+use Octo\SymfonyMessenger\ConsumerManager;
+use Octo\SymfonyMessenger\OpenSwooleTransport;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack\Tests\Property;
+namespace Octo\RuntimePack\Tests\Property;
 
-use AsyncPlatform\RuntimePack\Exception\ConfigValidationException;
-use AsyncPlatform\RuntimePack\ServerConfig;
-use AsyncPlatform\RuntimePack\ServerConfigFactory;
+use Octo\RuntimePack\Exception\ConfigValidationException;
+use Octo\RuntimePack\ServerConfig;
+use Octo\RuntimePack\ServerConfigFactory;
 use Eris\Generators;
 use Eris\TestTrait;
 use PHPUnit\Framework\Attributes\Test;

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyRealtime\Tests\Unit;
+namespace Octo\SymfonyRealtime\Tests\Unit;
 
-use AsyncPlatform\SymfonyRealtime\RealtimeMetrics;
-use AsyncPlatform\SymfonyRealtime\RealtimeServerAdapter;
-use AsyncPlatform\SymfonyRealtime\WebSocketContext;
-use AsyncPlatform\SymfonyRealtime\WebSocketHandler;
+use Octo\SymfonyRealtime\RealtimeMetrics;
+use Octo\SymfonyRealtime\RealtimeServerAdapter;
+use Octo\SymfonyRealtime\WebSocketContext;
+use Octo\SymfonyRealtime\WebSocketHandler;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;

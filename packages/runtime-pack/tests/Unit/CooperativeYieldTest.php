@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack\Tests\Unit;
+namespace Octo\RuntimePack\Tests\Unit;
 
-use AsyncPlatform\RuntimePack\CooperativeYield;
+use Octo\RuntimePack\CooperativeYield;
 use PHPUnit\Framework\TestCase;
 
 /**
- * @covers \AsyncPlatform\RuntimePack\CooperativeYield
+ * @covers \Octo\RuntimePack\CooperativeYield
  */
 final class CooperativeYieldTest extends TestCase
 {

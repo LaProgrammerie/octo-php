@@ -47,7 +47,7 @@ Chaque hook est exécuté dans un `try/catch` : un hook qui échoue ne bloque pa
 
 - Le reset est **toujours** exécuté dans un bloc `finally` (même si le handler a levé une exception)
 - La durée du reset est mesurée et exposée comme métrique (`symfony_reset_duration_ms`)
-- Un warning est émis si la durée dépasse le seuil configurable (`ASYNC_PLATFORM_SYMFONY_RESET_WARNING_MS`)
+- Un warning est émis si la durée dépasse le seuil configurable (`OCTOP_SYMFONY_RESET_WARNING_MS`)
 - Le reset ne tue jamais le worker : les erreurs sont loguées et le traitement continue
 
 ## Alternatives rejetées
@@ -60,7 +60,7 @@ Chaque hook est exécuté dans un `try/catch` : un hook qui échoue ne bloque pa
 ### Reset via shutdown/boot du kernel à chaque requête
 
 - Trop coûteux en performance (reconstruction complète du container)
-- Réservé comme fallback configurable via `ASYNC_PLATFORM_SYMFONY_KERNEL_REBOOT_EVERY`
+- Réservé comme fallback configurable via `OCTOP_SYMFONY_KERNEL_REBOOT_EVERY`
 
 ### Pas de hooks custom (reset Symfony uniquement)
 

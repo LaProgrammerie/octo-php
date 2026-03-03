@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyRealtime\Tests\Unit;
+namespace Octo\SymfonyRealtime\Tests\Unit;
 
-use AsyncPlatform\SymfonyRealtime\SseEvent;
-use AsyncPlatform\SymfonyRealtime\SseStream;
+use Octo\SymfonyRealtime\SseEvent;
+use Octo\SymfonyRealtime\SseStream;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

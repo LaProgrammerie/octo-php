@@ -59,7 +59,7 @@ declare(strict_types=1);
  * IoExecutor calls it directly (no BlockingPool overhead).
  * Otherwise, it offloads to BlockingPool via the named job.
  *
- * @param \AsyncPlatform\RuntimePack\ExecutionPolicy $policy The policy instance with defaults already loaded
+ * @param \Octo\RuntimePack\ExecutionPolicy $policy The policy instance with defaults already loaded
  * @return void
  */
 return static function (object $policy): void {
@@ -73,13 +73,13 @@ return static function (object $policy): void {
     // Example: If you've validated that PDO MySQL is coroutine-safe on your prod image
     // (integration proof passed), you can promote it to DirectCoroutineOk:
     //
-    // $policy->register('pdo_mysql', \AsyncPlatform\RuntimePack\ExecutionStrategy::DirectCoroutineOk);
+    // $policy->register('pdo_mysql', \Octo\RuntimePack\ExecutionStrategy::DirectCoroutineOk);
 
     // Example: Register a custom dependency that must always be offloaded:
     //
-    // $policy->register('legacy_soap_client', \AsyncPlatform\RuntimePack\ExecutionStrategy::MustOffload);
+    // $policy->register('legacy_soap_client', \Octo\RuntimePack\ExecutionStrategy::MustOffload);
 
     // Example: Register a dependency that needs investigation:
     //
-    // $policy->register('custom_http_client', \AsyncPlatform\RuntimePack\ExecutionStrategy::ProbeRequired);
+    // $policy->register('custom_http_client', \Octo\RuntimePack\ExecutionStrategy::ProbeRequired);
 };

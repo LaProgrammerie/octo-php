@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyOtel;
+namespace Octo\SymfonyOtel;
 
-use AsyncPlatform\SymfonyOtel\Tracing\SpanInterface;
-use AsyncPlatform\SymfonyOtel\Tracing\StatusCode;
-use AsyncPlatform\SymfonyOtel\Tracing\TextMapPropagatorInterface;
+use Octo\SymfonyOtel\Tracing\SpanInterface;
+use Octo\SymfonyOtel\Tracing\StatusCode;
+use Octo\SymfonyOtel\Tracing\TextMapPropagatorInterface;
 
 /**
  * OTEL listener integrated into the HttpKernelAdapter lifecycle.

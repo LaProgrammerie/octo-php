@@ -125,10 +125,10 @@ Override defaults in `config/execution_policy.php`:
 ```php
 return static function (object $policy): void {
     // Promote PDO MySQL after integration proof passes on prod image
-    $policy->register('pdo_mysql', \AsyncPlatform\RuntimePack\ExecutionStrategy::DirectCoroutineOk);
+    $policy->register('pdo_mysql', \Octo\RuntimePack\ExecutionStrategy::DirectCoroutineOk);
 
     // Register a custom blocking dependency
-    $policy->register('legacy_soap', \AsyncPlatform\RuntimePack\ExecutionStrategy::MustOffload);
+    $policy->register('legacy_soap', \Octo\RuntimePack\ExecutionStrategy::MustOffload);
 };
 ```
 

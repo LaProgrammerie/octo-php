@@ -18,8 +18,8 @@
 declare(strict_types=1);
 
 use App\Kernel;
-use AsyncPlatform\RuntimePack\ServerBootstrap;
-use AsyncPlatform\SymfonyBridge\HttpKernelAdapter;
+use Octo\RuntimePack\ServerBootstrap;
+use Octo\SymfonyBridge\HttpKernelAdapter;
 
 require_once dirname(__DIR__) . '/vendor/autoload.php';
 

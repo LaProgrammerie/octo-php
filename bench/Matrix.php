@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\Bench;
+namespace Octo\Bench;
 
 /**
  * Matrix runner: executes multiple bench combinations and produces

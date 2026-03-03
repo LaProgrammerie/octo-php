@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBundle\Tests\Unit;
+namespace Octo\SymfonyBundle\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 
@@ -20,14 +20,14 @@ final class FlexRecipeTest extends TestCase
 
     public function testConfigPackageFileExists(): void
     {
-        $path = $this->recipeDir . '/config/packages/async_platform.yaml';
+        $path = $this->recipeDir . '/config/packages/octo.yaml';
         self::assertFileExists($path);
     }
 
     public function testConfigPackageContainsAsyncPlatformKey(): void
     {
-        $content = \file_get_contents($this->recipeDir . '/config/packages/async_platform.yaml');
-        self::assertStringContainsString('async_platform:', $content);
+        $content = \file_get_contents($this->recipeDir . '/config/packages/octo.yaml');
+        self::assertStringContainsString('octo:', $content);
         self::assertStringContainsString('memory_warning_threshold', $content);
         self::assertStringContainsString('reset_warning_ms', $content);
         self::assertStringContainsString('kernel_reboot_every', $content);
@@ -56,15 +56,15 @@ final class FlexRecipeTest extends TestCase
     public function testEnvFileContainsAsyncPlatformVariables(): void
     {
         $content = \file_get_contents($this->recipeDir . '/.env');
-        self::assertStringContainsString('ASYNC_PLATFORM_SYMFONY_MEMORY_WARNING_THRESHOLD', $content);
-        self::assertStringContainsString('ASYNC_PLATFORM_SYMFONY_RESET_WARNING_MS', $content);
-        self::assertStringContainsString('ASYNC_PLATFORM_SYMFONY_KERNEL_REBOOT_EVERY', $content);
+        self::assertStringContainsString('OCTOP_SYMFONY_MEMORY_WARNING_THRESHOLD', $content);
+        self::assertStringContainsString('OCTOP_SYMFONY_RESET_WARNING_MS', $content);
+        self::assertStringContainsString('OCTOP_SYMFONY_KERNEL_REBOOT_EVERY', $content);
     }
 
     public function testEnvFileHasFlexMarkers(): void
     {
         $content = \file_get_contents($this->recipeDir . '/.env');
-        self::assertStringContainsString('###> async-platform/symfony-bundle ###', $content);
-        self::assertStringContainsString('###< async-platform/symfony-bundle ###', $content);
+        self::assertStringContainsString('###> octo-php/symfony-bundle ###', $content);
+        self::assertStringContainsString('###< octo-php/symfony-bundle ###', $content);
     }
 }

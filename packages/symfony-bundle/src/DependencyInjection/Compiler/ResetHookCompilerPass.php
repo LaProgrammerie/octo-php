@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBundle\DependencyInjection\Compiler;
+namespace Octo\SymfonyBundle\DependencyInjection\Compiler;
 
-use AsyncPlatform\SymfonyBridge\ResetHookInterface;
-use AsyncPlatform\SymfonyBridge\ResetManager;
+use Octo\SymfonyBridge\ResetHookInterface;
+use Octo\SymfonyBridge\ResetManager;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Reference;
@@ -16,13 +16,13 @@ use Symfony\Component\DependencyInjection\Reference;
  *
  * Two-phase approach:
  * 1. Auto-tag: find all services implementing ResetHookInterface and add
- *    the 'async_platform.reset_hook' tag if not already present.
+ *    the 'octo.reset_hook' tag if not already present.
  * 2. Inject: collect all tagged services and register them as method calls
  *    on the ResetManager definition.
  */
 final class ResetHookCompilerPass implements CompilerPassInterface
 {
-    public const TAG = 'async_platform.reset_hook';
+    public const TAG = 'octo.reset_hook';
 
     public function process(ContainerBuilder $container): void
     {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyOtel\Tracing;
+namespace Octo\SymfonyOtel\Tracing;
 
 /**
  * Abstraction over OpenTelemetry\API\Trace\TracerInterface for testability.

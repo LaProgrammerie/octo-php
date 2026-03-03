@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyMessenger\Tests\Property;
+namespace Octo\SymfonyMessenger\Tests\Property;
 
-use AsyncPlatform\SymfonyMessenger\OpenSwooleTransport;
+use Octo\SymfonyMessenger\OpenSwooleTransport;
 use Eris\Generators;
 use Eris\TestTrait;
 use PHPUnit\Framework\Attributes\Test;

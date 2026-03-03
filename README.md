@@ -7,7 +7,7 @@ Ce n'est pas "un framework async de plus". C'est un runtime qui garantit : laten
 ## Quick Start
 
 ```bash
-composer create-project async-platform/skeleton mon-projet
+composer create-project octo-php/skeleton mon-projet
 cd mon-projet
 
 # Mode développement (2 workers, pas de reload policies)
@@ -146,7 +146,7 @@ Toute la configuration se fait par variables d'environnement, validées au déma
 
 | Composant | Version cible |
 | --- | --- |
-| PHP | 8.3+ |
+| PHP | 8.4+ |
 | OpenSwoole | 22.x (dernière stable via pecl) |
 | OS container | Linux (Debian bookworm-slim) |
 | Architecture | amd64, arm64 |
@@ -191,13 +191,13 @@ Voir [skeleton/README.md](skeleton/README.md) pour les configurations Nginx et C
 
 ```text
 packages/                        # Packages Composer publiables sur Packagist
-  runtime-pack/                  #   async-platform/runtime-pack — cœur OpenSwoole
-  symfony-bridge/                #   async-platform/symfony-bridge — adaptateur HttpKernel
-  symfony-bundle/                #   async-platform/symfony-bundle — auto-config Symfony
-  symfony-messenger/             #   async-platform/symfony-messenger — transport in-process
-  symfony-otel/                  #   async-platform/symfony-otel — traces & métriques OTEL
-  symfony-realtime/              #   async-platform/symfony-realtime — WebSocket & SSE
-  symfony-bridge-full/           #   async-platform/symfony-bridge-full — meta-package suite
+  runtime-pack/                  #   octo-php/runtime-pack — cœur OpenSwoole
+  symfony-bridge/                #   octo-php/symfony-bridge — adaptateur HttpKernel
+  symfony-bundle/                #   octo-php/symfony-bundle — auto-config Symfony
+  symfony-messenger/             #   octo-php/symfony-messenger — transport in-process
+  symfony-otel/                  #   octo-php/symfony-otel — traces & métriques OTEL
+  symfony-realtime/              #   octo-php/symfony-realtime — WebSocket & SSE
+  symfony-bridge-full/           #   octo-php/symfony-bridge-full — meta-package suite
 platform/                        # Runtime & intégrations internes (non publié)
 skeleton/                        # Template create-project (composer create-project)
 docs/                            # Documentation suite (ADR, configuration, design)
@@ -236,6 +236,19 @@ Chaque package conserve son propre `phpunit.xml.dist` pour le dev isolé. Le `ph
 | [docs/configuration.md](docs/configuration.md) | Variables d'environnement, validation, mapping OpenSwoole, ExecutionPolicy, event-loop lag monitor |
 | [docs/adr/001](docs/adr/001-runtime-pack-decisions.md) | Décisions architecturales : Debian vs Alpine, UUIDv4, exit(0) reload, sémaphore Channel, ExecutionPolicy, IPC framing, ResponseFacade, NDJSON |
 | [skeleton/README.md](skeleton/README.md) | Guide complet du skeleton : handlers async-safe, proxy frontal, Docker, IoExecutor |
+
+## Release Process
+
+Versioning global : un tag `vX.Y.Z` au niveau du monorepo est propagé automatiquement vers tous les repos split via le [workflow split](.github/workflows/split.yml).
+
+```bash
+# Bump patch (0.1.0 → 0.1.1), minor, ou major
+./scripts/release.sh patch "optional title"
+```
+
+Le script vérifie la branche (`main`) et le working tree, met à jour le [CHANGELOG.md](CHANGELOG.md), crée un tag annoté, et pousse. Si `gh` est installé, une GitHub Release est créée automatiquement.
+
+Pas de tags par package : le split workflow se charge de la propagation.
 
 ## Roadmap
 

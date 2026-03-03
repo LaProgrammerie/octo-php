@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        php: ['8.3']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: composer
+
+      - run: composer install --no-progress --prefer-dist
+
+      - name: PHPUnit
+        run: vendor/bin/phpunit
+
+      - name: PHPStan
+        run: vendor/bin/phpstan analyse --no-progress
+
+      - name: Coding Style
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff
+
+      - name: Composer Audit
+        run: composer audit

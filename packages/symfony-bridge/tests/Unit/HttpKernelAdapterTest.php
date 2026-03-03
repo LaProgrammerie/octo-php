@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBridge\Tests\Unit;
+namespace Octo\SymfonyBridge\Tests\Unit;
 
-use AsyncPlatform\RuntimePack\MetricsCollector;
-use AsyncPlatform\SymfonyBridge\HttpKernelAdapter;
+use Octo\RuntimePack\MetricsCollector;
+use Octo\SymfonyBridge\HttpKernelAdapter;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Response;
 

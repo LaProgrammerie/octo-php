@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBridge\Tests\Unit;
+namespace Octo\SymfonyBridge\Tests\Unit;
 
-use AsyncPlatform\SymfonyBridge\RequestConverter;
+use Octo\SymfonyBridge\RequestConverter;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

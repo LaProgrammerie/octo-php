@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyOtel\Tests\Unit;
+namespace Octo\SymfonyOtel\Tests\Unit;
 
-use AsyncPlatform\RuntimePack\MetricsCollector;
-use AsyncPlatform\SymfonyBridge\MetricsBridge;
-use AsyncPlatform\SymfonyOtel\Metrics\FakeMeter;
-use AsyncPlatform\SymfonyOtel\OtelMetricsExporter;
+use Octo\RuntimePack\MetricsCollector;
+use Octo\SymfonyBridge\MetricsBridge;
+use Octo\SymfonyOtel\Metrics\FakeMeter;
+use Octo\SymfonyOtel\OtelMetricsExporter;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

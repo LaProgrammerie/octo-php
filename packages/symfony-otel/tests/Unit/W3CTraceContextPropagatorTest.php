@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyOtel\Tests\Unit;
+namespace Octo\SymfonyOtel\Tests\Unit;
 
-use AsyncPlatform\SymfonyOtel\Tracing\W3CTraceContextPropagator;
+use Octo\SymfonyOtel\Tracing\W3CTraceContextPropagator;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

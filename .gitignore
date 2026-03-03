@@ -1,11 +1,53 @@
+# Composer
 /vendor/
 /packages/**/vendor/
 /packages/**/composer.lock
-/.phpunit.cache
-/.phpunit.result.cache
-/packages/**/.phpunit.cache
+
+# Root lock: garde-le OU ignore-le selon ton choix CI
+# /composer.lock
+
+# PHPUnit
+.phpunit.cache/
+.phpunit.result.cache
+/packages/**/.phpunit.cache/
 /packages/**/.phpunit.result.cache
+
+# PHPStan / Psalm / Rector / PHP-CS-Fixer
+/phpstan.neon
+/phpstan.neon.dist
+/.phpstan/
+/psalm.xml
+/.psalm.cache/
+/rector.php
+/.rector.cache/
+/.php-cs-fixer.cache
+/.php-cs-fixer.dist.php
+
+# Infection
+/infection.log
+/infection.json
+
+# PHPUnit coverage
+/coverage/
+/clover.xml
+/.coverage/
 
 # Bench results (generated)
 /bench/results/latest.*
 /bench/results/matrix.csv
+
+# IDE
+/.idea/
+/.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Misc
+/.env
+/.env.local

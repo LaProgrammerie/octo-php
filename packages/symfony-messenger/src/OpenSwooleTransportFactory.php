@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyMessenger;
+namespace Octo\SymfonyMessenger;
 
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;

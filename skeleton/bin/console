@@ -89,7 +89,7 @@ if (file_exists($jobsFile)) {
 // Dispatch command
 switch ($command) {
     case 'async:serve':
-        \AsyncPlatform\RuntimePack\ServerBootstrap::run(
+        \Octo\RuntimePack\ServerBootstrap::run(
             appHandler: $appHandler,
             production: false,
             jobRegistrar: $jobRegistrar,
@@ -97,7 +97,7 @@ switch ($command) {
         break;
 
     case 'async:run':
-        \AsyncPlatform\RuntimePack\ServerBootstrap::run(
+        \Octo\RuntimePack\ServerBootstrap::run(
             appHandler: $appHandler,
             production: true,
             jobRegistrar: $jobRegistrar,

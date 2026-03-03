@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack\Tests\Unit;
+namespace Octo\RuntimePack\Tests\Unit;
 
-use AsyncPlatform\RuntimePack\ExecutionPolicy;
-use AsyncPlatform\RuntimePack\ExecutionStrategy;
+use Octo\RuntimePack\ExecutionPolicy;
+use Octo\RuntimePack\ExecutionStrategy;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

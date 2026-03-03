@@ -1,0 +1,26 @@
+# Async Platform — Default configuration
+# See: https://github.com/octo-php/symfony-bundle
+
+octo:
+    # Memory RSS warning threshold in bytes (default: 100 MB)
+    memory_warning_threshold: '%env(int:OCTOP_SYMFONY_MEMORY_WARNING_THRESHOLD)%'
+
+    # Reset duration warning threshold in milliseconds
+    reset_warning_ms: '%env(int:OCTOP_SYMFONY_RESET_WARNING_MS)%'
+
+    # Reboot kernel every N requests (0 = disabled)
+    kernel_reboot_every: '%env(int:OCTOP_SYMFONY_KERNEL_REBOOT_EVERY)%'
+
+    # Messenger transport (auto-detected if octo-php/symfony-messenger is installed)
+    # messenger:
+    #     channel_capacity: 100
+    #     consumers: 1
+    #     send_timeout: 5.0
+
+    # Realtime / WebSocket (auto-detected if octo-php/symfony-realtime is installed)
+    # realtime:
+    #     ws_max_lifetime_seconds: 3600
+
+    # OpenTelemetry (auto-detected if octo-php/symfony-otel is installed)
+    # otel:
+    #     enabled: true

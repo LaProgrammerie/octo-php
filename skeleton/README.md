@@ -2,7 +2,7 @@
 
 A minimal, production-ready async PHP application powered by [OpenSwoole](https://openswoole.com/).
 
-This project was generated via `composer create-project async-platform/skeleton`.
+This project was generated via `composer create-project octo-php/skeleton`.
 
 ## Quick Start
 
@@ -282,7 +282,7 @@ Override in `config/execution_policy.php`:
 ```php
 return static function (object $policy): void {
     // After integration proof passes on prod image:
-    $policy->register('pdo_mysql', \AsyncPlatform\RuntimePack\ExecutionStrategy::DirectCoroutineOk);
+    $policy->register('pdo_mysql', \Octo\RuntimePack\ExecutionStrategy::DirectCoroutineOk);
 };
 ```
 

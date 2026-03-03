@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBridge\Tests\Property;
+namespace Octo\SymfonyBridge\Tests\Property;
 
 require_once __DIR__ . '/../Unit/TestDoubles.php';
 
-use AsyncPlatform\RuntimePack\MetricsCollector;
-use AsyncPlatform\SymfonyBridge\HttpKernelAdapter;
-use AsyncPlatform\SymfonyBridge\Tests\Unit\FakeSwooleRequest;
-use AsyncPlatform\SymfonyBridge\Tests\Unit\FakeSwooleResponse;
-use AsyncPlatform\SymfonyBridge\Tests\Unit\LifecycleTrackingKernel;
-use AsyncPlatform\SymfonyBridge\Tests\Unit\SpyLogger;
+use Octo\RuntimePack\MetricsCollector;
+use Octo\SymfonyBridge\HttpKernelAdapter;
+use Octo\SymfonyBridge\Tests\Unit\FakeSwooleRequest;
+use Octo\SymfonyBridge\Tests\Unit\FakeSwooleResponse;
+use Octo\SymfonyBridge\Tests\Unit\LifecycleTrackingKernel;
+use Octo\SymfonyBridge\Tests\Unit\SpyLogger;
 use Eris\Generators;
 use Eris\TestTrait;
 use PHPUnit\Framework\Attributes\Test;
@@ -22,7 +22,7 @@ use PHPUnit\Framework\TestCase;
  *
  * **Validates: Requirements 4.15, 4.16, 4.17, 4.18**
  *
- * For any configuration with ASYNC_PLATFORM_SYMFONY_KERNEL_REBOOT_EVERY > 0,
+ * For any configuration with OCTOP_SYMFONY_KERNEL_REBOOT_EVERY > 0,
  * when the request counter reaches the configured value, the HttpKernelAdapter
  * SHALL reboot the kernel (shutdown() + boot()) and reconstruct its internal
  * references (ResetManager, RequestIdProcessor, hooks) to the new container.

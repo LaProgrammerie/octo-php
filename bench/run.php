@@ -16,10 +16,10 @@ require_once __DIR__ . '/RunnerAsync.php';
 require_once __DIR__ . '/Report.php';
 require_once __DIR__ . '/Matrix.php';
 
-use AsyncPlatform\Bench\Matrix;
-use AsyncPlatform\Bench\Report;
-use AsyncPlatform\Bench\RunnerAsync;
-use AsyncPlatform\Bench\RunnerSync;
+use Octo\Bench\Matrix;
+use Octo\Bench\Report;
+use Octo\Bench\RunnerAsync;
+use Octo\Bench\RunnerSync;
 
 // ── Parse CLI args ──────────────────────────────────────────────────────────
 

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack;
+namespace Octo\RuntimePack;
 
-use AsyncPlatform\RuntimePack\Exception\BlockingPoolFullException;
-use AsyncPlatform\RuntimePack\Exception\BlockingPoolHttpException;
-use AsyncPlatform\RuntimePack\Exception\BlockingPoolSendException;
-use AsyncPlatform\RuntimePack\Exception\BlockingPoolTimeoutException;
+use Octo\RuntimePack\Exception\BlockingPoolFullException;
+use Octo\RuntimePack\Exception\BlockingPoolHttpException;
+use Octo\RuntimePack\Exception\BlockingPoolSendException;
+use Octo\RuntimePack\Exception\BlockingPoolTimeoutException;
 
 /**
  * Standardized error mapping from BlockingPool exceptions to HTTP responses.

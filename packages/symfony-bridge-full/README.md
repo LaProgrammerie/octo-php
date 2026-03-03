@@ -1,11 +1,11 @@
-# async-platform/symfony-bridge-full
+# octo-php/symfony-bridge-full
 
 Meta-package installant la suite complète Symfony Bridge pour la plateforme async PHP.
 
 ## Installation
 
 ```bash
-composer require async-platform/symfony-bridge-full
+composer require octo-php/symfony-bridge-full
 ```
 
 Cette commande installe les 5 packages de la suite :
@@ -24,13 +24,13 @@ Si vous n'avez pas besoin de tous les packages, installez-les séparément pour 
 
 ```bash
 # Core uniquement (suffisant pour la plupart des cas)
-composer require async-platform/symfony-bridge
+composer require octo-php/symfony-bridge
 
 # Ajout progressif selon les besoins
-composer require async-platform/symfony-bundle
-composer require async-platform/symfony-messenger
-composer require async-platform/symfony-realtime
-composer require async-platform/symfony-otel
+composer require octo-php/symfony-bundle
+composer require octo-php/symfony-messenger
+composer require octo-php/symfony-realtime
+composer require octo-php/symfony-otel
 ```
 
 Seul le core bridge est requis. Les autres packages sont opt-in.

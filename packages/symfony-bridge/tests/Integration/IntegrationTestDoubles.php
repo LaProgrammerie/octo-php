@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBridge\Tests\Integration;
+namespace Octo\SymfonyBridge\Tests\Integration;
 
-use AsyncPlatform\SymfonyBridge\ResetHookInterface;
+use Octo\SymfonyBridge\ResetHookInterface;
 use Psr\Log\NullLogger;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack\Exception;
+namespace Octo\RuntimePack\Exception;
 
 /**
  * Exception thrown when sending a job to the BlockingPool fails.

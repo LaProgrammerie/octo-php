@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBridge\Tests\Property;
+namespace Octo\SymfonyBridge\Tests\Property;
 
-use AsyncPlatform\SymfonyBridge\RequestIdProcessor;
+use Octo\SymfonyBridge\RequestIdProcessor;
 use Eris\Generators;
 use Eris\TestTrait;
 use PHPUnit\Framework\Attributes\Test;

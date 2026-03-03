@@ -1,11 +1,11 @@
-# async-platform/symfony-realtime
+# octo-php/symfony-realtime
 
 Package temps réel pour la plateforme async PHP — WebSocket handler, helpers SSE avancés (formatage W3C, keep-alive, reconnection), et routage HTTP/WS.
 
 ## Installation
 
 ```bash
-composer require async-platform/symfony-realtime
+composer require octo-php/symfony-realtime
 ```
 
 ## WebSocket
@@ -15,8 +15,8 @@ composer require async-platform/symfony-realtime
 Le support WebSocket nécessite l'activation du mode WebSocket server dans OpenSwoole. Le `RealtimeServerAdapter` remplace le handler HTTP standard pour router les requêtes :
 
 ```php
-use AsyncPlatform\RuntimePack\ServerBootstrap;
-use AsyncPlatform\SymfonyRealtime\RealtimeServerAdapter;
+use Octo\RuntimePack\ServerBootstrap;
+use Octo\SymfonyRealtime\RealtimeServerAdapter;
 
 $adapter = new RealtimeServerAdapter(
     httpHandler: $httpKernelAdapter,
@@ -34,8 +34,8 @@ ServerBootstrap::run(
 Implémentez l'interface `WebSocketHandler` pour gérer les connexions :
 
 ```php
-use AsyncPlatform\SymfonyRealtime\WebSocketHandler;
-use AsyncPlatform\SymfonyRealtime\WebSocketContext;
+use Octo\SymfonyRealtime\WebSocketHandler;
+use Octo\SymfonyRealtime\WebSocketContext;
 
 final class ChatHandler implements WebSocketHandler
 {
@@ -80,12 +80,12 @@ Chaque connexion WebSocket a un max lifetime configurable :
 
 | Variable | Type | Défaut | Description |
 |---|---|---|---|
-| `ASYNC_PLATFORM_SYMFONY_WS_MAX_LIFETIME_SECONDS` | int (s) | `3600` | Durée maximale d'une connexion WebSocket |
+| `OCTOP_SYMFONY_WS_MAX_LIFETIME_SECONDS` | int (s) | `3600` | Durée maximale d'une connexion WebSocket |
 
 Via le bundle :
 
 ```yaml
-async_platform:
+octo:
     realtime:
         ws_max_lifetime_seconds: 3600
 ```
@@ -94,7 +94,7 @@ async_platform:
 
 ### SSE basique (core bridge)
 
-Le core bridge (`async-platform/symfony-bridge`) fournit le **mécanisme de streaming** : `StreamedResponse` avec `Content-Type: text/event-stream` est automatiquement streamé via `ResponseFacade::write()` avec compression et buffering désactivés.
+Le core bridge (`octo-php/symfony-bridge`) fournit le **mécanisme de streaming** : `StreamedResponse` avec `Content-Type: text/event-stream` est automatiquement streamé via `ResponseFacade::write()` avec compression et buffering désactivés.
 
 C'est suffisant pour des cas simples où vous formatez les événements SSE manuellement.
 
@@ -107,7 +107,7 @@ Ce package fournit le **protocole SSE structuré** :
 Formatage conforme à la spécification W3C :
 
 ```php
-use AsyncPlatform\SymfonyRealtime\SseEvent;
+use Octo\SymfonyRealtime\SseEvent;
 
 $event = new SseEvent(
     data: "Hello world",

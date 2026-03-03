@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBridge\Tests\Integration;
+namespace Octo\SymfonyBridge\Tests\Integration;
 
 require_once __DIR__ . '/IntegrationTestDoubles.php';
 
-use AsyncPlatform\SymfonyRealtime\RealtimeMetrics;
-use AsyncPlatform\SymfonyRealtime\RealtimeServerAdapter;
-use AsyncPlatform\SymfonyRealtime\WebSocketContext;
-use AsyncPlatform\SymfonyRealtime\WebSocketHandler;
+use Octo\SymfonyRealtime\RealtimeMetrics;
+use Octo\SymfonyRealtime\RealtimeServerAdapter;
+use Octo\SymfonyRealtime\WebSocketContext;
+use Octo\SymfonyRealtime\WebSocketHandler;
 use PHPUnit\Framework\TestCase;
 
 /**

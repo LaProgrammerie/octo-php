@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack\Tests\Property;
+namespace Octo\RuntimePack\Tests\Property;
 
-use AsyncPlatform\RuntimePack\ExecutionPolicy;
-use AsyncPlatform\RuntimePack\ExecutionStrategy;
+use Octo\RuntimePack\ExecutionPolicy;
+use Octo\RuntimePack\ExecutionStrategy;
 use Eris\Generators;
 use Eris\TestTrait;
 use PHPUnit\Framework\Attributes\Test;

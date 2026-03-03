@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack\Exception;
+namespace Octo\RuntimePack\Exception;
 
 /**
  * Thrown when server configuration validation fails at startup.

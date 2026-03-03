@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBridge;
+namespace Octo\SymfonyBridge;
 
-use AsyncPlatform\RuntimePack\JsonLogger;
-use AsyncPlatform\RuntimePack\MetricsCollector;
+use Octo\RuntimePack\JsonLogger;
+use Octo\RuntimePack\MetricsCollector;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\HttpKernelInterface;

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack;
+namespace Octo\RuntimePack;
 
-use AsyncPlatform\RuntimePack\Exception\ConfigValidationException;
+use Octo\RuntimePack\Exception\ConfigValidationException;
 
 /**
  * Creates and validates ServerConfig from environment variables.

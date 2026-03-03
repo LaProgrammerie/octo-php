@@ -1,11 +1,11 @@
 {
-    "name": "async-platform/skeleton",
+    "name": "octo-php/skeleton",
     "description": "Skeleton project for the Async PHP Platform — create-project template with OpenSwoole runtime pack.",
     "type": "project",
     "license": "MIT",
     "require": {
-        "php": ">=8.3",
-        "async-platform/runtime-pack": "^1.0"
+        "php": ">=8.4",
+        "octo-php/runtime-pack": "^1.0"
     },
     "require-dev": {
         "phpunit/phpunit": "^11.0"

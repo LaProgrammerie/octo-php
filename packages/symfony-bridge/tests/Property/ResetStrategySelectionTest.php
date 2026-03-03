@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBridge\Tests\Property;
+namespace Octo\SymfonyBridge\Tests\Property;
 
 require_once __DIR__ . '/../Unit/TestDoubles.php';
 
-use AsyncPlatform\SymfonyBridge\ResetManager;
-use AsyncPlatform\SymfonyBridge\Tests\Unit\BareKernel;
-use AsyncPlatform\SymfonyBridge\Tests\Unit\FakeContainer;
-use AsyncPlatform\SymfonyBridge\Tests\Unit\FakeServicesResetter;
-use AsyncPlatform\SymfonyBridge\Tests\Unit\KernelWithContainer;
-use AsyncPlatform\SymfonyBridge\Tests\Unit\ResettableKernel;
-use AsyncPlatform\SymfonyBridge\Tests\Unit\SpyLogger;
-use AsyncPlatform\SymfonyBridge\Tests\Unit\SpyResetHook;
-use AsyncPlatform\SymfonyBridge\Tests\Unit\ThrowingResettableKernel;
+use Octo\SymfonyBridge\ResetManager;
+use Octo\SymfonyBridge\Tests\Unit\BareKernel;
+use Octo\SymfonyBridge\Tests\Unit\FakeContainer;
+use Octo\SymfonyBridge\Tests\Unit\FakeServicesResetter;
+use Octo\SymfonyBridge\Tests\Unit\KernelWithContainer;
+use Octo\SymfonyBridge\Tests\Unit\ResettableKernel;
+use Octo\SymfonyBridge\Tests\Unit\SpyLogger;
+use Octo\SymfonyBridge\Tests\Unit\SpyResetHook;
+use Octo\SymfonyBridge\Tests\Unit\ThrowingResettableKernel;
 use Eris\Generators;
 use Eris\TestTrait;
 use PHPUnit\Framework\Attributes\Test;

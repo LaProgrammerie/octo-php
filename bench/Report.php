@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\Bench;
+namespace Octo\Bench;
 
 /**
  * Computes statistics on metric series and generates Markdown + CSV reports.

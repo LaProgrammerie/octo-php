@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyMessenger\Tests\Unit;
+namespace Octo\SymfonyMessenger\Tests\Unit;
 
-use AsyncPlatform\SymfonyMessenger\OpenSwooleTransport;
-use AsyncPlatform\SymfonyMessenger\OpenSwooleTransportFactory;
+use Octo\SymfonyMessenger\OpenSwooleTransport;
+use Octo\SymfonyMessenger\OpenSwooleTransportFactory;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;

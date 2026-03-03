@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyMessenger\Tests\Unit;
+namespace Octo\SymfonyMessenger\Tests\Unit;
 
-use AsyncPlatform\SymfonyMessenger\FakeChannel;
+use Octo\SymfonyMessenger\FakeChannel;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

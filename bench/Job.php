@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\Bench;
+namespace Octo\Bench;
 
 /**
  * Deterministic job simulating a realistic processing pipeline.

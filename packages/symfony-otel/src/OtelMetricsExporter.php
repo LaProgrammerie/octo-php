@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyOtel;
+namespace Octo\SymfonyOtel;
 
-use AsyncPlatform\SymfonyBridge\MetricsBridge;
-use AsyncPlatform\SymfonyOtel\Metrics\MeterInterface;
+use Octo\SymfonyBridge\MetricsBridge;
+use Octo\SymfonyOtel\Metrics\MeterInterface;
 
 /**
  * Exports metrics from the Symfony bridge MetricsBridge to OTEL.

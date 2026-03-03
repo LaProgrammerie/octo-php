@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack\Tests\Unit;
+namespace Octo\RuntimePack\Tests\Unit;
 
-use AsyncPlatform\RuntimePack\BlockingPoolInterface;
-use AsyncPlatform\RuntimePack\ExecutionPolicy;
-use AsyncPlatform\RuntimePack\ExecutionStrategy;
-use AsyncPlatform\RuntimePack\IoExecutor;
-use AsyncPlatform\RuntimePack\JsonLogger;
+use Octo\RuntimePack\BlockingPoolInterface;
+use Octo\RuntimePack\ExecutionPolicy;
+use Octo\RuntimePack\ExecutionStrategy;
+use Octo\RuntimePack\IoExecutor;
+use Octo\RuntimePack\JsonLogger;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

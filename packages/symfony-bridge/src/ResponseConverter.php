@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBridge;
+namespace Octo\SymfonyBridge;
 
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;

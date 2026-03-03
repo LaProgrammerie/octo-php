@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyRealtime\Tests\Unit;
+namespace Octo\SymfonyRealtime\Tests\Unit;
 
-use AsyncPlatform\SymfonyRealtime\RealtimeMetrics;
+use Octo\SymfonyRealtime\RealtimeMetrics;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\RuntimePack\Tests\Unit;
+namespace Octo\RuntimePack\Tests\Unit;
 
-use AsyncPlatform\RuntimePack\ResponseState;
+use Octo\RuntimePack\ResponseState;
 use PHPUnit\Framework\TestCase;
 
 /**

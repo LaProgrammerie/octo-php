@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyBundle;
+namespace Octo\SymfonyBundle;
 
-use AsyncPlatform\SymfonyBundle\DependencyInjection\Compiler\ResetHookCompilerPass;
+use Octo\SymfonyBundle\DependencyInjection\Compiler\ResetHookCompilerPass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\HttpKernel\Bundle\Bundle;
 
@@ -15,9 +15,9 @@ use Symfony\Component\HttpKernel\Bundle\Bundle;
  * - Register core bridge services (HttpKernelAdapter, ResetManager, etc.)
  * - Auto-tag services implementing ResetHookInterface
  * - Auto-detect optional packages (messenger, realtime, otel)
- * - Provide async_platform configuration section
+ * - Provide octo configuration section
  */
-final class AsyncPlatformBundle extends Bundle
+final class OctoBundle extends Bundle
 {
     public function build(ContainerBuilder $container): void
     {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyRealtime;
+namespace Octo\SymfonyRealtime;
 
 /**
  * Helper for formatting and parsing SSE events conforming to the W3C spec.

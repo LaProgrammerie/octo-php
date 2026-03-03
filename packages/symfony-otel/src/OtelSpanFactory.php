@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace AsyncPlatform\SymfonyOtel;
+namespace Octo\SymfonyOtel;
 
-use AsyncPlatform\SymfonyOtel\Tracing\SpanInterface;
-use AsyncPlatform\SymfonyOtel\Tracing\SpanKind;
-use AsyncPlatform\SymfonyOtel\Tracing\TracerInterface;
+use Octo\SymfonyOtel\Tracing\SpanInterface;
+use Octo\SymfonyOtel\Tracing\SpanKind;
+use Octo\SymfonyOtel\Tracing\TracerInterface;
 
 /**
  * Factory for creating OTEL spans in the Symfony bridge.
