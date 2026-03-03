@@ -38,16 +38,16 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-      - name: Build splitsh-lite from source
+      - name: Debug splitsh-lite tree
         run: |
           set -euo pipefail
-          git clone --depth 1 --branch v2.0.0 https://github.com/splitsh/lite "${RUNNER_TEMP}/splitsh-lite-src"
+          git clone https://github.com/splitsh/lite "${RUNNER_TEMP}/splitsh-lite-src"
           cd "${RUNNER_TEMP}/splitsh-lite-src"
-
-          go build -o "${GITHUB_WORKSPACE}/bin/splitsh-lite" ./cmd/splitsh-lite
-
-          echo "${GITHUB_WORKSPACE}/bin" >> "$GITHUB_PATH"
-          splitsh-lite --help
+          git checkout tags/v2.0.0
+          echo "=== ROOT ==="
+          ls -la
+          echo "=== RECURSIVE (top 3 levels) ==="
+          find . -maxdepth 3 -type f -name "*.go"
 
       - name: Split & push
         env:
