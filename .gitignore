@@ -1,5 +1,6 @@
 # Composer
 /vendor/
+/skeleton/vendor/
 /packages/**/vendor/
 /packages/**/composer.lock
 
