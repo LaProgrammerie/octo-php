@@ -33,12 +33,20 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
       - name: Install splitsh-lite
         run: |
-          curl -L https://github.com/splitsh/lite/releases/download/v1.0.0/splitsh-lite-linux-amd64 \
-            -o /usr/local/bin/splitsh-lite
-          chmod +x /usr/local/bin/splitsh-lite
-          splitsh-lite --version || true
+          set -euo pipefail
+          go env -w GOBIN="${GITHUB_WORKSPACE}/bin"
+          mkdir -p "${GITHUB_WORKSPACE}/bin"
+          # Hypothèse: le binaire est dans cmd/splitsh-lite (classique en Go)
+          go install github.com/splitsh/lite/cmd/splitsh-lite@v2.0.0
+          echo "${GITHUB_WORKSPACE}/bin" >> "$GITHUB_PATH"
+          splitsh-lite --help
 
       - name: Configure git
         run: |
