@@ -23,6 +23,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [0.1.1] - 2026-03-03 — namespace and various improvements
+
+### Added
+
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
 ## [0.1.0] - 2025-06-01
 
 ### Added
@@ -41,5 +55,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Monorepo split workflow (GitHub Actions + splitsh-lite)
 - Benchmark suite
 
-[Unreleased]: https://github.com/LaProgrammerie/octo-php/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/LaProgrammerie/octo-php/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/LaProgrammerie/octo-php/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/LaProgrammerie/octo-php/releases/tag/v0.1.0
