@@ -1,0 +1,70 @@
+name: Split monorepo
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["*"]
+
+jobs:
+  split:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - prefix: packages/runtime-pack
+            repo: LaProgrammerie/octo-php-runtime-pack
+          - prefix: packages/symfony-bridge
+            repo: LaProgrammerie/octo-php-symfony-bridge
+          - prefix: packages/symfony-bridge-full
+            repo: LaProgrammerie/octo-php-symfony-bridge-full
+          - prefix: packages/symfony-bundle
+            repo: LaProgrammerie/octo-php-symfony-bundle
+          - prefix: packages/symfony-messenger
+            repo: LaProgrammerie/octo-php-symfony-messenger
+          - prefix: packages/symfony-otel
+            repo: LaProgrammerie/octo-php-symfony-otel
+          - prefix: packages/symfony-realtime
+            repo: LaProgrammerie/octo-php-symfony-realtime
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install splitsh-lite
+        run: |
+          curl -L https://github.com/splitsh/lite/releases/download/v1.0.0/splitsh-lite-linux-amd64 \
+            -o /usr/local/bin/splitsh-lite
+          chmod +x /usr/local/bin/splitsh-lite
+          splitsh-lite --version || true
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+      - name: Split & push
+        env:
+          GH_TOKEN: ${{ secrets.SPLIT_PUSH_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          PREFIX="${{ matrix.prefix }}"
+          REPO="${{ matrix.repo }}"
+          REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+
+          echo "Splitting ${PREFIX} -> ${REPO}"
+          SHA="$(splitsh-lite --prefix="${PREFIX}")"
+          echo "Split SHA: ${SHA}"
+
+          # Push branch
+          git push --force "${REMOTE}" "${SHA}:refs/heads/main"
+
+          # If this workflow was triggered by a tag, also push the tag to the split repo
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            TAG="${GITHUB_REF_NAME}"
+            echo "Pushing tag ${TAG} -> ${REPO}"
+            git push --force "${REMOTE}" "${SHA}:refs/tags/${TAG}"
+          fi
