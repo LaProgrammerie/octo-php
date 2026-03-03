@@ -38,20 +38,40 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-      - name: Install libgit2 (required by splitsh-lite v2)
+      - name: Build & install libgit2 v1.5.0 (for git2go/v34)
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y pkg-config libgit2-dev
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake pkg-config \
+            libssl-dev zlib1g-dev libssh2-1-dev ca-certificates
 
-      - name: Build splitsh-lite (from source, v2.0.0)
+          LIBGIT2_DIR="${RUNNER_TEMP}/libgit2-1.5.0"
+          mkdir -p "${LIBGIT2_DIR}"
+
+          git clone --depth 1 --branch v1.5.0 https://github.com/libgit2/libgit2.git "${RUNNER_TEMP}/libgit2-src"
+          cmake -S "${RUNNER_TEMP}/libgit2-src" -B "${RUNNER_TEMP}/libgit2-build" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="${LIBGIT2_DIR}" \
+            -DBUILD_SHARED_LIBS=ON \
+            -DUSE_SSH=ON
+          cmake --build "${RUNNER_TEMP}/libgit2-build" --parallel
+          cmake --install "${RUNNER_TEMP}/libgit2-build"
+
+          # Make pkg-config + dynamic linker see this libgit2 first
+          echo "PKG_CONFIG_PATH=${LIBGIT2_DIR}/lib/pkgconfig" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=${LIBGIT2_DIR}/lib" >> "$GITHUB_ENV"
+
+      - name: Build splitsh-lite v2.0.0 (linked against libgit2 v1.5.0)
         run: |
           set -euo pipefail
 
           git clone --depth 1 --branch v2.0.0 https://github.com/splitsh/lite "${RUNNER_TEMP}/splitsh-lite-src"
           cd "${RUNNER_TEMP}/splitsh-lite-src"
 
-          # CGO is needed because git2go links to libgit2
+          mkdir -p "${GITHUB_WORKSPACE}/bin"
+
+          # CGO must be enabled because git2go links to libgit2
           CGO_ENABLED=1 go build -o "${GITHUB_WORKSPACE}/bin/splitsh-lite" .
 
           chmod +x "${GITHUB_WORKSPACE}/bin/splitsh-lite"
