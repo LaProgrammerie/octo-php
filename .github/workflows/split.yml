@@ -83,24 +83,21 @@ jobs:
       - name: Split & push
         env:
           SPLIT_PUSH_TOKEN: ${{ secrets.SPLIT_PUSH_TOKEN }}
+          PREFIX: ${{ matrix.prefix }}
+          REPO: ${{ matrix.repo }}
         run: |
           set -euo pipefail
 
           export PATH="${GITHUB_WORKSPACE}/bin:$PATH"
-          splitsh-lite --prefix="${PREFIX}"
 
-          PREFIX="${{ matrix.prefix }}"
-          REPO="${{ matrix.repo }}"
           REMOTE="https://x-access-token:${SPLIT_PUSH_TOKEN}@github.com/${REPO}.git"
 
           echo "Splitting ${PREFIX} -> ${REPO}"
           SHA="$(splitsh-lite --prefix="${PREFIX}")"
           echo "Split SHA: ${SHA}"
 
-          # Push branch
           git push --force "${REMOTE}" "${SHA}:refs/heads/main"
 
-          # If this workflow was triggered by a tag, also push the tag to the split repo
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             TAG="${GITHUB_REF_NAME}"
             echo "Pushing tag ${TAG} -> ${REPO}"
