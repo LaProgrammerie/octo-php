@@ -95,6 +95,7 @@ jobs:
           echo "Splitting ${PREFIX} -> ${REPO}"
           SHA="$(splitsh-lite --prefix="${PREFIX}")"
           echo "Split SHA: ${SHA}"
+          echo "Token length: ${#SPLIT_PUSH_TOKEN}"
 
           git push --force "${REMOTE}" "${SHA}:refs/heads/main"
 
