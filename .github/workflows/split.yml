@@ -26,6 +26,8 @@ jobs:
             repo: LaProgrammerie/octo-php-symfony-otel
           - prefix: packages/symfony-realtime
             repo: LaProgrammerie/octo-php-symfony-realtime
+          - prefix: skeleton
+            repo: LaProgrammerie/octo-php-skeleton
 
     steps:
       - name: Checkout
