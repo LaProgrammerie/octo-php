@@ -86,9 +86,12 @@ jobs:
         run: |
           set -euo pipefail
 
+          export PATH="${GITHUB_WORKSPACE}/bin:$PATH"
+          splitsh-lite --prefix="${PREFIX}"
+
           PREFIX="${{ matrix.prefix }}"
           REPO="${{ matrix.repo }}"
-          REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+          REMOTE="https://x-access-token:${SPLIT_PUSH_TOKEN}@github.com/${REPO}.git"
 
           echo "Splitting ${PREFIX} -> ${REPO}"
           SHA="$(splitsh-lite --prefix="${PREFIX}")"
