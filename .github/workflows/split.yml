@@ -62,22 +62,23 @@ jobs:
           echo "PKG_CONFIG_PATH=${LIBGIT2_DIR}/lib/pkgconfig" >> "$GITHUB_ENV"
           echo "LD_LIBRARY_PATH=${LIBGIT2_DIR}/lib" >> "$GITHUB_ENV"
 
-      - name: Build splitsh-lite v2.0.0 (linked against libgit2 v1.5.0)
+      - name: Build splitsh-lite
         run: |
           set -euo pipefail
+          mkdir -p "${GITHUB_WORKSPACE}/bin"
 
           git clone --depth 1 --branch v2.0.0 https://github.com/splitsh/lite "${RUNNER_TEMP}/splitsh-lite-src"
           cd "${RUNNER_TEMP}/splitsh-lite-src"
 
-          mkdir -p "${GITHUB_WORKSPACE}/bin"
-
-          # CGO must be enabled because git2go links to libgit2
           CGO_ENABLED=1 go build -o "${GITHUB_WORKSPACE}/bin/splitsh-lite" .
-
           chmod +x "${GITHUB_WORKSPACE}/bin/splitsh-lite"
-          echo "${GITHUB_WORKSPACE}/bin" >> "$GITHUB_PATH"
 
+          # dispo dans CE step
+          export PATH="${GITHUB_WORKSPACE}/bin:$PATH"
           splitsh-lite --help >/dev/null
+
+          # dispo dans les steps suivants
+          echo "${GITHUB_WORKSPACE}/bin" >> "$GITHUB_PATH"
 
       - name: Split & push
         env:
