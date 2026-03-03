@@ -82,7 +82,7 @@ jobs:
 
       - name: Split & push
         env:
-          GH_TOKEN: ${{ secrets.SPLIT_PUSH_TOKEN }}
+          SPLIT_PUSH_TOKEN: ${{ secrets.SPLIT_PUSH_TOKEN }}
         run: |
           set -euo pipefail
 
