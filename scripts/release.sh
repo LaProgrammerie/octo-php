@@ -116,14 +116,14 @@ else
 fi
 
 # Generate git log entries for this release
-GIT_LOG_FILE="$(mktemp "${TMPDIR:-/tmp}/release-gitlog.XXXXXX.txt")"
+GIT_LOG_FILE="$(mktemp "${TMPDIR:-/tmp}/release-gitlog-XXXXXX")"
 if [[ "$LAST_TAG" == "v0.0.0" ]]; then
   git log --no-merges --pretty=format:'- %s (%h)' HEAD > "$GIT_LOG_FILE"
 else
   git log --no-merges --pretty=format:'- %s (%h)' "$RANGE" > "$GIT_LOG_FILE"
 fi
 
-NOTES_FILE="$(mktemp "${TMPDIR:-/tmp}/release-notes.XXXXXX.md")"
+NOTES_FILE="$(mktemp "${TMPDIR:-/tmp}/release-notes-XXXXXX")"
 {
   if [[ -n "$TITLE" ]]; then
     echo "# ${NEXT_TAG} — $TITLE"
@@ -150,7 +150,7 @@ NOTES_FILE="$(mktemp "${TMPDIR:-/tmp}/release-notes.XXXXXX.md")"
 # changelog, so it works on both BSD and GNU awk.
 # ---------------------------------------------------------------------------
 
-TMP_CL="$(mktemp "${TMPDIR:-/tmp}/changelog.XXXXXX.md")"
+TMP_CL="$(mktemp "${TMPDIR:-/tmp}/changelog-XXXXXX")"
 
 awk -v next_ver="$NEXT_VER" \
     -v next_tag="$NEXT_TAG" \
