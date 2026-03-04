@@ -242,7 +242,7 @@ bin/console async:bench   # Benchmark intégré
 | [symfony-messenger](../symfony-messenger/) | Transport Messenger in-process |
 | [symfony-realtime](../symfony-realtime/) | WebSocket + helpers SSE avancés |
 | [symfony-otel](../symfony-otel/) | Export OpenTelemetry |
-| [symfony-bridge-full](../symfony-bridge-full/) | Meta-package installant toute la suite |
+| [platform](../../platform/) | Meta-package installant toute la stack |
 
 ## Licence
 

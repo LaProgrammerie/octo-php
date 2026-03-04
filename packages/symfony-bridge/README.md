@@ -288,7 +288,7 @@ Aucune exception ne remonte au runtime pack. Toutes sont interceptées et conver
 | [symfony-messenger](../symfony-messenger/) | Transport Messenger in-process via channels OpenSwoole |
 | [symfony-realtime](../symfony-realtime/) | WebSocket + helpers SSE avancés |
 | [symfony-otel](../symfony-otel/) | Export OpenTelemetry (traces + métriques) |
-| [symfony-bridge-full](../symfony-bridge-full/) | Meta-package installant toute la suite |
+| [platform](../../platform/) | Meta-package installant toute la stack |
 
 ## Licence
 

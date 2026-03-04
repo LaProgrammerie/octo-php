@@ -16,8 +16,6 @@ jobs:
             repo: LaProgrammerie/octo-php-runtime-pack
           - prefix: packages/symfony-bridge
             repo: LaProgrammerie/octo-php-symfony-bridge
-          - prefix: packages/symfony-bridge-full
-            repo: LaProgrammerie/octo-php-symfony-bridge-full
           - prefix: packages/symfony-bundle
             repo: LaProgrammerie/octo-php-symfony-bundle
           - prefix: packages/symfony-messenger
@@ -26,6 +24,8 @@ jobs:
             repo: LaProgrammerie/octo-php-symfony-otel
           - prefix: packages/symfony-realtime
             repo: LaProgrammerie/octo-php-symfony-realtime
+          - prefix: platform
+            repo: LaProgrammerie/octo-php-platform
           - prefix: skeleton
             repo: LaProgrammerie/octo-php-skeleton
 

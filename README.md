@@ -197,8 +197,7 @@ packages/                        # Packages Composer publiables sur Packagist
   symfony-messenger/             #   octo-php/symfony-messenger — transport in-process
   symfony-otel/                  #   octo-php/symfony-otel — traces & métriques OTEL
   symfony-realtime/              #   octo-php/symfony-realtime — WebSocket & SSE
-  symfony-bridge-full/           #   octo-php/symfony-bridge-full — meta-package suite
-platform/                        # Runtime & intégrations internes (non publié)
+platform/                        # octo-php/platform — meta-package stack complète
 skeleton/                        # Template create-project (composer create-project)
 docs/                            # Documentation suite (ADR, configuration, design)
 ```

@@ -21,7 +21,7 @@ Organiser la suite en 6 packages Composer indépendants dans le monorepo :
 | `octo-php/symfony-messenger` | Transport Messenger in-process |
 | `octo-php/symfony-realtime` | WebSocket + helpers SSE avancés |
 | `octo-php/symfony-otel` | Export OpenTelemetry (traces + métriques) |
-| `octo-php/symfony-bridge-full` | Meta-package installant tout |
+| `octo-php/platform` | Meta-package installant toute la stack (runtime-pack + bridges) |
 
 ### Principes
 
@@ -33,7 +33,7 @@ Organiser la suite en 6 packages Composer indépendants dans le monorepo :
 
 ### Versioning
 
-SemVer coordonné par release : tous les packages partagent la même version (major.minor.patch) lors de chaque release. Le meta-package `symfony-bridge-full` pin les versions exactes.
+SemVer coordonné par release : tous les packages partagent la même version (major.minor.patch) lors de chaque release. Le meta-package `platform` centralise les contraintes de versions compatibles.
 
 ## Justification
 
@@ -56,7 +56,7 @@ SemVer coordonné par release : tous les packages partagent la même version (ma
 
 - Oblige les utilisateurs qui veulent tout à gérer 5 lignes `composer require`
 - Pas de garantie de combinaison de versions testée
-- Le meta-package `symfony-bridge-full` résout ce problème
+- Le meta-package `platform` résout ce problème
 
 ### Packages avec versioning indépendant
 
@@ -70,4 +70,4 @@ SemVer coordonné par release : tous les packages partagent la même version (ma
 - La CI exécute les tests de tous les packages à chaque PR
 - Chaque package a sa propre matrice de tests (PHP versions, Symfony versions)
 - Le tag de release est coordonné : un script tag tous les packages avec la même version
-- La migration depuis un éventuel monolithe est transparente via `symfony-bridge-full`
+- La migration depuis un éventuel monolithe est transparente via `platform`

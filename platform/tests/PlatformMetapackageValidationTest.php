@@ -2,20 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Octo\SymfonyBridgeFull\Tests;
+namespace Octo\Platform\Tests;
 
 use PHPUnit\Framework\TestCase;
 
 /**
- * Validates the symfony-bridge-full metapackage structure.
- *
- * Validates: Requirements 15.1, 15.2, 15.3
+ * Validates the octo-php/platform metapackage structure.
  */
-final class MetapackageValidationTest extends TestCase
+final class PlatformMetapackageValidationTest extends TestCase
 {
     private const PACKAGE_DIR = __DIR__ . '/..';
 
     private const EXPECTED_PACKAGES = [
+        'php',
+        'octo-php/runtime-pack',
         'octo-php/symfony-bridge',
         'octo-php/symfony-bundle',
         'octo-php/symfony-messenger',
@@ -36,13 +36,18 @@ final class MetapackageValidationTest extends TestCase
         $this->composerData = json_decode($content, true, 512, \JSON_THROW_ON_ERROR);
     }
 
+    public function testPackageName(): void
+    {
+        $this->assertSame('octo-php/platform', $this->composerData['name'] ?? null);
+    }
+
     public function testTypeIsMetapackage(): void
     {
         $this->assertArrayHasKey('type', $this->composerData);
         $this->assertSame('metapackage', $this->composerData['type']);
     }
 
-    public function testRequiresAllFivePackages(): void
+    public function testRequiresAllExpectedPackages(): void
     {
         $this->assertArrayHasKey('require', $this->composerData);
         $require = $this->composerData['require'];
@@ -97,11 +102,21 @@ final class MetapackageValidationTest extends TestCase
         );
     }
 
-    public function testPackageName(): void
+    public function testNoRequireDevSection(): void
     {
-        $this->assertSame(
-            'octo-php/symfony-bridge-full',
-            $this->composerData['name'] ?? null,
+        $this->assertArrayNotHasKey(
+            'require-dev',
+            $this->composerData,
+            'Metapackage must not have a require-dev section',
+        );
+    }
+
+    public function testNoScriptsSection(): void
+    {
+        $this->assertArrayNotHasKey(
+            'scripts',
+            $this->composerData,
+            'Metapackage must not have a scripts section',
         );
     }
 }
