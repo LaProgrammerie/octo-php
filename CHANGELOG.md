@@ -23,6 +23,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [0.1.2] - 2026-03-04 — structure improvements
+
+### Changed
+
+- chore: fix tag (13a57d3)
+- chore: fix tag (0e2e63f)
+- chore : platform (c326c92)
+- chore : add skeleton to ci (8973692)
+- chore : improve bench (cdbc9ae)
+- chore : quality (c47720d)
+- chore : release and namespace (df5f7ce)
+
 ## [0.1.1] - 2026-03-03 — namespace and various improvements
 
 ### Added
@@ -55,6 +67,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Monorepo split workflow (GitHub Actions + splitsh-lite)
 - Benchmark suite
 
-[Unreleased]: https://github.com/LaProgrammerie/octo-php/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/LaProgrammerie/octo-php/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/LaProgrammerie/octo-php/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/LaProgrammerie/octo-php/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/LaProgrammerie/octo-php/releases/tag/v0.1.0
