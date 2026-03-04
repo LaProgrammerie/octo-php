@@ -102,8 +102,8 @@ jobs:
 
           git push --force split "${SHA}:refs/heads/main"
 
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            TAG="${GITHUB_REF_NAME}"
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
             echo "Pushing tag ${TAG} -> ${REPO}"
             git push --force split "${SHA}:refs/tags/${TAG}"
           fi
